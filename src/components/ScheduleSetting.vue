@@ -1,5 +1,5 @@
 <template>
-<div class="row mb-4 mt-5">
+<div class="row mb-4 mt-4">
   <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
     <h2>自動</h2>
     <form class="schedule-setting">
