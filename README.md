@@ -16,6 +16,10 @@ Vue で作られた UI と，Flask で作られたアプリケーションサー
 
 ESP32 のソフト関係は[ブログ](https://rabbit-note.com/2019/03/17/shutter-automation/)で紹介しています．
 
+## スクリーンショット
+
+<img src="screenshot.png" width="432">
+
 ## カスタマイズ
 
 ESP32 の REST API のアドレスは flask/config.py にて定義していますので，
