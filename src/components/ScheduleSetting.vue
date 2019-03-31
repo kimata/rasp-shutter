@@ -45,7 +45,7 @@
       </div>
       <div class="container mt-2">
         <button type="button" class="btn btn-success col"
-                @click="save()" v-bind:disabled="!isChanged()">保存</button>
+                @click="save()" v-bind:disabled="!isChanged">保存</button>
       </div>
     </form>
   </div>
