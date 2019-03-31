@@ -16,9 +16,6 @@ def set_shutter_state(mode):
 
     return result
 
-
 if __name__ == '__main__':
     mode = sys.argv[1]
     set_shutter_state(mode)
-
-
