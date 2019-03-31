@@ -6,12 +6,12 @@
       <div class="container">
         <h3>オープン</h3>
         <div class="row">
-          <div class="switchToggle mt-1 col-4">
+          <div class="switchToggle mt-1 col-lg-6 col-md-4">
             <input type="checkbox" id="schedule-entry-open" name="enabled"
                    v-model="current.open.is_active" />
             <label for="schedule-entry-open"></label>
           </div>
-          <div class="form-group col-8">
+          <div class="form-group col-lg-6 col-md-8">
             <div class="input-group" id="schedule-entry-time">
               <input type="time" class="form-control" name="time"
                      v-model="current.open.time"
@@ -26,12 +26,12 @@
       <div class="container">
         <h3>クローズ</h3>
         <div class="row">
-          <div class="switchToggle mt-1 col-6">
+          <div class="switchToggle mt-1 col-lg-6 col-md-4">
             <input type="checkbox" id="schedule-entry-close" name="enabled"
                    v-model="current.close.is_active" />
             <label for="schedule-entry-close"></label>
           </div>
-          <div class="form-group col-6">
+          <div class="form-group col-lg-6 col-md-8">
             <div class="input-group" id="schedule-entry-time">
               <input type="time" class="form-control" name="time"
                      v-model="current.close.time"
