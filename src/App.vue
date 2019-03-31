@@ -1,6 +1,5 @@
 <template>
 <div id="app">
-  <!-- <vue-toastr ref="toastr"></vue-toastr> -->
   <app-header></app-header>
   <div class="container">
     <manual-control></manual-control>
@@ -10,9 +9,7 @@
 </template>
 
 <script>
-// import Vue from 'vue'
-// import Toastr from 'vue-toastr'
-import Hello from './components/Hello'
+
 import AppHeader from './components/AppHeader'
 import ManualControl from './components/ManualControl'
 import ScheduleSetting from './components/ScheduleSetting'
@@ -29,15 +26,9 @@ Vue.use(VueToastr2)
 export default {
   name: 'app',
   components: {
-    Hello,
     AppHeader,
     ManualControl,
     ScheduleSetting
-  },
-  methods: {
-    // toastr: function (isSuccess, message) {
-
-    // }
   }
 }
 </script>
@@ -56,21 +47,21 @@ h2:after {
     bottom: -3px;
     width: 20%;
 }
-
+p
 h3 {
     font-size: 1.1rem !important;
     margin-top: 1em !important;
 }
 
 .toast-success {
-background-color: #51A351 !important;
-
+    background-color: #51A351 !important;
 }
+
 .toast-info {
-background-color: #2f96b4 !important;
-}
-.toast-error {
-background-color: #bd362f !important;
+    background-color: #2f96b4 !important;
 }
 
+.toast-error {
+    background-color: #bd362f !important;
+}
 </style>
