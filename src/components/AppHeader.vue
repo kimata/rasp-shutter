@@ -28,7 +28,7 @@ export default {
     background-position: 95%;
 }
 .jumbotron h1 {
-    font-size: 2.2rem;
+    font-size: 2.0rem;
     margin-top: -0.8em;
 }
 </style>
