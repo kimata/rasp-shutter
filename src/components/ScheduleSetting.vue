@@ -76,6 +76,11 @@ export default {
         this.saved = JSON.parse(JSON.stringify(response.data)) // NOTE: deep copy
       })
   },
+  computed: {
+    isChanged: function () {
+      return this.isStateDiffer(this.current, this.saved)
+    }
+  },
   methods: {
     save: function () {
       axios
@@ -89,9 +94,6 @@ export default {
         .catch(_ => {
           this.$root.$toastr.error('保存に失敗しました．', 'エラー')
         })
-    },
-    isChanged: function () {
-      return this.isStateDiffer(this.current, this.saved)
     },
     isStateDiffer: function (a, b) {
       let isDiffer = false
