@@ -155,7 +155,8 @@ def gzipped(f):
             response.headers['Content-Encoding'] = 'gzip'
             response.headers['Vary'] = 'Accept-Encoding'
             response.headers['Content-Length'] = len(response.data)
-            response.headers['Cache-Control'] = 'no-cache'
+            response.headers['Cache-Control'] = 'max-age=3600'
+            response.add_etag()
 
             return response
 
