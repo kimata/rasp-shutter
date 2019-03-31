@@ -47,7 +47,7 @@ h2:after {
     bottom: -3px;
     width: 20%;
 }
-p
+
 h3 {
     font-size: 1.1rem !important;
     margin-top: 1em !important;
