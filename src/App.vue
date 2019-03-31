@@ -58,20 +58,19 @@ h2:after {
 }
 
 h3 {
-    font-size: 1.1rem;
-    margin-top: 1em;
+    font-size: 1.1rem !important;
+    margin-top: 1em !important;
 }
 
-
 .toast-success {
-background-color: #51A351;
+background-color: #51A351 !important;
 
 }
 .toast-info {
-background-color: #2f96b4;
+background-color: #2f96b4 !important;
 }
 .toast-error {
-background-color: #bd362f;
+background-color: #bd362f !important;
 }
 
 </style>

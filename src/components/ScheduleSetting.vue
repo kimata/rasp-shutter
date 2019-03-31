@@ -1,43 +1,51 @@
 <template>
-<div class="row mb-4">
+<div class="row mb-4 mt-5">
   <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
-    <h2>スケジュール</h2>
+    <h2>自動</h2>
     <form class="schedule-setting">
       <div class="container">
-        <div class="switchToggle mt-3">
-          <input type="checkbox" id="schedule-entry" name="enabled"
-                 />
-          <label for="schedule-entry"></label>
-        </div>
-      </div>
-      <div class="container">
-        <h3>上げる時刻</h3>
-        <div class="form-group">
-          <div class="input-group" id="schedule-entry-time">
-            <input type="time" class="form-control"
-                   name="time"
-                   />
-            <div class="input-group-append">
-              <div class="input-group-text time-icon"></div>
+        <h3>オープン</h3>
+        <div class="row">
+          <div class="switchToggle mt-1 col-6">
+            <input type="checkbox" id="schedule-entry-open" name="enabled"
+                   v-model="current.open.is_active" />
+            <label for="schedule-entry-open"></label>
+          </div>
+          <div class="form-group col-6">
+            <div class="input-group" id="schedule-entry-time">
+              <input type="time" class="form-control" name="time"
+                     v-model="current.open.time"
+                     v-bind:disabled="!current.open.is_active" />
+              <div class="input-group-append">
+                <div class="input-group-text time-icon"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
       <div class="container">
-        <h3>下げる時刻</h3>
-        <div class="form-group">
-          <div class="input-group" id="schedule-entry-time">
-            <input type="time" class="form-control"
-                   name="time"
-                   />
-            <div class="input-group-append">
-              <div class="input-group-text time-icon"></div>
+        <h3>クローズ</h3>
+        <div class="row">
+          <div class="switchToggle mt-1 col-6">
+            <input type="checkbox" id="schedule-entry-close" name="enabled"
+                   v-model="current.close.is_active" />
+            <label for="schedule-entry-close"></label>
+          </div>
+          <div class="form-group col-6">
+            <div class="input-group" id="schedule-entry-time">
+              <input type="time" class="form-control" name="time"
+                     v-model="current.close.time"
+                     v-bind:disabled="!current.close.is_active" />
+              <div class="input-group-append">
+                <div class="input-group-text time-icon"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <div class="container">
-      <button type="button" class="btn btn-success col">保存</button>
+      <div class="container mt-2">
+        <button type="button" class="btn btn-success col"
+                @click="save()" v-bind:disabled="!isChanged()">保存</button>
       </div>
     </form>
   </div>
@@ -53,16 +61,48 @@ export default {
   mixins: [ AppConfig ],
   data () {
     return {
-      isActive: false,
-      timeOpen: 0,
-      timeClose: 0
+      current: {
+        open: { },
+        close: { }
+      },
+      saved: { }
     }
   },
+  created () {
+    axios
+      .get(this.AppConfig['apiEndpoint'] + 'schedule_ctrl')
+      .then(response => {
+        this.current = response.data
+        this.saved = JSON.parse(JSON.stringify(response.data)) // NOTE: deep copy
+      })
+  },
   methods: {
-    control: function () {
+    save: function () {
       axios
-        .get('https://api.coindesk.com/v1/bpi/currentprice.json')
-        .then(response => (console.log(response)))
+        .get(this.AppConfig['apiEndpoint'] + 'schedule_ctrl', {
+          params: { set: JSON.stringify(this.current) }
+        })
+        .then(response => {
+          this.saved = response.data
+          this.$root.$toastr.success('正常に保存できました．', '成功')
+        })
+        .catch(_ => {
+          this.$root.$toastr.error('保存に失敗しました．', 'エラー')
+        })
+    },
+    isChanged: function () {
+      return this.isStateDiffer(this.current, this.saved)
+    },
+    isStateDiffer: function (a, b) {
+      let isDiffer = false
+      for (let mode in a) {
+        for (let key in a[mode]) {
+          if (a[mode][key] !== b[mode][key]) {
+            isDiffer = true
+          }
+        }
+      }
+      return isDiffer
     }
   }
 }

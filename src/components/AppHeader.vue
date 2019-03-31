@@ -2,7 +2,7 @@
 <header>
   <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
     <div class="jumbotron">
-      <h1>自動シャッター システム</h1>
+      <h1>電動シャッター 制御システム</h1>
     </div>
   </div>
 </header>
