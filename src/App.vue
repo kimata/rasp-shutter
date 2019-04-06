@@ -4,6 +4,7 @@
   <div class="container">
     <manual-control></manual-control>
     <schedule-setting></schedule-setting>
+    <app-log></app-log>
   </div>
 </div>
 </template>
@@ -13,6 +14,7 @@
 import AppHeader from './components/AppHeader'
 import ManualControl from './components/ManualControl'
 import ScheduleSetting from './components/ScheduleSetting'
+import AppLog from './components/AppLog'
 
 import Vue from 'vue'
 import VueToastr2 from 'vue-toastr-2'
@@ -28,7 +30,8 @@ export default {
   components: {
     AppHeader,
     ManualControl,
-    ScheduleSetting
+    ScheduleSetting,
+    AppLog
   }
 }
 </script>

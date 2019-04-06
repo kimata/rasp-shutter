@@ -9,6 +9,8 @@ from flask import (
 
 from functools import wraps
 import re
+import socket
+import sqlite3
 import subprocess
 import threading
 import json
@@ -31,7 +33,14 @@ SHUTTER_CTRL_CMD = os.path.abspath(
 
 rasp_shutter = Blueprint('rasp-shutter', __name__, url_prefix=APP_PATH)
 
+sqlite = sqlite3.connect(':memory:', check_same_thread=False)
+sqlite.execute('CREATE TABLE log(date INT, message TEXT)')
+sqlite.row_factory = lambda c, r: dict(
+    zip([col[0] for col in c.description], r)
+)
+
 schedule_lock = threading.Lock()
+event_lock = threading.Lock()
 
 SCHEDULE_MARKER = 'SHUTTER SCHEDULE'
 SHUTTER_CTRL_CMD = os.path.abspath(
@@ -120,15 +129,59 @@ def cron_write(schedule):
     subprocess.check_call(['sudo', '/etc/init.d/cron', 'restart'])
 
 
-def set_shutter_state(mode):
+def set_shutter_state(mode, host):
     result = True
     for endpoint in CONTROL_ENDPOONT[mode]:
         if (requests.get(endpoint).status_code != 200):
             result = False
+    if result:
+        log('シャッターを{done}ました。{by}'.format(
+            done='開け' if mode else '閉め',
+            by='(by {})'.format(host) if host != '' else ''
+        ))
+    else:
+        log('シャッターを{done}るのに失敗しました。{by}'.format(
+            done='開け' if mode else '閉め',
+            by='(by {})'.format(host) if host != '' else ''
+        ))
 
     return result
 
-    
+
+def schedule_entry_str(mode, entry):
+    return '{} {}'.format(
+        entry['time'], mode.upper()
+    )
+
+
+def schedule_str(schedule):
+    str = []
+    for mode in ['open', 'close']:
+        entry = schedule[mode]
+        if not entry['is_active']:
+            continue
+        str.append(schedule_entry_str(mode, entry))
+
+    return ', '.join(str)
+
+
+def log_impl(message):
+    with event_lock:
+        sqlite.execute(
+            'INSERT INTO log ' +
+            'VALUES (DATETIME("now", "localtime"), ?)',
+            [message]
+        )
+        sqlite.execute(
+            'DELETE FROM log ' +
+            'WHERE date <= DATETIME("now", "localtime", "-60 days")'
+        )
+
+
+def log(message):
+    threading.Thread(target=log_impl, args=(message,)).start()
+
+
 def gzipped(f):
     @functools.wraps(f)
     def view_func(*args, **kwargs):
@@ -183,6 +236,13 @@ def support_jsonp(f):
     return decorated_function
 
 
+def remote_host(request):
+    try:
+        return socket.gethostbyaddr(request.remote_addr)[0]
+    except:
+        return request.remote_addr
+
+
 @rasp_shutter.route('/api/shutter_ctrl', methods=['GET', 'POST'])
 @support_jsonp
 def api_shutter_ctrl():
@@ -190,7 +250,7 @@ def api_shutter_ctrl():
     state = request.args.get('set', 'none', type=str)
 
     if state != 'none':
-        is_success = set_shutter_state(state)
+        is_success = set_shutter_state(state, remote_host(request))
 
     return jsonify({ 'result': is_success })
 
@@ -205,7 +265,23 @@ def api_schedule_ctrl():
             schedule = json.loads(state)
             cron_write(schedule)
 
+            host=remote_host(request)
+            log('スケジュールを更新しました。\n({schedule} {by})'.format(
+                schedule=schedule_str(schedule),
+                by='by {}'.format(host) if host != '' else ''
+            ))
+
     return jsonify(cron_read())
+
+
+@rasp_shutter.route('/api/log', methods=['GET'])
+@support_jsonp
+def api_log():
+    cur = sqlite.cursor()
+    cur.execute('SELECT * FROM log')
+    return jsonify({
+        'data': cur.fetchall()[::-1]
+    })
 
 
 @rasp_shutter.route('/', defaults={'filename': 'index.html'})
