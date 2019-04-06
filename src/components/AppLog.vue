@@ -69,11 +69,12 @@ export default {
 
 <style>
 .page-link {
-    color: #28a745;
+    color: #28a745 !important;
 }
 .page-item.active .page-link {
-    background-color: #28a745;
-    border-color: #28a745;
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+    color: #ffffff !important;
 }
 </style>
 
