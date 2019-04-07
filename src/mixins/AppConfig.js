@@ -3,7 +3,7 @@ const AppConfig = {
 }
 
 export default {
-  data () {
+  data() {
     return {
       AppConfig: AppConfig
     }
