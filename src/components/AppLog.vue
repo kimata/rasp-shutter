@@ -9,7 +9,7 @@
           {{entry.date}}
           <small class="text-muted">({{entry.fromNow}})</small>
         </div>
-        <div class="col-12">{{entry.message}}</div>
+        <div class="col-12" v-html="entry.message.replace(/\n/g,'<br/>')"></div>
       </div>
       <b-pagination
         v-model="page"

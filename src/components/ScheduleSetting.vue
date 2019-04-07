@@ -94,7 +94,9 @@ export default {
         .catch(_ => {
           this.$root.$toastr.error('保存に失敗しました．', 'エラー')
         })
-      this.$eventHub.$emit('schedule-setting')
+        .then(_ => {
+          this.$root.$eventHub.$emit('schedule-setting')
+        })
     },
     isStateDiffer: function (a, b) {
       let isDiffer = false
