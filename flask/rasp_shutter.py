@@ -150,13 +150,13 @@ def set_shutter_state(mode, auto, host):
         log('シャッターを{auto}で{done}ました。{by}'.format(
             auto='自動' if auto else '手動',
             done='開け' if mode == 'open' else '閉め',
-            by='\n(by {})'.format(host) if host != '' else ''
+            by='(by {})'.format(host) if host != '' else ''
         ))
     else:
         log('シャッターを{auto}で{done}るのに失敗しました。{by}'.format(
             auto='自動' if auto else '手動',
             done='開け' if mode == 'open' else '閉め',
-            by='\n(by {})'.format(host) if host != '' else ''
+            by='(by {})'.format(host) if host != '' else ''
         ))
 
     return result
