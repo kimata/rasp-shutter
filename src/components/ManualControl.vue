@@ -37,9 +37,6 @@ export default {
         .catch(_ => {
           this.$root.$toastr.error('制御に失敗しました．', 'エラー')
         })
-        .then(_ => {
-          this.$eventHub.$emit('manual-control')
-        })
     }
   }
 }

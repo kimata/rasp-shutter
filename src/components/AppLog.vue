@@ -35,17 +35,13 @@ export default {
     return {
       pageSize: 10,
       page: 1,
-      log: []
+      log: [],
+      eventSource: null
     }
   },
   created () {
+    this.watchEvent()
     this.updateLog()
-    this.$eventHub.$on('manual-control', this.updateLogWithDelay)
-    this.$eventHub.$on('schedule-setting', this.updateLogWithDelay)
-  },
-  beforeDestroy () {
-    this.$eventHub.$off('manual-control')
-    this.$eventHub.$off('schedule-setting')
   },
   methods: {
     updateLog: function () {
@@ -60,8 +56,12 @@ export default {
           }
         })
     },
-    updateLogWithDelay: function () {
-      setTimeout(this.updateLog, 500)
+    watchEvent: function () {
+      let self = this
+      this.eventSource = new EventSource(this.AppConfig['apiEndpoint'] + 'event')
+      this.eventSource.addEventListener('message', function (e) {
+        self.updateLog()
+      })
     }
   }
 }

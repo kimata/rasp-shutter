@@ -13,6 +13,7 @@ import socket
 import sqlite3
 import subprocess
 import threading
+import time
 import json
 from crontab import CronTab
 import os
@@ -27,6 +28,17 @@ APP_PATH = '/rasp-shutter'
 VUE_DIST_PATH = '../dist'
 
 SCHEDULE_MARKER = 'SHUTTER SCHEDULE'
+
+EVENT_TYPE_MANUAL = 'manual'
+EVENT_TYPE_LOG = 'log'
+EVENT_TYPE_SCHEDULE = 'schedule'
+
+event_count = {
+    EVENT_TYPE_MANUAL: 0,
+    EVENT_TYPE_LOG: 0,
+    EVENT_TYPE_SCHEDULE: 0,
+}
+
 SHUTTER_CTRL_CMD = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'script', 'shutter_ctrl.py')
 )
@@ -137,13 +149,13 @@ def set_shutter_state(mode, auto, host):
     if result:
         log('シャッターを{auto}で{done}ました。{by}'.format(
             auto='自動' if auto else '手動',
-            done='開け' if mode else '閉め',
+            done='開け' if mode == 'open' else '閉め',
             by='\n(by {})'.format(host) if host != '' else ''
         ))
     else:
         log('シャッターを{auto}で{done}るのに失敗しました。{by}'.format(
             auto='自動' if auto else '手動',
-            done='開け' if mode else '閉め',
+            done='開け' if mode == 'open' else '閉め',
             by='\n(by {})'.format(host) if host != '' else ''
         ))
 
@@ -168,6 +180,7 @@ def schedule_str(schedule):
 
 
 def log_impl(message):
+    global event_count
     with event_lock:
         sqlite.execute(
             'INSERT INTO log ' +
@@ -178,6 +191,7 @@ def log_impl(message):
             'DELETE FROM log ' +
             'WHERE date <= DATETIME("now", "localtime", "-60 days")'
         )
+        event_count[EVENT_TYPE_LOG] += 1
 
 
 def log(message):
@@ -285,6 +299,24 @@ def api_log():
     return jsonify({
         'data': cur.fetchall()[::-1]
     })
+
+
+@rasp_shutter.route('/api/event', methods=['GET'])
+def api_event():
+    def event_stream():
+        last_count = event_count.copy()
+        while True:
+            time.sleep(0.3)
+            for method in last_count:
+                if (last_count[method] != event_count[method]):
+                    yield "data: {}\n\n".format(method)
+                    last_count[method] = event_count[method]
+
+    res = Response(event_stream(), mimetype='text/event-stream')
+    res.headers.add('Access-Control-Allow-Origin', '*')
+    res.headers.add('Cache-Control', 'no-cache')
+
+    return res
 
 
 @rasp_shutter.route('/', defaults={'filename': 'index.html'})
