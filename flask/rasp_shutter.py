@@ -129,20 +129,22 @@ def cron_write(schedule):
     subprocess.check_call(['sudo', '/etc/init.d/cron', 'restart'])
 
 
-def set_shutter_state(mode, host):
+def set_shutter_state(mode, auto, host):
     result = True
     for endpoint in CONTROL_ENDPOONT[mode]:
         if (requests.get(endpoint).status_code != 200):
             result = False
     if result:
-        log('シャッターを{done}ました。{by}'.format(
+        log('シャッターを{auto}で{done}ました。{by}'.format(
+            auto='自動' if auto else '手動',
             done='開け' if mode else '閉め',
-            by='(by {})'.format(host) if host != '' else ''
+            by='\n(by {})'.format(host) if host != '' else ''
         ))
     else:
-        log('シャッターを{done}るのに失敗しました。{by}'.format(
+        log('シャッターを{auto}で{done}るのに失敗しました。{by}'.format(
+            auto='自動' if auto else '手動',
             done='開け' if mode else '閉め',
-            by='(by {})'.format(host) if host != '' else ''
+            by='\n(by {})'.format(host) if host != '' else ''
         ))
 
     return result
@@ -248,9 +250,10 @@ def remote_host(request):
 def api_shutter_ctrl():
     is_success = False
     state = request.args.get('set', 'none', type=str)
+    auto = request.args.get('auto', False, type=bool)
 
     if state != 'none':
-        is_success = set_shutter_state(state, remote_host(request))
+        is_success = set_shutter_state(state, auto, remote_host(request))
 
     return jsonify({ 'result': is_success })
 
