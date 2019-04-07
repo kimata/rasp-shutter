@@ -55,10 +55,9 @@ export default {
       })
     },
     watchEvent: function() {
-      let self = this
       this.eventSource = new EventSource(this.AppConfig['apiEndpoint'] + 'event')
-      this.eventSource.addEventListener('message', function(e) {
-        self.updateLog()
+      this.eventSource.addEventListener('message', (e) => {
+        this.updateLog()
       })
     }
   }
