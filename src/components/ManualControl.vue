@@ -33,6 +33,7 @@ export default {
             this.$root.$toastr.error('制御に失敗しました．', 'エラー')
           }
         })
+        // eslint-disable-next-line
         .catch(_ => {
           this.$root.$toastr.error('制御に失敗しました．', 'エラー')
         })

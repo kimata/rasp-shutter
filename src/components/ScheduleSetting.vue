@@ -96,6 +96,7 @@ export default {
           this.saved = response.data
           this.$root.$toastr.success('正常に保存できました．', '成功')
         })
+        // eslint-disable-next-line
         .catch(_ => {
           this.$root.$toastr.error('保存に失敗しました．', 'エラー')
         })
