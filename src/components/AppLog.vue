@@ -4,7 +4,9 @@
       <h2>実行ログ</h2>
       <div class="container">
         <p v-if="log.length == 0">ログがありません。</p>
-        <div v-else class="row mb-2" v-for="entry in log.slice((page - 1) * pageSize, page * pageSize)">
+        <div v-else class="row mb-2"
+             v-for="(entry, index) in log.slice((page - 1) * pageSize, page * pageSize)"
+             :key='index'>
           <div class="col-12 font-weight-bold">
             {{ entry.date }}
             <small class="text-muted">({{ entry.fromNow }})</small>
@@ -56,6 +58,7 @@ export default {
     },
     watchEvent: function() {
       this.eventSource = new EventSource(this.AppConfig['apiEndpoint'] + 'event')
+      // eslint-disable-next-line
       this.eventSource.addEventListener('message', (e) => {
         this.updateLog()
       })
