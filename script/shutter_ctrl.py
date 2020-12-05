@@ -15,7 +15,7 @@ def set_shutter_state(mode):
         req = urllib.request.Request('{}?{}'.format(
             CONTROL_ENDPOONT['api'], urllib.parse.urlencode({
                 'set': mode,
-                'auto': True,
+                'auto': 1,
             }))
         )
         status = json.loads(urllib.request.urlopen(req).read().decode())

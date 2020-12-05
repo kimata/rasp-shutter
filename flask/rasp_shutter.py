@@ -14,6 +14,7 @@ import sqlite3
 import subprocess
 import threading
 import time
+import pathlib
 import json
 from crontab import CronTab
 import os
@@ -143,18 +144,34 @@ def cron_write(schedule):
 
 def set_shutter_state(mode, auto, host):
     result = True
+
+    exe_hist = pathlib.Path('/dev/shm/shutter_{mode}'.format(mode=mode))
+    if (auto > 0):
+        if (exe_hist.exists() and
+            ((time.time() - exe_hist.stat().st_mtime) / (60 * 60) < 24)):
+            if (auto == 1):
+                log('シャッターを自動で{done}るのを見合わせました。{by}'.format(
+                    done='開け' if mode == 'open' else '閉め',
+                    by='(by {})'.format(host) if host != '' else ''
+                ))
+            return True
+    exe_hist.touch()
+    inv_hist = pathlib.Path('/dev/shm/shutter_{mode}'.format(mode='close' if mode == 'open' else 'open'))
+    inv_hist.unlink(missing_ok=True)
+
     for endpoint in CONTROL_ENDPOONT[mode]:
         if (requests.get(endpoint).status_code != 200):
             result = False
+
     if result:
         log('シャッターを{auto}で{done}ました。{by}'.format(
-            auto='自動' if auto else '手動',
+            auto='自動' if auto > 0 else '手動',
             done='開け' if mode == 'open' else '閉め',
             by='(by {})'.format(host) if host != '' else ''
         ))
     else:
         log('シャッターを{auto}で{done}るのに失敗しました。{by}'.format(
-            auto='自動' if auto else '手動',
+            auto='自動' if auto > 0 else '手動',
             done='開け' if mode == 'open' else '閉め',
             by='(by {})'.format(host) if host != '' else ''
         ))
@@ -264,7 +281,7 @@ def remote_host(request):
 def api_shutter_ctrl():
     is_success = False
     state = request.args.get('set', 'none', type=str)
-    auto = request.args.get('auto', False, type=bool)
+    auto = request.args.get('auto', 0, type=int)
 
     if state != 'none':
         is_success = set_shutter_state(state, auto, remote_host(request))
