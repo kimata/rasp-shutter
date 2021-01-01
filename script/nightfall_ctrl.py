@@ -6,6 +6,8 @@ import json
 import os
 import sys
 import requests
+import logging
+import logging.handlers
 import pprint
 
 INFLUX_DB_HOST     = 'columbia'
@@ -15,6 +17,33 @@ RAD_THRESHOLD      = 30
 sys.path.append(os.path.join(os.path.dirname(__file__), '../flask'))
 from config import CONTROL_ENDPOONT
 
+class GZipRotator:
+    def namer(name):
+        return name + '.gz'
+
+    def rotator(source, dest):
+        with open(source, 'rb') as fs:
+            with gzip.open(dest, 'wb') as fd:
+                fd.writelines(fs)
+        os.remove(source)
+
+def get_logger():
+    logger = logging.getLogger()
+    log_handler = logging.handlers.RotatingFileHandler(
+        '/dev/shm/nightfall_ctrl.log',
+        encoding='utf8', maxBytes=1*1024*1024, backupCount=10,
+    )
+    log_handler.formatter = logging.Formatter(
+        fmt='%(asctime)s %(levelname)s %(name)s :%(message)s',
+        datefmt='%Y/%m/%d %H:%M:%S %Z'
+    )
+    log_handler.namer = GZipRotator.namer
+    log_handler.rotator = GZipRotator.rotator
+
+    logger.addHandler(log_handler)
+    logger.setLevel(level=logging.INFO)
+
+    return logger
 
 # InfluxDB にアクセスしてセンサーデータを取得
 def get_solar_rad(hostname, table, name, time_range):
@@ -56,8 +85,10 @@ def set_shutter_state(mode):
 
 
 if __name__ == '__main__':
+    logger = get_logger()
     solar_rad = get_solar_rad(SENSOR_HOST, 'sensor.raspberrypi', 'solar_rad', '5m')
     logger.info('sorlar_rad: {}'.format(solar_rad))
 
     if (solar_rad < RAD_THRESHOLD):
+        logger.info('set_shutter_state: {}'.format('CLOSE'))
         set_shutter_state('close')
