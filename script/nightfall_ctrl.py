@@ -10,6 +10,7 @@ import pprint
 
 INFLUX_DB_HOST     = 'columbia'
 SENSOR_HOST        = 'rasp-storeroom'
+RAD_THRESHOLD      = 30
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../flask'))
 from config import CONTROL_ENDPOONT
@@ -22,7 +23,7 @@ def get_solar_rad(hostname, table, name, time_range):
         params = {
             'db': 'sensor',
             'q': (
-                'SELECT MEAN({name}) FROM "{table}" WHERE (hostname=\'{hostname}\' AND time >= now() - ({time_range})) ' +
+                'SELECT MEDIAN({name}) FROM "{table}" WHERE (hostname=\'{hostname}\' AND time >= now() - ({time_range})) ' +
                 'GROUP BY TIME({time_range}) LIMIT 1'
             ).format(table=table, hostname=hostname, name=name, time_range=time_range)
         }
@@ -35,7 +36,7 @@ def get_solar_rad(hostname, table, name, time_range):
     for i, key in enumerate(columns):
         data[key] = values[i]
 
-    return data['mean']
+    return data['median']
 
 
 def set_shutter_state(mode):
@@ -55,6 +56,8 @@ def set_shutter_state(mode):
 
 
 if __name__ == '__main__':
-  solar_rad = get_solar_rad(SENSOR_HOST, 'sensor.raspberrypi', 'solar_rad', '15m')
-  if (solar_rad < 40):
-    set_shutter_state('close')
+    solar_rad = get_solar_rad(SENSOR_HOST, 'sensor.raspberrypi', 'solar_rad', '5m')
+    logger.info('sorlar_rad: {}'.format(solar_rad))
+
+    if (solar_rad < RAD_THRESHOLD):
+        set_shutter_state('close')
