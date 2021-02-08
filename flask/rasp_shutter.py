@@ -30,6 +30,8 @@ VUE_DIST_PATH = '../dist'
 
 SCHEDULE_MARKER = 'SHUTTER SCHEDULE'
 
+EXE_HIST_FILE_FORMAT = '/dev/shm/shutter_hist_{mode}'
+
 EVENT_TYPE_MANUAL = 'manual'
 EVENT_TYPE_LOG = 'log'
 EVENT_TYPE_SCHEDULE = 'schedule'
@@ -145,7 +147,7 @@ def cron_write(schedule):
 def set_shutter_state(mode, auto, host):
     result = True
 
-    exe_hist = pathlib.Path('/dev/shm/shutter_{mode}'.format(mode=mode))
+    exe_hist = pathlib.Path(EXE_HIST_FILE_FORMAT.format(mode=mode))
     if (auto > 0):
         if (exe_hist.exists() and
             ((time.time() - exe_hist.stat().st_mtime) / (60 * 60) < 24)):
@@ -156,7 +158,7 @@ def set_shutter_state(mode, auto, host):
                 ))
             return True
     exe_hist.touch()
-    inv_hist = pathlib.Path('/dev/shm/shutter_{mode}'.format(mode='close' if mode == 'open' else 'open'))
+    inv_hist = pathlib.Path(EXE_HIST_FILE_FORMAT.format(mode='close' if mode == 'open' else 'open'))
     inv_hist.unlink(missing_ok=True)
 
     for endpoint in CONTROL_ENDPOONT[mode]:
