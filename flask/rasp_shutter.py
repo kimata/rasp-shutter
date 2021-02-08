@@ -144,6 +144,7 @@ def cron_write(schedule):
     subprocess.check_call(['sudo', '/etc/init.d/cron', 'restart'])
 
 
+# auto = 0: 手動, 1: 自動(実際には制御しなかった場合にメッセージ有り), 2: 自動
 def set_shutter_state(mode, auto, host):
     result = True
 
