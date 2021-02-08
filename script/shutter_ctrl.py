@@ -13,7 +13,7 @@ from config import CONTROL_ENDPOONT
 def set_shutter_state(mode):
     try:
         req = urllib.request.Request('{}?{}'.format(
-            CONTROL_ENDPOONT['api'], urllib.parse.urlencode({
+            CONTROL_ENDPOONT['api']['ctrl'], urllib.parse.urlencode({
                 'set': mode,
                 'auto': 1,
             }))

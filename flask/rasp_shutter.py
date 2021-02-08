@@ -180,6 +180,13 @@ def set_shutter_state(mode, auto, host):
     return result
 
 
+def log_message(message, host):
+    result = True
+    log(message)
+
+    return result
+
+
 def schedule_entry_str(mode, entry):
     return '{} {}'.format(
         entry['time'], mode.upper()
@@ -286,6 +293,17 @@ def api_shutter_ctrl():
 
     if state != 'none':
         is_success = set_shutter_state(state, auto, remote_host(request))
+
+    return jsonify({ 'result': is_success })
+
+
+@rasp_shutter.route('/api/log_ctrl', methods=['GET', 'POST'])
+@support_jsonp
+def api_log_message():
+    is_success = False
+    message = request.args.get('message', '', type=str)
+
+    is_success = log_message(message, remote_host(request))
 
     return jsonify({ 'result': is_success })
 
