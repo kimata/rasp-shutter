@@ -167,8 +167,7 @@ def set_shutter_state(mode, auto, host):
             result = False
 
     if result:
-        log('{reason}シャッターを{auto}で{done}ました。{by}'.format(
-            reason='暗くなったので' if auto == 2 else '',
+        log('シャッターを{auto}で{done}ました。{by}'.format(
             auto='自動' if auto > 0 else '手動',
             done='開け' if mode == 'open' else '閉め',
             by='(by {})'.format(host) if host != '' else ''
