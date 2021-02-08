@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""Shutter controller based on illuminance.
+
+usage: shutter_ctrl_by_illuminance.py MODE TYPE
+
+options:
+    MODE    mode of control (open | close)
+    TYPE    type of control (check | ctrl)
+"""
+
+from docopt import docopt
+
 import urllib.request
 import json
 import os
 import sys
+import pathlib
 import requests
 import logging
 import logging.handlers
@@ -13,6 +25,8 @@ import pprint
 INFLUX_DB_HOST     = 'columbia'
 SENSOR_HOST        = 'rasp-storeroom'
 RAD_THRESHOLD      = 30
+
+EXE_RESV_FILE_FORMAT = '/dev/shm/shutter_resv_{mode}'
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../flask'))
 from config import CONTROL_ENDPOONT
@@ -68,12 +82,13 @@ def get_solar_rad(hostname, table, name, time_range):
     return data['median']
 
 
-def set_shutter_state(mode):
+# auto = 0: 手動, 1: 自動(実際には制御しなかった場合にメッセージ有り), 2: 自動
+def set_shutter_state(mode, auto):
     try:
         req = urllib.request.Request('{}?{}'.format(
-            CONTROL_ENDPOONT['api'], urllib.parse.urlencode({
+            CONTROL_ENDPOONT['api']['ctrl'], urllib.parse.urlencode({
                 'set': mode,
-                'auto': 2,
+                'auto': auto,
             }))
         )
         status = json.loads(urllib.request.urlopen(req).read().decode())
@@ -84,11 +99,64 @@ def set_shutter_state(mode):
     return False
 
 
+def log_message(message):
+    try:
+        req = urllib.request.Request('{}?{}'.format(
+            CONTROL_ENDPOONT['api']['log'], urllib.parse.urlencode({
+                'message': message,
+            }))
+        )
+        status = json.loads(urllib.request.urlopen(req).read().decode())
+        return status['result'] == 'success'
+    except:
+        pass
+
+    return False
+
+
+def process_open(cmd_type, solar_rad):
+    exe_resv = pathlib.Path(EXE_RESV_FILE_FORMAT.format(mode='open'))
+
+    if (cmd_type == 'ctrl'):
+        if (solar_rad > RAD_THRESHOLD):
+            return set_shutter_state('open', 1)
+        else:
+            log_message('周りが暗いので開けるのを延期しました．')
+            exe_resv.touch()
+            return True
+    else:
+        if (solar_rad > RAD_THRESHOLD) and exe_resv.exists():
+            exe_resv.unlink(missing_ok=True)
+            log_message('明るくなってきました．')
+            return set_shutter_state('open', 2)
+    return True
+
+
+def process_close(cmd_type, solar_rad):
+    exe_resv = pathlib.Path(EXE_RESV_FILE_FORMAT.format(mode='open'))
+    exe_resv.unlink(missing_ok=True)
+
+    if (cmd_type == 'ctrl'):
+        return set_shutter_state('close', 1)
+    else:
+        if (solar_rad < RAD_THRESHOLD):
+            log_message('周りが暗くなってきたので閉じます．')
+            return set_shutter_state('close', 2)
+    return True
+
+
+def process_cmd(mode, cmd_type, solar_rad):
+    if (mode == 'open'):
+        return process_open(cmd_type, solar_rad)
+    else:
+        return process_close(cmd_type, solar_rad)
+
+
 if __name__ == '__main__':
+    arg = docopt(__doc__)
+
     logger = get_logger()
     solar_rad = get_solar_rad(SENSOR_HOST, 'sensor.raspberrypi', 'solar_rad', '5m')
-    logger.info('sorlar_rad: {}'.format(solar_rad))
+    logger.info('solar_rad: {}'.format(solar_rad))
 
-    if (solar_rad < RAD_THRESHOLD):
-        logger.info('set_shutter_state: {}'.format('CLOSE'))
-        set_shutter_state('close')
+    process_cmd(arg['MODE'], arg['TYPE'], solar_rad)
