@@ -44,7 +44,7 @@ class GZipRotator:
 def get_logger():
     logger = logging.getLogger()
     log_handler = logging.handlers.RotatingFileHandler(
-        '/dev/shm/nightfall_ctrl.log',
+        '/dev/shm/shutter_ctrl_by_illuminance.log',
         encoding='utf8', maxBytes=1*1024*1024, backupCount=10,
     )
     log_handler.formatter = logging.Formatter(
