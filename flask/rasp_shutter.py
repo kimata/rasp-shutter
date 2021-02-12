@@ -53,7 +53,7 @@ event_lock = threading.Lock()
 
 SCHEDULE_MARKER = 'SHUTTER SCHEDULE'
 SHUTTER_CTRL_CMD = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', 'script', 'shutter_ctrl.py')
+    os.path.join(os.path.dirname(__file__), '..', 'script', 'shutter_ctrl_by_illuminance.py')
 )
 
 def parse_cron_line(line):

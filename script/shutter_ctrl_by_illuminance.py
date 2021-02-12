@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Shutter controller based on illuminance.
-
-usage: shutter_ctrl_by_illuminance.py MODE TYPE
-
-options:
-    MODE    mode of control (open | close)
-    TYPE    type of control (check | ctrl)
 """
+Usage:
+    shutter_ctrl_by_illuminance.py MODE [TYPE]
 
+Options:
+    MODE    mode of control (open | close)
+    TYPE    type of control (check | ctrl) [default: ctrl]
+"""
 from docopt import docopt
 
 import urllib.request
@@ -156,5 +155,8 @@ if __name__ == '__main__':
     logger = get_logger()
     solar_rad = get_solar_rad(SENSOR_HOST, 'sensor.raspberrypi', 'solar_rad', '5m')
     logger.info('solar_rad: {}'.format(solar_rad))
+
+    if (arg['TYPE'] is None): # docopt の default がなぜか効かない...
+        arg['TYPE'] = 'ctrl'
 
     process_cmd(arg['MODE'], arg['TYPE'], solar_rad)
