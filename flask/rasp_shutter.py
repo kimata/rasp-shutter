@@ -40,10 +40,6 @@ event_count = {
     EVENT_TYPE_SCHEDULE: 0,
 }
 
-SHUTTER_CTRL_CMD = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', 'script', 'shutter_ctrl.py')
-)
-
 rasp_shutter = Blueprint('rasp-shutter', __name__, url_prefix=APP_PATH)
 
 sqlite = sqlite3.connect(':memory:', check_same_thread=False)
