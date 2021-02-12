@@ -136,7 +136,8 @@ def process_close(cmd_type, solar_rad):
     if (cmd_type == 'ctrl'):
         return set_shutter_state('close', 1)
     else:
-        if (solar_rad < RAD_THRESHOLD):
+        exe_hist = pathlib.Path(EXE_HIST_FILE_FORMAT.format(mode='close'))
+        if (solar_rad < RAD_THRESHOLD) and not exe_hist.exists():
             log_message('周りが暗くなってきたので閉じます．')
             return set_shutter_state('close', 2)
     return True
