@@ -26,10 +26,8 @@ INFLUX_DB_HOST     = 'columbia'
 SENSOR_HOST        = 'rasp-storeroom'
 RAD_THRESHOLD      = 30
 
-EXE_RESV_FILE_FORMAT = '/dev/shm/shutter_resv_{mode}'
-
 sys.path.append(os.path.join(os.path.dirname(__file__), '../flask'))
-from config import CONTROL_ENDPOONT
+from config import CONTROL_ENDPOONT,EXE_HIST_FILE_FORMAT,EXE_RESV_FILE_FORMAT
 
 class GZipRotator:
     def namer(name):

@@ -12,3 +12,6 @@ CONTROL_ENDPOONT = {
         'http://192.168.0.81/api/33'
     ]
 }
+
+EXE_HIST_FILE_FORMAT = '/dev/shm/shutter_hist_{mode}'
+EXE_RESV_FILE_FORMAT = '/dev/shm/shutter_resv_{mode}'

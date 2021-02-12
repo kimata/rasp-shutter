@@ -23,14 +23,12 @@ import requests
 import gzip
 from io import BytesIO
 
-from config import CONTROL_ENDPOONT
+from config import CONTROL_ENDPOONT,EXE_HIST_FILE_FORMAT
 
 APP_PATH = '/rasp-shutter'
 VUE_DIST_PATH = '../dist'
 
 SCHEDULE_MARKER = 'SHUTTER SCHEDULE'
-
-EXE_HIST_FILE_FORMAT = '/dev/shm/shutter_hist_{mode}'
 
 EVENT_TYPE_MANUAL = 'manual'
 EVENT_TYPE_LOG = 'log'
