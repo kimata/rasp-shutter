@@ -147,7 +147,7 @@ def set_shutter_state(mode, auto, host):
         if (exe_hist.exists() and
             ((time.time() - exe_hist.stat().st_mtime) / (60 * 60) < 24)):
             if (auto == 1):
-                log('シャッターを自動で{done}るのを見合わせました。{by}'.format(
+                log('シャッターを自動で{done}るのを見合わせました．{by}'.format(
                     done='開け' if mode == 'open' else '閉め',
                     by='(by {})'.format(host) if host != '' else ''
                 ))
@@ -167,7 +167,7 @@ def set_shutter_state(mode, auto, host):
             by='(by {})'.format(host) if host != '' else ''
         ))
     else:
-        log('シャッターを{auto}で{done}るのに失敗しました。{by}'.format(
+        log('シャッターを{auto}で{done}るのに失敗しました．{by}'.format(
             auto='自動' if auto > 0 else '手動',
             done='開け' if mode == 'open' else '閉め',
             by='(by {})'.format(host) if host != '' else ''
