@@ -23,7 +23,7 @@ import pprint
 
 INFLUX_DB_HOST     = 'columbia'
 SENSOR_HOST        = 'rasp-storeroom'
-RAD_THRESHOLD      = 30
+RAD_THRESHOLD      = 40
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../flask'))
 from config import CONTROL_ENDPOONT,EXE_HIST_FILE_FORMAT,EXE_RESV_FILE_FORMAT
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     arg = docopt(__doc__)
 
     logger = get_logger()
-    solar_rad = get_solar_rad(SENSOR_HOST, 'sensor.raspberrypi', 'solar_rad', '5m')
+    solar_rad = get_solar_rad(SENSOR_HOST, 'sensor.raspberrypi', 'solar_rad', '10m')
     logger.info('solar_rad: {}'.format(solar_rad))
 
     if (arg['TYPE'] is None): # docopt の default がなぜか効かない...
