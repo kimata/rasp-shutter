@@ -23,7 +23,7 @@ import requests
 import gzip
 from io import BytesIO
 
-from config import CONTROL_ENDPOONT,EXE_HIST_FILE_FORMAT
+from config import CONTROL_ENDPOONT,LOG_DATABASE,EXE_HIST_FILE_FORMAT
 
 APP_PATH = '/rasp-shutter'
 VUE_DIST_PATH = '../dist'
@@ -42,8 +42,10 @@ event_count = {
 
 rasp_shutter = Blueprint('rasp-shutter', __name__, url_prefix=APP_PATH)
 
-sqlite = sqlite3.connect(':memory:', check_same_thread=False)
-sqlite.execute('CREATE TABLE log(date INT, message TEXT)')
+sqlite = sqlite3.connect(LOG_DATABASE, check_same_thread=False)
+sqlite.execute('CREATE TABLE IF NOT EXISTS log(date INT, message TEXT)')
+sqlite.commit()
+
 sqlite.row_factory = lambda c, r: dict(
     zip([col[0] for col in c.description], r)
 )
@@ -212,6 +214,7 @@ def log_impl(message):
             'DELETE FROM log ' +
             'WHERE date <= DATETIME("now", "localtime", "-60 days")'
         )
+        sqlite.commit()
         event_count[EVENT_TYPE_LOG] += 1
 
 

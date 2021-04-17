@@ -13,5 +13,7 @@ CONTROL_ENDPOONT = {
     ]
 }
 
+LOG_DATABASE = '/dev/shm/shutter_log.db'
+
 EXE_HIST_FILE_FORMAT = '/dev/shm/shutter_hist_{mode}'
 EXE_RESV_FILE_FORMAT = '/dev/shm/shutter_resv_{mode}'
