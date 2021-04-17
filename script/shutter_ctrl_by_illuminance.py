@@ -23,7 +23,8 @@ import pprint
 
 INFLUX_DB_HOST     = 'columbia'
 SENSOR_HOST        = 'rasp-storeroom'
-RAD_THRESHOLD      = 80
+RAD_THRESHOLD_OPEN = 150
+RAD_THRESHOLD_CLOSE= 80
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../flask'))
 from config import CONTROL_ENDPOONT,EXE_HIST_FILE_FORMAT,EXE_RESV_FILE_FORMAT
@@ -115,14 +116,14 @@ def process_open(cmd_type, solar_rad):
     exe_resv = pathlib.Path(EXE_RESV_FILE_FORMAT.format(mode='open'))
 
     if (cmd_type == 'ctrl'):
-        if (solar_rad > RAD_THRESHOLD):
+        if (solar_rad > RAD_THRESHOLD_OPEN):
             return set_shutter_state('open', 1)
         else:
             log_message('周りが暗いので開けるのを延期しました．')
             exe_resv.touch()
             return True
     else:
-        if (solar_rad > RAD_THRESHOLD) and exe_resv.exists():
+        if (solar_rad > RAD_THRESHOLD_OPEN) and exe_resv.exists():
             exe_resv.unlink(missing_ok=True)
             log_message('明るくなってきました．')
             return set_shutter_state('open', 2)
@@ -137,7 +138,7 @@ def process_close(cmd_type, solar_rad):
         return set_shutter_state('close', 1)
     else:
         exe_hist = pathlib.Path(EXE_HIST_FILE_FORMAT.format(mode='close'))
-        if (solar_rad < RAD_THRESHOLD) and not exe_hist.exists():
+        if (solar_rad < RAD_THRESHOLD_CLOSE) and not exe_hist.exists():
             log_message('周りが暗くなってきたので閉じます．')
             return set_shutter_state('close', 2)
     return True
