@@ -147,7 +147,7 @@ def set_shutter_state(mode, auto, host):
     exe_hist = pathlib.Path(EXE_HIST_FILE_FORMAT.format(mode=mode))
     if (auto > 0):
         if (exe_hist.exists() and
-            ((time.time() - exe_hist.stat().st_mtime) / (60 * 60) < 24)):
+            ((time.time() - exe_hist.stat().st_mtime) / (60 * 60) < 18)):
             if (auto == 1):
                 log('シャッターを自動で{done}るのを見合わせました．{by}'.format(
                     done='開け' if mode == 'open' else '閉め',
