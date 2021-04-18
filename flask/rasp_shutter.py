@@ -51,6 +51,7 @@ sqlite.row_factory = lambda c, r: dict(
 
 schedule_lock = threading.Lock()
 event_lock = threading.Lock()
+log_thread = None
 
 SCHEDULE_MARKER = 'SHUTTER SCHEDULE'
 SHUTTER_CTRL_CMD = os.path.abspath(
@@ -218,7 +219,11 @@ def log_impl(message):
 
 
 def log(message):
-    threading.Thread(target=log_impl, args=(message,)).start()
+    global log_thread
+    if log_thread is not None:
+        log_thread.join()
+    log_thread = threading.Thread(target=log_impl, args=(message,))
+    log_thread.start()
 
 
 def gzipped(f):
