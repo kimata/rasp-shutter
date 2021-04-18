@@ -283,6 +283,10 @@ def remote_host(request):
         return request.remote_addr
 
 
+def app_init():
+    log('アプリが再起動しました．')
+
+
 @rasp_shutter.route('/api/shutter_ctrl', methods=['GET', 'POST'])
 @support_jsonp
 def api_shutter_ctrl():
