@@ -163,7 +163,7 @@ def set_shutter_state(mode, auto, host):
             result = False
 
     if result:
-        log('シャッターを{auto}で{done}ました。{by}'.format(
+        log('シャッターを{auto}で{done}ました．{by}'.format(
             auto='自動' if auto > 0 else '手動',
             done='開け' if mode == 'open' else '閉め',
             by='(by {})'.format(host) if host != '' else ''
@@ -322,7 +322,7 @@ def api_schedule_ctrl():
             cron_write(schedule)
 
             host=remote_host(request)
-            log('スケジュールを更新しました。\n({schedule} {by})'.format(
+            log('スケジュールを更新しました．\n({schedule} {by})'.format(
                 schedule=schedule_str(schedule),
                 by='by {}'.format(host) if host != '' else ''
             ))
