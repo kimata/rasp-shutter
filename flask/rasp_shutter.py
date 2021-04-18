@@ -45,7 +45,6 @@ rasp_shutter = Blueprint('rasp-shutter', __name__, url_prefix=APP_PATH)
 sqlite = sqlite3.connect(LOG_DATABASE, check_same_thread=False)
 sqlite.execute('CREATE TABLE IF NOT EXISTS log(date INT, message TEXT)')
 sqlite.commit()
-
 sqlite.row_factory = lambda c, r: dict(
     zip([col[0] for col in c.description], r)
 )
