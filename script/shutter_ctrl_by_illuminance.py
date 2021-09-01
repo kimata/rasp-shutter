@@ -20,6 +20,7 @@ import requests
 import logging
 import logging.handlers
 import pprint
+import gzip
 
 INFLUX_DB_HOST     = 'columbia'
 SENSOR_HOST        = 'rasp-storeroom'
