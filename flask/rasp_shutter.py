@@ -58,6 +58,7 @@ SHUTTER_CTRL_CMD = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'script', 'shutter_ctrl_by_illuminance.py')
 )
 
+
 def parse_cron_line(line):
     match = re.compile(
         '^(#?)\s*(\@daily|(?:(\d{{1,2}})\s+(\d{{1,2}}))).+{}'.format(
@@ -215,6 +216,7 @@ def log_impl(message):
             'WHERE date <= DATETIME("now", "localtime", "-60 days")'
         )
         sqlite.commit()
+
         event_count[EVENT_TYPE_LOG] += 1
 
 
