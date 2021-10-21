@@ -120,7 +120,8 @@ def set_shutter_state(mode, auto):
     return False
 
 
-def log_message(message):
+def log_message(message, logger):
+    logger.info(message)
     try:
         req = urllib.request.Request('{}?{}'.format(
             CONTROL_ENDPOONT['api']['log'], urllib.parse.urlencode({
@@ -135,25 +136,39 @@ def log_message(message):
     return False
 
 
-def process_open(cmd_type, solar_rad):
+def is_light(sensor_data):
+    for stype in SENSOR.keys():
+        if sensor_data[stype] > SENSOR[stype]['OPEN_TH']:
+            return True
+    return False
+
+
+def is_dark(sensor_data):
+    for stype in SENSOR.keys():
+        if sensor_data[stype] > SENSOR[stype]['CLOSE_TH']:
+            return False
+    return True
+
+
+def process_open(cmd_type, sensor_data, logger):
     exe_resv = pathlib.Path(EXE_RESV_FILE_FORMAT.format(mode='open'))
 
     if (cmd_type == 'ctrl'):
-        if (solar_rad > RAD_THRESHOLD_OPEN):
+        if is_light(sensor_data):
             return set_shutter_state('open', 1)
         else:
-            log_message('周りが暗いので開けるのを延期しました．')
+            log_message('周りが暗いので開けるのを延期しました．', logger)
             exe_resv.touch()
             return True
     else:
-        if (solar_rad > RAD_THRESHOLD_OPEN) and exe_resv.exists():
+        if is_light(sensor_data) and exe_resv.exists():
             exe_resv.unlink(missing_ok=True)
-            log_message('明るくなってきました．')
+            log_message('明るくなってきました．', logger)
             return set_shutter_state('open', 2)
     return True
 
 
-def process_close(cmd_type, solar_rad):
+def process_close(cmd_type, sensor_data, logger):
     exe_resv = pathlib.Path(EXE_RESV_FILE_FORMAT.format(mode='open'))
     exe_resv.unlink(missing_ok=True)
 
@@ -161,17 +176,17 @@ def process_close(cmd_type, solar_rad):
         return set_shutter_state('close', 1)
     else:
         exe_hist = pathlib.Path(EXE_HIST_FILE_FORMAT.format(mode='close'))
-        if (solar_rad < RAD_THRESHOLD_CLOSE) and not exe_hist.exists():
-            log_message('周りが暗くなってきたので閉じます．')
+        if is_dark(sensor_data) and not exe_hist.exists():
+            log_message('周りが暗くなってきたので閉じます．', logger)
             return set_shutter_state('close', 2)
     return True
 
 
-def process_cmd(mode, cmd_type, solar_rad):
+def process_cmd(mode, cmd_type, sensor_data, logger):
     if (mode == 'open'):
-        return process_open(cmd_type, solar_rad)
+        return process_open(cmd_type, sensor_data, logger)
     else:
-        return process_close(cmd_type, solar_rad)
+        return process_close(cmd_type, sensor_data, logger)
 
 
 if __name__ == '__main__':
