@@ -22,10 +22,23 @@ import logging.handlers
 import pprint
 import gzip
 
-INFLUX_DB_HOST     = 'columbia'
-SENSOR_HOST        = 'rasp-storeroom'
-RAD_THRESHOLD_OPEN = 150
-RAD_THRESHOLD_CLOSE= 80
+INFLUX_DB_HOST  = 'columbia'
+
+SENSOR = {
+    'LUX': {
+        'HOST': 'rasp-meter-8',
+        'PARAM': 'lux',
+        'OPEN_TH': 2000,
+        'CLOSE_TH': 1500,
+    },
+    'RAD': {
+        'HOST': 'rasp-storeroom',
+        'PARAM': 'solar_rad',
+        'OPEN_TH': 150,
+        'CLOSE_TH': 80,
+    }
+}
+
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../flask'))
 from config import CONTROL_ENDPOONT,EXE_HIST_FILE_FORMAT,EXE_RESV_FILE_FORMAT
@@ -59,15 +72,15 @@ def get_logger():
     return logger
 
 # InfluxDB にアクセスしてセンサーデータを取得
-def get_solar_rad(hostname, table, name, time_range):
+def fetch_sensor_value(hostname, table, param, time_range):
     response = requests.get(
         'http://' + INFLUX_DB_HOST + ':8086/query',
         params = {
             'db': 'sensor',
             'q': (
-                'SELECT MEDIAN({name}) FROM "{table}" WHERE (hostname=\'{hostname}\' AND time >= now() - ({time_range})) ' +
+                'SELECT MEDIAN({param}) FROM "{table}" WHERE (hostname=\'{hostname}\' AND time >= now() - ({time_range})) ' +
                 'GROUP BY TIME({time_range}) LIMIT 1'
-            ).format(table=table, hostname=hostname, name=name, time_range=time_range)
+            ).format(table=table, hostname=hostname, param=param, time_range=time_range)
         }
     )
 
@@ -79,6 +92,15 @@ def get_solar_rad(hostname, table, name, time_range):
         data[key] = values[i]
 
     return data['median']
+
+
+def get_sensor_value():
+    return {
+        stype: fetch_sensor_value(
+            SENSOR[stype]['HOST'], 'sensor.raspberrypi',
+            SENSOR[stype]['PARAM'], '5m'
+        ) for stype in SENSOR.keys()
+    }
 
 
 # auto = 0: 手動, 1: 自動(実際には制御しなかった場合にメッセージ有り), 2: 自動
@@ -156,10 +178,14 @@ if __name__ == '__main__':
     arg = docopt(__doc__)
 
     logger = get_logger()
-    solar_rad = get_solar_rad(SENSOR_HOST, 'sensor.raspberrypi', 'solar_rad', '10m')
-    logger.info('solar_rad: {}'.format(solar_rad))
+    sensor_data = get_sensor_value()
+    logger.info(
+        '{:.0f} LUX, {:.0f} W'.format(
+            sensor_data['LUX'], sensor_data['RAD']
+        )
+    )
 
     if (arg['TYPE'] is None): # docopt の default がなぜか効かない...
         arg['TYPE'] = 'ctrl'
 
-    process_cmd(arg['MODE'], arg['TYPE'], solar_rad)
+    process_cmd(arg['MODE'], arg['TYPE'], sensor_data, logger)
