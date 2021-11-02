@@ -28,8 +28,8 @@ SENSOR = {
     'LUX': {
         'HOST': 'rasp-meter-8',
         'PARAM': 'lux',
-        'OPEN_TH': 2000,
-        'CLOSE_TH': 1500,
+        'OPEN_TH': 1500,
+        'CLOSE_TH': 1000,
     },
     'RAD': {
         'HOST': 'rasp-storeroom',
