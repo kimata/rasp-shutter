@@ -37,3 +37,11 @@ jobs:
       - name: Build
         run: |
           npm run build 
+
+      - name: Cypress E2E test
+        uses: cypress-io/github-action@v1
+        with:
+          start: npm run serve
+          wait-on: http://localhost:8080/
+          config_file: cypress.config.json
+          spec: "cypress/e2e/**/*"
