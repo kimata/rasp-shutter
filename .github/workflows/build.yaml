@@ -42,6 +42,5 @@ jobs:
         uses: cypress-io/github-action@v4
         with:
           start: npm run serve
-          wait-on: http://localhost:8080/
-          config_file: cypress.config.json
-          spec: "cypress/e2e/**/*"
+          wait-on: http://localhost:8080/rasp-shutter
+          browser: chrome
