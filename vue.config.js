@@ -1,3 +1,5 @@
+const { defineConfig } = require('@vue/cli-service')
 module.exports = {
-  publicPath: '/rasp-shutter/'
+    publicPath: '/rasp-shutter/',
+    transpileDependencies: true
 }
