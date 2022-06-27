@@ -49,8 +49,8 @@
             </div>
           </div>
         </div>
-        <div class="container mt-2">
-          <button type="button" class="btn btn-success col" @click="save()" v-bind:disabled="!isChanged">
+        <div class="container mt-4 mb-2">
+          <button type="button" class="btn btn-success col-12" @click="save()" v-bind:disabled="!isChanged">
             保存
           </button>
         </div>
