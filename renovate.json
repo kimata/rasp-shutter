@@ -1,5 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:base", ":timezone(Asia/Tokyo)"],
-  "automerge": true
+  "extends": [
+    "config:base",
+    ":timezone(Asia/Tokyo)",
+    "group:allNonMajor"
+  ],
+  "automerge": true,
+  "labels": ["renovate"],
+  "schedule": ["every weekend"],
 }
