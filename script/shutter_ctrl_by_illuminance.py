@@ -12,6 +12,7 @@ Options:
 from docopt import docopt
 
 import urllib.request
+import yaml
 import json
 import os
 import sys
@@ -19,10 +20,21 @@ import pathlib
 import requests
 import logging
 import logging.handlers
-import pprint
 import gzip
 
-INFLUX_DB_HOST = "columbia"
+import influxdb_client
+
+FLUX_QUERY = """
+from(bucket: "{bucket}")
+    |> range(start: -{period})
+    |> filter(fn:(r) => r._measurement == "{measure}")
+    |> filter(fn: (r) => r.hostname == "{hostname}")
+    |> filter(fn: (r) => r["_field"] == "{param}")
+    |> aggregateWindow(every: 3m, fn: mean, createEmpty: false)
+    |> exponentialMovingAverage(n: 3)
+    |> sort(columns: ["_time"], desc: true)
+    |> limit(n: 1)
+"""
 
 SENSOR = {
     "LUX": {
@@ -42,6 +54,15 @@ SENSOR = {
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../flask"))
 from config import CONTROL_ENDPOONT, EXE_HIST_FILE_FORMAT, EXE_RESV_FILE_FORMAT
+
+
+CONFIG_PATH = "./config.yml"
+
+
+def load_config():
+    path = str(pathlib.Path(os.path.dirname(__file__), CONFIG_PATH))
+    with open(path, "r") as file:
+        return yaml.load(file, Loader=yaml.SafeLoader)
 
 
 class GZipRotator:
@@ -77,34 +98,42 @@ def get_logger():
 
 
 # InfluxDB にアクセスしてセンサーデータを取得
-def fetch_sensor_value(hostname, table, param, time_range):
-    response = requests.get(
-        "http://" + INFLUX_DB_HOST + ":8086/query",
-        params={
-            "db": "sensor",
-            "q": (
-                "SELECT MEDIAN({param}) FROM \"{table}\" WHERE (hostname='{hostname}' AND time >= now() - ({time_range})) "
-                + "GROUP BY TIME({time_range}) LIMIT 1"
-            ).format(
-                table=table, hostname=hostname, param=param, time_range=time_range
-            ),
-        },
+def get_db_value(
+    config,
+    hostname,
+    measure,
+    param,
+):
+    client = influxdb_client.InfluxDBClient(
+        url=config["influxdb"]["url"],
+        token=config["influxdb"]["token"],
+        org=config["influxdb"]["org"],
     )
 
-    columns = response.json()["results"][0]["series"][0]["columns"]
-    values = response.json()["results"][0]["series"][0]["values"][0]
+    query_api = client.query_api()
 
-    data = {}
-    for i, key in enumerate(columns):
-        data[key] = values[i]
+    table_list = query_api.query(
+        query=FLUX_QUERY.format(
+            bucket=config["influxdb"]["bucket"],
+            measure=measure,
+            hostname=hostname,
+            param=param,
+            period="1h",
+        )
+    )
 
-    return data["median"]
+    return table_list[0].records[0].get_value()
 
 
 def get_sensor_value():
+    config = load_config()
+
     return {
-        stype: fetch_sensor_value(
-            SENSOR[stype]["HOST"], "sensor.raspberrypi", SENSOR[stype]["PARAM"], "5m"
+        stype: get_db_value(
+            config,
+            SENSOR[stype]["HOST"],
+            "sensor.rasp",
+            SENSOR[stype]["PARAM"],
         )
         for stype in SENSOR.keys()
     }
