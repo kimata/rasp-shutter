@@ -28,8 +28,8 @@ SENSOR = {
     'LUX': {
         'HOST': 'rasp-meter-8',
         'PARAM': 'lux',
-        'OPEN_TH': 1500,
-        'CLOSE_TH': 1000,
+        'OPEN_TH': 1000,
+        'CLOSE_TH': 1200,
     },
     'RAD': {
         'HOST': 'rasp-storeroom',
@@ -164,7 +164,7 @@ def process_open(cmd_type, sensor_data, logger):
         if is_light(sensor_data) and exe_resv.exists():
             exe_resv.unlink(missing_ok=True)
             log_message('明るくなってきました．', logger)
-            return set_shutter_state('open', 2)
+            return set_shutter_state('open', 1)
     return True
 
 
@@ -178,7 +178,7 @@ def process_close(cmd_type, sensor_data, logger):
         exe_hist = pathlib.Path(EXE_HIST_FILE_FORMAT.format(mode='close'))
         if is_dark(sensor_data) and not exe_hist.exists():
             log_message('周りが暗くなってきたので閉じます．', logger)
-            return set_shutter_state('close', 2)
+            return set_shutter_state('close', 1)
     return True
 
 
