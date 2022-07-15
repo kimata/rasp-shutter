@@ -1,11 +1,11 @@
 <template>
-  <header>
-    <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
-      <div class="jumbotron">
-        <h1>シャッター制御</h1>
-      </div>
+<header>
+  <div class="container">
+    <div class="bg-light p-5 col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1 mb-4 rounded jumbotron">
+      <h1>シャッター制御</h1>
     </div>
-  </header>
+  </div>
+</header>
 </template>
 
 <script>
