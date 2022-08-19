@@ -14,7 +14,7 @@
     "core-js": "3.24.1",
     "moment": "2.29.4",
       "toastr": "2.1.4",
-      "vue": "2.7.8",
+      "vue": "2.7.9",
     "vue-toastr-2": "0.0.10"
   },
   "devDependencies": {
@@ -23,10 +23,10 @@
     "@vue/cli-plugin-babel": "5.0.8",
     "@vue/cli-plugin-eslint": "5.0.8",
     "@vue/cli-service": "5.0.8",
-    "cypress": "10.4.0",
+    "cypress": "10.6.0",
     "eslint": "8.22.0",
     "eslint-plugin-vue": "9.3.0",
-    "vue-template-compiler": "2.7.8"
+    "vue-template-compiler": "2.7.9"
   },
   "eslintConfig": {
     "root": true,
