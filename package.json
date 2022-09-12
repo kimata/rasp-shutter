@@ -9,22 +9,22 @@
   },
   "dependencies": {
     "axios": "0.27.2",
-    "bootstrap": "5.2.0",
+    "bootstrap": "5.2.1",
     "bootstrap-vue": "2.22.0",
-    "core-js": "3.25.0",
+    "core-js": "3.25.1",
     "moment": "2.29.4",
       "toastr": "2.1.4",
       "vue": "2.7.10",
     "vue-toastr-2": "0.0.10"
   },
   "devDependencies": {
-    "@babel/core": "7.18.13",
+    "@babel/core": "7.19.0",
     "@babel/eslint-parser": "7.18.9",
     "@vue/cli-plugin-babel": "5.0.8",
     "@vue/cli-plugin-eslint": "5.0.8",
     "@vue/cli-service": "5.0.8",
     "cypress": "10.7.0",
-    "eslint": "8.23.0",
+    "eslint": "8.23.1",
     "eslint-plugin-vue": "9.4.0",
     "vue-template-compiler": "2.7.10"
   },
