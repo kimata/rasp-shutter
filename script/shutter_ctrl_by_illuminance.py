@@ -110,12 +110,7 @@ def get_logger():
 
 
 # InfluxDB にアクセスしてセンサーデータを取得
-def get_db_value(
-    config,
-    hostname,
-    measure,
-    param,
-):
+def get_db_value(config, hostname, measure, param):
     client = influxdb_client.InfluxDBClient(
         url=config["influxdb"]["url"],
         token=config["influxdb"]["token"],
@@ -142,10 +137,7 @@ def get_sensor_value():
 
     return {
         stype: get_db_value(
-            config,
-            SENSOR[stype]["HOST"],
-            "sensor.rasp",
-            SENSOR[stype]["PARAM"],
+            config, SENSOR[stype]["HOST"], "sensor.rasp", SENSOR[stype]["PARAM"]
         )
         for stype in SENSOR.keys()
     }
@@ -157,12 +149,7 @@ def set_shutter_state(mode, auto):
         req = urllib.request.Request(
             "{}?{}".format(
                 CONTROL_ENDPOONT["api"]["ctrl"],
-                urllib.parse.urlencode(
-                    {
-                        "set": mode,
-                        "auto": auto,
-                    }
-                ),
+                urllib.parse.urlencode({"set": mode, "auto": auto}),
             )
         )
         status = json.loads(urllib.request.urlopen(req).read().decode())
@@ -179,11 +166,7 @@ def log_message(message, logger):
         req = urllib.request.Request(
             "{}?{}".format(
                 CONTROL_ENDPOONT["api"]["log"],
-                urllib.parse.urlencode(
-                    {
-                        "message": message,
-                    }
-                ),
+                urllib.parse.urlencode({"message": message}),
             )
         )
         status = json.loads(urllib.request.urlopen(req).read().decode())
