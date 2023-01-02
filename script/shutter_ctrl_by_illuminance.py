@@ -37,17 +37,29 @@ from(bucket: "{bucket}")
 """
 
 SENSOR = {
-    "LUX": {
+    "LUX_0": {
+        "NAME": "outdoor",
         "HOST": "rasp-meter-8",
         "PARAM": "lux",
         "OPEN_TH": 1000,
         "CLOSE_TH": 1200,
+        "FORMAT": "{:.0f} LUX",
+    },
+    "LUX_1": {
+        "NAME": "utility room",
+        "HOST": "rpi-cm4-sensor-4",
+        "PARAM": "lux",
+        "OPEN_TH": 1000,
+        "CLOSE_TH": 1200,
+        "FORMAT": "{:.0f} LUX",
     },
     "RAD": {
+        "NAME": "outdoor",
         "HOST": "rasp-storeroom",
         "PARAM": "solar_rad",
         "OPEN_TH": 150,
         "CLOSE_TH": 80,
+        "FORMAT": "{:.0f} W",
     },
 }
 
@@ -235,12 +247,25 @@ def process_cmd(mode, cmd_type, sensor_data, logger):
         return process_close(cmd_type, sensor_data, logger)
 
 
+def sensor_text(sensor_data):
+    text_list = []
+    for stype in SENSOR.keys():
+        text_list.append(
+            "{}: {}".format(
+                SENSOR[stype]["NAME"],
+                SENSOR[stype]["FORMAT"].format(sensor_data[stype]),
+            )
+        )
+
+    return ", ".join(text_list)
+
+
 if __name__ == "__main__":
     arg = docopt(__doc__)
 
     logger = get_logger()
     sensor_data = get_sensor_value()
-    logger.info("{:.0f} LUX, {:.0f} W".format(sensor_data["LUX"], sensor_data["RAD"]))
+    logger.info(sensor_text(sensor_data))
 
     if arg["TYPE"] is None:  # docopt の default がなぜか効かない...
         arg["TYPE"] = "ctrl"
