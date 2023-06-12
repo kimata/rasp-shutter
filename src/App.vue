@@ -31,7 +31,8 @@ export default {
     ManualControl,
     ScheduleSetting,
     AppLog
-  }
+  },
+  compatConfig: { MODE: 3 }
 }
 </script>
 

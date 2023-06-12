@@ -41,6 +41,7 @@ export default {
       eventSource: null
     }
   },
+  compatConfig: { MODE: 3 },
   created() {
     this.watchEvent()
     this.updateLog()

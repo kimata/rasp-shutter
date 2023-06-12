@@ -65,7 +65,8 @@ import AppConfig from '../mixins/AppConfig.js'
 
 export default {
   name: 'schedule-setting',
-  mixins: [AppConfig],
+    mixins: [AppConfig],
+  compatConfig: { MODE: 3 },
   data() {
     return {
       current: {

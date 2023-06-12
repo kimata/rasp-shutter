@@ -20,6 +20,7 @@ import AppConfig from '../mixins/AppConfig.js'
 export default {
   name: 'manual-control',
   mixins: [AppConfig],
+  compatConfig: { MODE: 3 },
   methods: {
     control: function(mode) {
       axios
