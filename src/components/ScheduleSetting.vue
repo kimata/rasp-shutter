@@ -1,13 +1,20 @@
 <template>
   <div class="row mb-4 mt-4">
-    <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
+    <div
+      class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1"
+    >
       <h2>自動</h2>
       <form class="schedule-setting">
         <div class="container">
           <h3>オープン</h3>
           <div class="row">
             <div class="switchToggle mt-1 col-sm-6">
-              <input type="checkbox" id="schedule-entry-open" name="enabled" v-model="current.open.is_active" />
+              <input
+                type="checkbox"
+                id="schedule-entry-open"
+                name="enabled"
+                v-model="current.open.is_active"
+              />
               <label for="schedule-entry-open"></label>
             </div>
             <div class="form-group col-sm-6">
@@ -30,7 +37,12 @@
           <h3>クローズ</h3>
           <div class="row">
             <div class="switchToggle mt-1 col-sm-6">
-              <input type="checkbox" id="schedule-entry-close" name="enabled" v-model="current.close.is_active" />
+              <input
+                type="checkbox"
+                id="schedule-entry-close"
+                name="enabled"
+                v-model="current.close.is_active"
+              />
               <label for="schedule-entry-close"></label>
             </div>
             <div class="form-group col-sm-6">
@@ -50,7 +62,12 @@
           </div>
         </div>
         <div class="container mt-4 mb-2">
-          <button type="button" class="btn btn-success col-12" @click="save()" v-bind:disabled="!isChanged">
+          <button
+            type="button"
+            class="btn btn-success col-12"
+            @click="save()"
+            v-bind:disabled="!isChanged"
+          >
             保存
           </button>
         </div>
@@ -60,66 +77,68 @@
 </template>
 
 <script>
-import axios from 'axios'
-import AppConfig from '../mixins/AppConfig.js'
+import axios from "axios";
+import AppConfig from "../mixins/AppConfig.js";
 
 export default {
-  name: 'schedule-setting',
-    mixins: [AppConfig],
+  name: "schedule-setting",
+  mixins: [AppConfig],
   compatConfig: { MODE: 3 },
   data() {
     return {
       current: {
         open: {},
-        close: {}
+        close: {},
       },
-      saved: {}
-    }
+      saved: {},
+    };
   },
   created() {
-    axios.get(this.AppConfig['apiEndpoint'] + 'schedule_ctrl').then(response => {
-      this.current = response.data
-      this.saved = JSON.parse(JSON.stringify(response.data)) // NOTE: deep copy
-    })
+    axios
+      .get(this.AppConfig["apiEndpoint"] + "schedule_ctrl")
+      .then((response) => {
+        this.current = response.data;
+        this.saved = JSON.parse(JSON.stringify(response.data)); // NOTE: deep copy
+      });
   },
   computed: {
-    isChanged: function() {
-      return this.isStateDiffer(this.current, this.saved)
-    }
+    isChanged: function () {
+      return this.isStateDiffer(this.current, this.saved);
+    },
   },
   methods: {
-    save: function() {
+    save: function () {
       axios
-        .get(this.AppConfig['apiEndpoint'] + 'schedule_ctrl', {
-          params: { set: JSON.stringify(this.current) }
+        .get(this.AppConfig["apiEndpoint"] + "schedule_ctrl", {
+          params: { set: JSON.stringify(this.current) },
         })
-        .then(response => {
-          this.saved = response.data
-          this.$root.$toastr.success('正常に保存できました．', '成功')
+        .then((response) => {
+          this.saved = response.data;
+          this.$root.$toastr.success("正常に保存できました．", "成功");
         })
         // eslint-disable-next-line
-        .catch(_ => {
-          this.$root.$toastr.error('保存に失敗しました．', 'エラー')
-        })
+        .catch((_) => {
+          this.$root.$toastr.error("保存に失敗しました．", "エラー");
+        });
     },
-    isStateDiffer: function(a, b) {
-      let isDiffer = false
+    isStateDiffer: function (a, b) {
+      let isDiffer = false;
       for (let mode in a) {
         for (let key in a[mode]) {
           if (a[mode][key] !== b[mode][key]) {
-            isDiffer = true
+            isDiffer = true;
           }
         }
       }
-      return isDiffer
-    }
-  }
-}
+      return isDiffer;
+    },
+  },
+};
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-.switchToggle input[type='checkbox'] {
+.switchToggle input[type="checkbox"] {
   height: 0;
   width: 0;
   visibility: hidden;
@@ -137,7 +156,7 @@ export default {
   position: relative;
 }
 .switchToggle label:after {
-  content: '';
+  content: "";
   position: absolute;
   top: 2px;
   left: 2px;
@@ -153,9 +172,9 @@ export default {
 }
 .switchToggle input + label:before,
 .switchToggle input + input + label:before {
-  content: 'OFF';
+  content: "OFF";
   position: absolute;
-  top: 5px;
+  top: 3px;
   left: 35px;
   width: 26px;
   height: 26px;
@@ -166,9 +185,9 @@ export default {
 }
 .switchToggle input:checked + label:before,
 .switchToggle input:checked + input + label:before {
-  content: 'ON';
+  content: "ON";
   position: absolute;
-  top: 5px;
+  top: 3px;
   left: 10px;
   width: 26px;
   height: 26px;
@@ -187,29 +206,29 @@ export default {
 }
 
 .input-group-text {
-  font-family: 'Segoe UI Emoji';
+  font-family: "Segoe UI Emoji";
 }
 
 .time-icon:before {
-  content: '\1f55b';
+  content: "\1f55b";
 }
 
 .fa-arrow-down:before {
-  content: '\25BC';
+  content: "\25BC";
 }
 
 .fa-arrow-up:before {
-  content: '\25B2';
+  content: "\25B2";
 }
 
 .switchToggle input + label:before,
 .switchToggle input + input + label:before {
-  content: '無効';
+  content: "無効";
   width: 40px;
 }
 .switchToggle input:checked + label:before,
 .switchToggle input:checked + input + label:before {
-  content: '有効';
+  content: "有効";
   width: 40px;
 }
 </style>
