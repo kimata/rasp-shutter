@@ -80,10 +80,21 @@ export default {
     data() {
         return {
             current: {
-                open: {},
-                close: {},
+                open: {
+                    is_active: false,
+                },
+                close: {
+                    is_active: false,
+                },
             },
-            saved: {},
+            saved: {
+                open: {
+                    is_active: false,
+                },
+                close: {
+                    is_active: false,
+                },
+            },
         };
     },
     created() {
@@ -101,14 +112,13 @@ export default {
         save: function () {
             axios
                 .get(this.AppConfig["apiEndpoint"] + "schedule_ctrl", {
-                    params: { set: JSON.stringify(this.current) },
+                    params: { cmd: "set", data: JSON.stringify(this.current) },
                 })
                 .then((response) => {
                     this.saved = response.data;
                     this.$root.$toastr.success("正常に保存できました．", "成功");
                 })
-                // eslint-disable-next-line
-                .catch((_) => {
+                .catch(() => {
                     this.$root.$toastr.error("保存に失敗しました．", "エラー");
                 });
         },
@@ -127,7 +137,6 @@ export default {
 };
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 .switchToggle input[type="checkbox"] {
     height: 0;

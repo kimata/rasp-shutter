@@ -52,6 +52,7 @@ if __name__ == "__main__":
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
     import rasp_shutter_control
+    import rasp_shutter_schedule
 
     import webapp_base
     import webapp_util
@@ -65,8 +66,8 @@ if __name__ == "__main__":
 
     app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 
-    # app.register_blueprint(rasp_water_valve.blueprint)
     app.register_blueprint(rasp_shutter_control.blueprint)
+    app.register_blueprint(rasp_shutter_schedule.blueprint)
 
     app.register_blueprint(webapp_base.blueprint_default)
     app.register_blueprint(webapp_base.blueprint)

@@ -24,7 +24,7 @@
                 ></b-pagination>
             </div>
             <div class="container mt-4 mb-2">
-                <button type="button" class="btn btn-success col-12" @click="clear()">保存</button>
+                <button type="button" class="btn btn-success col-12" @click="clear()">クリア</button>
             </div>
         </div>
     </div>
@@ -35,6 +35,10 @@ import axios from "axios";
 import moment from "moment";
 import "moment/locale/ja";
 import AppConfig from "../mixins/AppConfig.js";
+
+// import { PaginationPlugin } from 'bootstrap-vue'
+// import Vue from "vue";
+// Vue.use(PaginationPlugin)
 
 export default {
     name: "app-log",
