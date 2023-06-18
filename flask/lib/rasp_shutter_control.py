@@ -23,7 +23,7 @@ class SHUTTER_STATE(IntEnum):
     UNKNOWN = 2
 
 
-blueprint = Blueprint("rasp-water-valve", __name__, url_prefix=APP_URL_PREFIX)
+blueprint = Blueprint("rasp-shutter-control", __name__, url_prefix=APP_URL_PREFIX)
 
 config = None
 should_terminate = False
@@ -101,7 +101,7 @@ def set_shutter_state(state, auto, host=""):
                 diff_sec = time.time() - exec_hist.stat().st_mtime
                 app_log(
                     (
-                        "シャッターを自動で{done}るのを見合わせました．"
+                        "🔔 シャッターを自動で{done}るのを見合わせました．"
                         + "{time_diff_str}前に{done}ています．{by}"
                     ).format(
                         done="開け" if state == "open" else "閉め",
@@ -120,7 +120,7 @@ def set_shutter_state(state, auto, host=""):
     if result:
         app_log(
             "シャッターを{auto}で{done}ました．{by}".format(
-                auto="自動" if auto > 0 else "手動",
+                auto="🕑 自動" if auto > 0 else "🔧 手動",
                 done="開け" if state == "open" else "閉め",
                 by="(by {})".format(host) if host != "" else "",
             )
@@ -128,7 +128,7 @@ def set_shutter_state(state, auto, host=""):
     else:
         app_log(
             "シャッターを{auto}で{done}るのに失敗しました．{by}".format(
-                auto="自動" if auto > 0 else "手動",
+                auto="🕑 自動" if auto > 0 else "🔧 手動",
                 done="開け" if state == "open" else "閉め",
                 by="(by {})".format(host) if host != "" else "",
             ),

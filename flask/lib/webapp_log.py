@@ -10,7 +10,7 @@ from multiprocessing.pool import ThreadPool
 
 from webapp_config import APP_URL_PREFIX, LOG_DB_PATH
 from webapp_event import notify_event, EVENT_TYPE
-from flask_util import support_jsonp, gzipped
+from flask_util import support_jsonp, gzipped, set_acao
 import notify_slack
 
 
@@ -93,6 +93,7 @@ def app_log(message, level=APP_LOG_LEVEL.INFO):
 
 @blueprint.route("/api/log_clear", methods=["GET"])
 @support_jsonp
+@set_acao
 def api_log_clear():
     with log_lock:
         cur = sqlite.cursor()
@@ -104,6 +105,7 @@ def api_log_clear():
 
 @blueprint.route("/api/log_view", methods=["GET"])
 @support_jsonp
+@set_acao
 @gzipped
 def api_log_view():
     g.disable_cache = True
