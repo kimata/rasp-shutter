@@ -1,11 +1,11 @@
 const AppConfig = {
-  apiEndpoint: "/rasp-shutter/api/",
+    apiEndpoint: "/rasp-shutter/api/",
 };
 
 export default {
-  data() {
-    return {
-      AppConfig: AppConfig,
-    };
-  },
+    data() {
+        return {
+            AppConfig: AppConfig,
+        };
+    },
 };

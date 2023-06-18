@@ -17,7 +17,6 @@ import json
 import os
 import sys
 import pathlib
-import requests
 import logging
 import logging.handlers
 import gzip
