@@ -1,12 +1,12 @@
 <template>
-  <div id="app">
-    <app-header></app-header>
-    <div class="container">
-      <manual-control></manual-control>
-      <schedule-setting></schedule-setting>
-      <app-log></app-log>
+    <div id="app">
+        <app-header></app-header>
+        <div class="container">
+            <manual-control></manual-control>
+            <schedule-setting></schedule-setting>
+            <app-log></app-log>
+        </div>
     </div>
-  </div>
 </template>
 
 <script>
@@ -25,50 +25,50 @@ Vue.use(VueToastr2);
 // Vue.component('vue-toastr', Toastr)
 
 export default {
-  name: "app",
-  components: {
-    AppHeader,
-    ManualControl,
-    ScheduleSetting,
-    AppLog,
-  },
-  compatConfig: { MODE: 3 },
+    name: "app",
+    components: {
+        AppHeader,
+        ManualControl,
+        ScheduleSetting,
+        AppLog,
+    },
+    compatConfig: { MODE: 3 },
 };
 </script>
 
 <style>
 h2 {
-  border-bottom: solid 3px #cde6b8;
-  position: relative;
+    border-bottom: solid 3px #cde6b8;
+    position: relative;
 }
 
 h2:after {
-  position: absolute;
-  content: " ";
-  display: block;
-  border-bottom: solid 3px #82b956;
-  bottom: -3px;
-  width: 20%;
+    position: absolute;
+    content: " ";
+    display: block;
+    border-bottom: solid 3px #82b956;
+    bottom: -3px;
+    width: 20%;
 }
 
 h3 {
-  font-size: 1.1rem !important;
-  margin-top: 1em !important;
+    font-size: 1.1rem !important;
+    margin-top: 1em !important;
 }
 
 .btn-success {
-  background: #28a745 !important;
+    background: #28a745 !important;
 }
 
 .toast-success {
-  background-color: #51a351 !important;
+    background-color: #51a351 !important;
 }
 
 .toast-info {
-  background-color: #2f96b4 !important;
+    background-color: #2f96b4 !important;
 }
 
 .toast-error {
-  background-color: #bd362f !important;
+    background-color: #bd362f !important;
 }
 </style>
