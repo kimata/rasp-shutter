@@ -10,30 +10,30 @@
 </template>
 
 <script>
-import AppHeader from './components/AppHeader'
-import ManualControl from './components/ManualControl'
-import ScheduleSetting from './components/ScheduleSetting'
-import AppLog from './components/AppLog'
+import AppHeader from "./components/AppHeader";
+import ManualControl from "./components/ManualControl";
+import ScheduleSetting from "./components/ScheduleSetting";
+import AppLog from "./components/AppLog";
 
-import Vue from 'vue'
-import VueToastr2 from 'vue-toastr-2'
-import 'vue-toastr-2/dist/vue-toastr-2.min.css'
+import Vue from "vue";
+import VueToastr2 from "vue-toastr-2";
+import "vue-toastr-2/dist/vue-toastr-2.min.css";
 
-window.toastr = require('toastr')
+window.toastr = require("toastr");
 
-Vue.use(VueToastr2)
+Vue.use(VueToastr2);
 // Vue.component('vue-toastr', Toastr)
 
 export default {
-  name: 'app',
+  name: "app",
   components: {
     AppHeader,
     ManualControl,
     ScheduleSetting,
-    AppLog
+    AppLog,
   },
-  compatConfig: { MODE: 3 }
-}
+  compatConfig: { MODE: 3 },
+};
 </script>
 
 <style>
@@ -44,7 +44,7 @@ h2 {
 
 h2:after {
   position: absolute;
-  content: ' ';
+  content: " ";
   display: block;
   border-bottom: solid 3px #82b956;
   bottom: -3px;
@@ -54,6 +54,10 @@ h2:after {
 h3 {
   font-size: 1.1rem !important;
   margin-top: 1em !important;
+}
+
+.btn-success {
+  background: #28a745 !important;
 }
 
 .toast-success {
