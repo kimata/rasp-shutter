@@ -1,12 +1,10 @@
 <template>
     <div id="app">
         <app-header></app-header>
-        <div class="container">
-            <manual-control />
-            <schedule-setting />
-            <sensor-data />
-            <app-log />
-        </div>
+        <manual-control />
+        <schedule-setting />
+        <sensor-data />
+        <app-log />
     </div>
 </template>
 
