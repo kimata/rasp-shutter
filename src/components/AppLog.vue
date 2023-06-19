@@ -36,10 +36,6 @@ import moment from "moment";
 import "moment/locale/ja";
 import AppConfig from "../mixins/AppConfig.js";
 
-// import { PaginationPlugin } from 'bootstrap-vue'
-// import Vue from "vue";
-// Vue.use(PaginationPlugin)
-
 export default {
     name: "app-log",
     mixins: [AppConfig],
@@ -80,13 +76,25 @@ export default {
                 .get(this.AppConfig["apiEndpoint"] + "log_clear")
                 .then((response) => {
                     if (response.data.result) {
-                        this.$root.$toastr.success("正常にクリアできました．", "成功");
+                        this.$root.$toast.open({
+                            type: "success",
+                            position: "top-right",
+                            message: "正常にクリアできました。",
+                        });
                     } else {
-                        this.$root.$toastr.error("クリアに失敗しました．", "エラー");
+                        this.$root.$toast.open({
+                            type: "error",
+                            position: "top-right",
+                            message: "クリアに失敗しました。",
+                        });
                     }
                 })
                 .catch(() => {
-                    this.$root.$toastr.error("クリアに失敗しました．", "エラー");
+                    this.$root.$toast.open({
+                        type: "error",
+                        position: "top-right",
+                        message: "クリアに失敗しました。",
+                    });
                 });
         },
     },

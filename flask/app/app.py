@@ -53,6 +53,7 @@ if __name__ == "__main__":
 
     import rasp_shutter_control
     import rasp_shutter_schedule
+    import rasp_shutter_sensor
 
     import webapp_base
     import webapp_util
@@ -68,6 +69,7 @@ if __name__ == "__main__":
 
     app.register_blueprint(rasp_shutter_control.blueprint)
     app.register_blueprint(rasp_shutter_schedule.blueprint)
+    app.register_blueprint(rasp_shutter_sensor.blueprint)
 
     app.register_blueprint(webapp_base.blueprint_default)
     app.register_blueprint(webapp_base.blueprint)

@@ -4,6 +4,7 @@
         <div class="container">
             <manual-control></manual-control>
             <schedule-setting></schedule-setting>
+            <sensor-data />
             <app-log></app-log>
         </div>
     </div>
@@ -13,16 +14,8 @@
 import AppHeader from "./components/AppHeader";
 import ManualControl from "./components/ManualControl";
 import ScheduleSetting from "./components/ScheduleSetting";
+import SensorData from "./components/SensorData";
 import AppLog from "./components/AppLog";
-
-import Vue from "vue";
-import VueToastr2 from "vue-toastr-2";
-import "vue-toastr-2/dist/vue-toastr-2.min.css";
-
-window.toastr = require("toastr");
-
-Vue.use(VueToastr2);
-// Vue.component('vue-toastr', Toastr)
 
 export default {
     name: "app",
@@ -30,6 +23,7 @@ export default {
         AppHeader,
         ManualControl,
         ScheduleSetting,
+        SensorData,
         AppLog,
     },
     compatConfig: { MODE: 3 },
@@ -56,19 +50,11 @@ h3 {
     margin-top: 1em !important;
 }
 
+.v-toast {
+    opacity: 0.7;
+}
+
 .btn-success {
     background: #28a745 !important;
-}
-
-.toast-success {
-    background-color: #51a351 !important;
-}
-
-.toast-info {
-    background-color: #2f96b4 !important;
-}
-
-.toast-error {
-    background-color: #bd362f !important;
 }
 </style>
