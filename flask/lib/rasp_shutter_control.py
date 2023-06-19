@@ -4,6 +4,7 @@
 from flask import request, jsonify, Blueprint, current_app
 from enum import IntEnum
 
+import logging
 import requests
 import time
 
@@ -101,8 +102,8 @@ def set_shutter_state(state, auto, host=""):
                 diff_sec = time.time() - exec_hist.stat().st_mtime
                 app_log(
                     (
-                        "🔔 シャッターを自動で{done}るのを見合わせました．"
-                        + "{time_diff_str}前に{done}ています．{by}"
+                        "🔔 シャッターを自動で{done}るのを見合わせました。"
+                        + "{time_diff_str}前に{done}ています。{by}"
                     ).format(
                         done="開け" if state == "open" else "閉め",
                         time_diff_str=minute_str(diff_sec),
@@ -119,7 +120,7 @@ def set_shutter_state(state, auto, host=""):
 
     if result:
         app_log(
-            "シャッターを{auto}で{done}ました．{by}".format(
+            "シャッターを{auto}で{done}ました。{by}".format(
                 auto="🕑 自動" if auto > 0 else "🔧 手動",
                 done="開け" if state == "open" else "閉め",
                 by="(by {})".format(host) if host != "" else "",
@@ -127,7 +128,7 @@ def set_shutter_state(state, auto, host=""):
         )
     else:
         app_log(
-            "シャッターを{auto}で{done}るのに失敗しました．{by}".format(
+            "シャッターを{auto}で{done}るのに失敗しました。{by}".format(
                 auto="🕑 自動" if auto > 0 else "🔧 手動",
                 done="開け" if state == "open" else "閉め",
                 by="(by {})".format(host) if host != "" else "",
@@ -158,6 +159,7 @@ def api_shutter_ctrl():
 @support_jsonp
 @set_acao
 def api_dummy_open():
+    logging.info("ダミーのシャッターが開きました．")
     return jsonify({"status": "OK"})
 
 
@@ -165,4 +167,5 @@ def api_dummy_open():
 @support_jsonp
 @set_acao
 def api_dummy_close():
+    logging.info("ダミーのシャッターが閉じました．")
     return jsonify({"status": "OK"})
