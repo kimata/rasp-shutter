@@ -107,22 +107,3 @@ def api_schedule_ctrl():
             )
 
     return jsonify(scheduler.schedule_load())
-
-
-# @rasp_shutter.route('/api/schedule_ctrl', methods=['GET', 'POST'])
-# @support_jsonp
-# def api_schedule_ctrl():
-#     state = request.args.get('set', None)
-
-#     if (state is not None):
-#         with schedule_lock:
-#             schedule = json.loads(state)
-#             cron_write(schedule)
-
-#             host=remote_host(request)
-#             log('スケジュールを更新しました．\n({schedule} {by})'.format(
-#                 schedule=schedule_str(schedule),
-#                 by='by {}'.format(host) if host != '' else ''
-#             ))
-
-#     return jsonify(cron_read())
