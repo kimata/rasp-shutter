@@ -2,38 +2,41 @@
     <div class="row mb-4">
         <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
             <h2>センサー値</h2>
-
-            <table className="table">
-                <thead>
-                    <tr className="row">
-                        <th className="col-3">センサー</th>
-                        <th colSpan="2" className="col-3">値</th>
-                        <th colSpan="2" className="col-6">最新更新日時</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="name in ['lux', 'solar_rad']" :key="name" className="row">
-                        <td class="text-start col-3">{{ this.SENSOR_DEF[name].label }}</td>
-                        <td class="text-end col-1">
-                            <span v-if="sensor[name].valid">
-                                <b>{{ this.sensorValue(name) }}</b>
-                            </span>
-                            <span v-else>?</span>
-                        </td>
-                        <td class="text-start col-2">
-                            <small v-html="this.SENSOR_DEF[name].unit" />
-                        </td>
-                        <td class="text-start col-2">
-                            <span v-if="sensor[name].valid">{{ sensor.lux.time.fromNow() }}</span>
-                            <span v-else>不明</span>
-                        </td>
-                        <td class="text-end col-4">
-                            <span v-if="sensor[name].valid">{{ sensor.lux.time.format("YYYY-MM-DD HH:mm:ss") }}</span>
-                            <span v-else>不明</span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="container mt-4 mb-2">
+                <table className="table">
+                    <thead>
+                        <tr className="row">
+                            <th className="col-3">センサー</th>
+                            <th colSpan="2" className="col-3">値</th>
+                            <th colSpan="2" className="col-6">最新更新日時</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="name in ['lux', 'solar_rad']" :key="name" className="row">
+                            <td class="text-start col-3">{{ this.SENSOR_DEF[name].label }}</td>
+                            <td class="text-end col-1">
+                                <span v-if="sensor[name].valid">
+                                    <b>{{ this.sensorValue(name) }}</b>
+                                </span>
+                                <span v-else>?</span>
+                            </td>
+                            <td class="text-start col-2">
+                                <small v-html="this.SENSOR_DEF[name].unit" />
+                            </td>
+                            <td class="text-start col-2">
+                                <span v-if="sensor[name].valid">{{ sensor.lux.time.fromNow() }}</span>
+                                <span v-else>不明</span>
+                            </td>
+                            <td class="text-end col-4">
+                                <span v-if="sensor[name].valid">{{
+                                    sensor.lux.time.format("YYYY-MM-DD HH:mm:ss")
+                                }}</span>
+                                <span v-else>不明</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </template>
