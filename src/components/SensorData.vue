@@ -83,13 +83,22 @@ export default {
     },
     methods: {
         updateSensor: function () {
-            axios.get(this.AppConfig["apiEndpoint"] + "sensor").then((response) => {
-                this.sensor = response.data;
+            axios
+                .get(this.AppConfig["apiEndpoint"] + "sensor")
+                .then((response) => {
+                    this.sensor = response.data;
 
-                ["solar_rad", "lux"].forEach((name) => {
-                    this.sensor[name].time = moment(this.sensor[name].time);
+                    ["solar_rad", "lux"].forEach((name) => {
+                        this.sensor[name].time = moment(this.sensor[name].time);
+                    });
+                })
+                .catch(() => {
+                    this.$root.$toast.open({
+                        type: "error",
+                        position: "top-right",
+                        message: "センサデータの取得に失敗しました。",
+                    });
                 });
-            });
         },
         sensorValue: function (name) {
             if (this.sensor[name].valid) {

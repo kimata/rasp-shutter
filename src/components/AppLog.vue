@@ -54,14 +54,23 @@ export default {
     },
     methods: {
         updateLog: function () {
-            axios.get(this.AppConfig["apiEndpoint"] + "log_view").then((response) => {
-                this.log = response.data.data;
-                for (let entry in this.log) {
-                    let date = moment(this.log[entry]["date"]);
-                    this.log[entry]["date"] = date.format("M月D日(ddd) HH:mm");
-                    this.log[entry]["fromNow"] = date.fromNow();
-                }
-            });
+            axios
+                .get(this.AppConfig["apiEndpoint"] + "log_view")
+                .then((response) => {
+                    this.log = response.data.data;
+                    for (let entry in this.log) {
+                        let date = moment(this.log[entry]["date"]);
+                        this.log[entry]["date"] = date.format("M月D日(ddd) HH:mm");
+                        this.log[entry]["fromNow"] = date.fromNow();
+                    }
+                })
+                .catch(() => {
+                    this.$root.$toast.open({
+                        type: "error",
+                        position: "top-right",
+                        message: "ログデータの取得に失敗しました。",
+                    });
+                });
         },
         watchEvent: function () {
             this.eventSource = new EventSource(this.AppConfig["apiEndpoint"] + "event");
