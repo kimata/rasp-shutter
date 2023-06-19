@@ -39,12 +39,12 @@ export default {
                 open: {
                     is_active: false,
                     time: "00:00",
-                    wday: [false, true, false, false, false, false, false],
+                    wday: Array(7).fill(false),
                 },
                 close: {
-                    is_active: true,
+                    is_active: false,
                     time: "00:00",
-                    wday: [false, false, false, false, false, false, false],
+                    wday: Array(7).fill(false),
                 },
             },
             saved: {
