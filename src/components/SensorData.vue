@@ -64,12 +64,22 @@ export default {
                 lux: { valid: false },
                 solar_rad: { valid: false },
             },
+            interval: null,
         };
     },
     compatConfig: { MODE: 3 },
     created() {
         this.SENSOR_DEF = SENSOR_DEF;
         this.updateSensor();
+        this.interval = setInterval(() => {
+            this.updateSensor();
+        }, 10000);
+    },
+    unmounted() {
+        if (this.interval == null) {
+            return;
+        }
+        clearInterval(this.interval);
     },
     methods: {
         updateSensor: function () {
