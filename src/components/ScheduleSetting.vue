@@ -69,10 +69,19 @@ export default {
 
     methods: {
         updateSchedule: function () {
-            axios.get(this.AppConfig["apiEndpoint"] + "schedule_ctrl").then((response) => {
-                this.current = response.data;
-                this.saved = JSON.parse(JSON.stringify(response.data)); // NOTE: deep copy
-            });
+            axios
+                .get(this.AppConfig["apiEndpoint"] + "schedule_ctrl")
+                .then((response) => {
+                    this.current = response.data;
+                    this.saved = JSON.parse(JSON.stringify(response.data)); // NOTE: deep copy
+                })
+                .catch(() => {
+                    this.$root.$toast.open({
+                        type: "error",
+                        position: "top-right",
+                        message: "スケジュールデータの取得に失敗しました。",
+                    });
+                });
         },
         save: function () {
             console.log(this.current);
