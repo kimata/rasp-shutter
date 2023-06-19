@@ -9,7 +9,7 @@ import time
 
 from webapp_config import APP_URL_PREFIX, STAT_EXEC
 from webapp_log import app_log, APP_LOG_LEVEL
-from flask_util import support_jsonp, remote_host
+from flask_util import support_jsonp, remote_host, set_acao
 
 
 # 自動で開けたり閉めたりする間隔．この時間内に再度自動で同じ制御がリクエストされた場合，
@@ -140,6 +140,7 @@ def set_shutter_state(state, auto, host=""):
 
 @blueprint.route("/api/shutter_ctrl", methods=["GET", "POST"])
 @support_jsonp
+@set_acao
 def api_shutter_ctrl():
     cmd = request.args.get("cmd", 0, type=int)
     state = request.args.get("state", "close", type=str)
@@ -155,11 +156,13 @@ def api_shutter_ctrl():
 
 @blueprint.route("/api/dummy/open", methods=["GET"])
 @support_jsonp
+@set_acao
 def api_dummy_open():
     return jsonify({"status": "OK"})
 
 
 @blueprint.route("/api/dummy/close", methods=["GET"])
 @support_jsonp
+@set_acao
 def api_dummy_close():
     return jsonify({"status": "OK"})

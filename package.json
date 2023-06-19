@@ -15,9 +15,8 @@
         "core-js": "3.31.0",
         "eslint-plugin-cypress": "^2.13.3",
         "moment": "2.29.4",
-        "toastr": "2.1.4",
         "vue": "^3.1.0",
-        "vue-toastr-2": "0.0.10"
+        "vue-toast-notification": "^3.1.1"
     },
     "devDependencies": {
         "@babel/core": "7.22.5",

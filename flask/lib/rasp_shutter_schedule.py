@@ -48,9 +48,11 @@ def wday_str_list(wday_list, lang="en"):
 
 
 def schedule_entry_str(name, entry):
-    return "{name} {time} {wday}".format(
+    return "{name} {time} {solar_rad} W/mm^2 {lux} LUX {wday}".format(
         name=name.upper(),
         time=entry["time"],
+        solar_rad=entry["solar_rad"],
+        lux=entry["lux"],
         wday=",".join(wday_str_list(entry["wday"], "ja")),
     )
 
@@ -62,6 +64,9 @@ def schedule_str(schedule_data):
         if not entry["is_active"]:
             continue
         str.append(schedule_entry_str(name, entry))
+
+    if len(str) == 0:
+        return "∅ 全て無効"
 
     return "、\n".join(str)
 

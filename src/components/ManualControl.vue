@@ -26,13 +26,25 @@ export default {
                 })
                 .then((response) => {
                     if (response.data.result) {
-                        this.$root.$toastr.success("正常に制御できました．", "成功");
+                        this.$root.$toast.open({
+                            type: "success",
+                            position: "top-right",
+                            message: "正常に制御できました。",
+                        });
                     } else {
-                        this.$root.$toastr.error("制御に失敗しました．", "エラー");
+                        this.$root.$toast.open({
+                            type: "error",
+                            position: "top-right",
+                            message: "制御に失敗しました。",
+                        });
                     }
                 })
                 .catch(() => {
-                    this.$root.$toastr.error("制御に失敗しました．", "エラー");
+                    this.$root.$toast.open({
+                        type: "error",
+                        position: "top-right",
+                        message: "制御に失敗しました。",
+                    });
                 });
         },
     },
