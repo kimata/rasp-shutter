@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     python3-requests \
     python3-schedule \
     python3-flask \
+    python3-psutil \
  && apt-get clean \
  && rm -rf /va/rlib/apt/lists/*
 
