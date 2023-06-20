@@ -2,13 +2,13 @@
 # #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from flask import request, jsonify, Blueprint, current_app
-from enum import IntEnum
+from enum import IntEnum, Enum
 
 import logging
 import requests
 import time
 
-from webapp_config import APP_URL_PREFIX, STAT_EXEC
+from webapp_config import APP_URL_PREFIX, STAT_EXEC, STAT_PENDING_OPEN, STAT_AUTO_CLOSE
 from webapp_log import app_log, APP_LOG_LEVEL
 from flask_util import support_jsonp, remote_host, set_acao
 
@@ -22,6 +22,12 @@ class SHUTTER_STATE(IntEnum):
     OPEN = 0
     CLOSE = 1
     UNKNOWN = 2
+
+
+class CONTROL_MODE(Enum):
+    MANUAL = "🔧手動"
+    SCHEDULE = "⏰スケジューラ"
+    AUTO = "🕑自動"
 
 
 blueprint = Blueprint("rasp-shutter-control", __name__, url_prefix=APP_URL_PREFIX)
@@ -57,10 +63,10 @@ def minute_str(sec):
         return "{min}分".format(min=min)
 
 
-def call_shutter_api(config, mode):
+def call_shutter_api(config, state):
     result = True
     for shutter in config["shutter"]:
-        if requests.get(shutter["endpoint"][mode]).status_code != 200:
+        if requests.get(shutter["endpoint"][state]).status_code != 200:
             result = False
 
     return result
@@ -88,24 +94,38 @@ def get_shutter_state():
     }
 
 
-# auto = 0: 手動, 1: 自動(実際には制御しなかった場合にメッセージ有り), 2: 自動(実際に制御した場合のみメッセージ)
-def set_shutter_state(state, auto, host=""):
-    import logging
+# mode = 0: 手動
+# mode = 1: スケジュール実行(実際には制御しなかった場合にメッセージ有り)
+# mode = 2: 自動実行自動(実際に制御した場合のみメッセージ)
+def set_shutter_state(state, mode, host=""):
+    if state == "open":
+        if mode != CONTROL_MODE.MANUAL:
+            # NOTE: 手動以外でシャッターを開けた場合は，
+            # 自動で閉じた履歴を削除する．
+            STAT_AUTO_CLOSE.unlink(missing_ok=True)
+    else:
+        # NOTE: シャッターを閉じる指示がされた場合は，
+        # 暗くて延期されていた開ける制御を取り消す．
+        STAT_PENDING_OPEN.unlink(missing_ok=True)
 
-    logging.info(state)
+    # NOTE: 閉じている場合に再度閉じるボタンをおしたり，逆に開いている場合に再度
+    # 開くボタンを押すことが続くと，スイッチがエラーになるので STAT_EXEC を使って
+    # 防止する．STAT_EXEC はこれ以外の目的で使わない．
     exec_hist = STAT_EXEC[state]
-    if auto != 0:
+    if mode != CONTROL_MODE.MANUAL:
         if exec_hist.exists() and (
             (time.time() - exec_hist.stat().st_mtime) / (60 * 60) < EXEC_INTERVAL_HOUR
         ):
-            if auto == 1:
+            if mode == CONTROL_MODE.SCHEDULE:
+                # NOTE: スケジュール実行通りに制御できなかった場合，
+                # ログを残す．
                 diff_sec = time.time() - exec_hist.stat().st_mtime
                 app_log(
                     (
-                        "🔔 シャッターを自動で{done}るのを見合わせました。"
+                        "🔔 スケジュールに従ってシャッターを{state}るのを見合わせました。"
                         + "{time_diff_str}前に{done}ています。{by}"
                     ).format(
-                        done="開け" if state == "open" else "閉め",
+                        state="開け" if state == "open" else "閉め",
                         time_diff_str=minute_str(diff_sec),
                         by="(by {})".format(host) if host != "" else "",
                     )
@@ -120,17 +140,17 @@ def set_shutter_state(state, auto, host=""):
 
     if result:
         app_log(
-            "シャッターを{auto}で{done}ました。{by}".format(
-                auto="🕑 自動" if auto > 0 else "🔧 手動",
-                done="開け" if state == "open" else "閉め",
+            "シャッターを{mode}で{state}ました。{by}".format(
+                mode=mode.value,
+                state="開け" if state == "open" else "閉め",
                 by="(by {})".format(host) if host != "" else "",
             )
         )
     else:
         app_log(
-            "シャッターを{auto}で{done}るのに失敗しました。{by}".format(
-                auto="🕑 自動" if auto > 0 else "🔧 手動",
-                done="開け" if state == "open" else "閉め",
+            "シャッターを{mode}で{state}るのに失敗しました。{by}".format(
+                mode=mode.value,
+                state="開け" if state == "open" else "閉め",
                 by="(by {})".format(host) if host != "" else "",
             ),
             APP_LOG_LEVEL.ERROR,

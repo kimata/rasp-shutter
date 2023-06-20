@@ -73,7 +73,7 @@ def app_log_impl(message, level):
             os._exit(-1)
 
 
-def app_log(message, level=APP_LOG_LEVEL.INFO):
+def app_log(message, level=APP_LOG_LEVEL.INFO, exit=False):
     global thread_pool
 
     if level == APP_LOG_LEVEL.ERROR:
