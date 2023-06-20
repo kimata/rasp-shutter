@@ -14,4 +14,6 @@ STAT_EXEC = {
     "open": STAT_DIR_PATH / "exe" / "open",
     "close": STAT_DIR_PATH / "exe" / "close",
 }
-# EXE_RESV_FILE_FORMAT = "/dev/shm/shutter_resv_{mode}"
+
+STAT_PENDING_OPEN = STAT_DIR_PATH / "pending" / "open"
+STAT_AUTO_CLOSE = STAT_DIR_PATH / "auto" / "close"

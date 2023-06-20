@@ -26,6 +26,7 @@ def init():
     global schedule_queue
 
     config = current_app.config["CONFIG"]
+
     schedule_queue = Queue()
     scheduler.init()
     threading.Thread(
