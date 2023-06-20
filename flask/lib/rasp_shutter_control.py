@@ -94,9 +94,6 @@ def get_shutter_state():
     }
 
 
-# mode = 0: 手動
-# mode = 1: スケジュール実行(実際には制御しなかった場合にメッセージ有り)
-# mode = 2: 自動実行自動(実際に制御した場合のみメッセージ)
 def set_shutter_state(state, mode, host=""):
     if state == "open":
         if mode != CONTROL_MODE.MANUAL:
@@ -165,11 +162,13 @@ def set_shutter_state(state, mode, host=""):
 def api_shutter_ctrl():
     cmd = request.args.get("cmd", 0, type=int)
     state = request.args.get("state", "close", type=str)
-    auto = request.args.get("auto", False, type=bool)
 
     if cmd == 1:
         return jsonify(
-            dict({"cmd": "set"}, **set_shutter_state(state, auto, remote_host(request)))
+            dict(
+                {"cmd": "set"},
+                **set_shutter_state(state, CONTROL_MODE.MANUAL, remote_host(request))
+            )
         )
     else:
         return jsonify(dict({"cmd": "get"}, **get_shutter_state()))
