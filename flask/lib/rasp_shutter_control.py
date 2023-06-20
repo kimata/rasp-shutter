@@ -27,7 +27,7 @@ class SHUTTER_STATE(IntEnum):
 class CONTROL_MODE(Enum):
     MANUAL = "🔧手動"
     SCHEDULE = "⏰スケジューラ"
-    AUTO = "🕑自動"
+    AUTO = "🤖自動"
 
 
 blueprint = Blueprint("rasp-shutter-control", __name__, url_prefix=APP_URL_PREFIX)
