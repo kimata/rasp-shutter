@@ -24,7 +24,10 @@
                 ></b-pagination>
             </div>
             <div class="container mt-4 mb-2">
-                <button type="button" class="btn btn-success col-12" @click="clear()">クリア</button>
+                <button type="button" class="btn btn-success col-12" @click="clear()">
+                    <i class="bi bi-file-earmark-x" />
+                    クリア
+                </button>
             </div>
         </div>
     </div>
