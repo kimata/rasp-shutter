@@ -64,7 +64,7 @@ def exec_shutter_control_impl(state, mode):
 
 
 def exec_shutter_control(state, mode):
-    logging.info("Starts automatic control of the shutter")
+    logging.debug("Execute shutter control")
 
     for i in range(RETRY_COUNT):
         if exec_shutter_control_impl(state, mode):
@@ -102,6 +102,13 @@ def shutter_auto_open():
 
         exec_shutter_control("open", rasp_shutter_control.CONTROL_MODE.AUTO)
         STAT_PENDING_OPEN.unlink(missing_ok=True)
+    else:
+        logging.debug(
+            "Skip pendding open (solar_rad: {solar_rad:.1f} W/m^2, lux: {lux:.1f} LUX)".format(
+                solar_rad=sense_data["solar_rad"]["value"],
+                lux=sense_data["lux"]["value"],
+            )
+        )
 
 
 def shutter_auto_close():
@@ -132,6 +139,13 @@ def shutter_auto_close():
 
         exec_shutter_control("close", rasp_shutter_control.CONTROL_MODE.AUTO)
         STAT_AUTO_CLOSE.touch()
+    else:
+        logging.debug(
+            "Skip pendding close (solar_rad: {solar_rad:.1f} W/m^2, lux: {lux:.1f} LUX)".format(
+                solar_rad=sense_data["solar_rad"]["value"],
+                lux=sense_data["lux"]["value"],
+            )
+        )
 
 
 def shutter_auto_control():
