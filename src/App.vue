@@ -55,4 +55,7 @@ h3 {
 .btn-success {
     background: #28a745 !important;
 }
+input[type="checkbox"] {
+    accent-color: #23903c;
+}
 </style>
