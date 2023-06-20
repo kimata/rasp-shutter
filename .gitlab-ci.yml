@@ -125,16 +125,16 @@ build-image:
 #               - flask/**/*
 #               - src/**/*
 
-# renovate:
-#     stage: renovate
-#     image:
-#         name: registry.green-rabbit.net:5000/kimata/local_renovate:35
+renovate:
+    stage: renovate
+    image:
+        name: registry.green-rabbit.net:5000/kimata/local_renovate:35
 
-#         entrypoint: [""]
-#     script:
-#         - renovate --platform gitlab --token ${RENOVATE_TOKEN} --endpoint ${CI_SERVER_URL}/api/v4 ${CI_PROJECT_PATH}
-#     rules:
-#         - if: $CI_PIPELINE_SOURCE == "schedule"
-#           when: always
-#         - changes:
-#               - renovate.json
+        entrypoint: [""]
+    script:
+        - renovate --platform gitlab --token ${RENOVATE_TOKEN} --endpoint ${CI_SERVER_URL}/api/v4 ${CI_PROJECT_PATH}
+    rules:
+        - if: $CI_PIPELINE_SOURCE == "schedule"
+          when: always
+        - changes:
+              - renovate.json
