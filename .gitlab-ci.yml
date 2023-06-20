@@ -91,22 +91,22 @@ build-image:
 #         paths:
 #             - flask_log.txt
 
-# deploy-webapp:
-#     stage: deploy
-#     image:
-#         name: bitnami/kubectl:latest
-#         entrypoint: [""]
-#     script:
-#         - kubectl config get-contexts
-#         - kubectl config use-context kimata/rasp-water:pod-rollout
-#         - kubectl --insecure-skip-tls-verify=true rollout restart -n hems deployment rasp-water
-#     rules:
-#         # NOTE: 自動実行ではデプロイしない
-#         - if: $CI_PIPELINE_SOURCE == "schedule"
-#           when: never
-#         - changes:
-#               - flask/**/*
-#               - src/**/*
+deploy-webapp:
+    stage: deploy
+    image:
+        name: bitnami/kubectl:latest
+        entrypoint: [""]
+    script:
+        - kubectl config get-contexts
+        - kubectl config use-context kimata/rasp-shutter:pod-rollout
+        - kubectl --insecure-skip-tls-verify=true rollout restart -n hems deployment rasp-shutter
+    rules:
+        # NOTE: 自動実行ではデプロイしない
+        - if: $CI_PIPELINE_SOURCE == "schedule"
+          when: never
+        - changes:
+              - flask/**/*
+              - src/**/*
 
 # deploy-webapp-demo:
 #     stage: deploy
