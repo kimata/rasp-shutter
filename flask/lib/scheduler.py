@@ -43,7 +43,7 @@ def check_brightness(sense_data, state):
     if (not sense_data["lux"]["valid"]) or (not sense_data["solar_rad"]["valid"]):
         return BRIGHTNESS_STATE.UNKNOWN
 
-    if (sense_data["lux"]["value"] < schedule_data[state]["lux"]) or (
+    if (sense_data["lux"]["value"] < schedule_data[state]["lux"]) and (
         sense_data["solar_rad"]["value"] < schedule_data[state]["solar_rad"]
     ):
         return BRIGHTNESS_STATE.DARK
