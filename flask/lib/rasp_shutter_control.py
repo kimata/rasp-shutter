@@ -13,9 +13,12 @@ from webapp_log import app_log, APP_LOG_LEVEL
 from flask_util import support_jsonp, remote_host, set_acao
 
 
-# 自動で開けたり閉めたりする間隔．この時間内に再度自動で同じ制御がリクエストされた場合，
+# この時間内に同じ制御がスケジューラで再度リクエストされた場合，
 # 実行をやめる．
-EXEC_INTERVAL_HOUR = 12
+EXEC_INTERVAL_SCHEDULE_HOUR = 12
+# この時間内に同じ制御がスケジューラで再度リクエストされた場合，
+# 実行をやめる．
+EXEC_INTERVAL_MANUAL_MINUTES = 1
 
 
 class SHUTTER_STATE(IntEnum):
@@ -109,31 +112,44 @@ def set_shutter_state(state, mode, host=""):
     # 開くボタンを押すことが続くと，スイッチがエラーになるので STAT_EXEC を使って
     # 防止する．STAT_EXEC はこれ以外の目的で使わない．
     exec_hist = STAT_EXEC[state]
-    if mode != CONTROL_MODE.MANUAL:
-        if exec_hist.exists() and (
-            (time.time() - exec_hist.stat().st_mtime) / (60 * 60) < EXEC_INTERVAL_HOUR
-        ):
-            if mode == CONTROL_MODE.SCHEDULE:
-                # NOTE: スケジュール実行通りに制御できなかった場合，
-                # ログを残す．
-                diff_sec = time.time() - exec_hist.stat().st_mtime
-                app_log(
-                    (
-                        "🔔 スケジュールに従ってシャッターを{state}るのを見合わせました。"
-                        + "{time_diff_str}前に{state}ています。{by}"
-                    ).format(
-                        state="開け" if state == "open" else "閉め",
-                        time_diff_str=minute_str(diff_sec),
-                        by="(by {})".format(host) if host != "" else "",
-                    )
-                )
-            return get_shutter_state()
-    exec_hist.touch()
 
-    exec_inv_hist = STAT_EXEC["close" if state == "open" else "open"]
-    exec_inv_hist.unlink(missing_ok=True)
+    diff_sec = time.time()
+    if exec_hist.exists():
+        diff_sec -= exec_hist.stat().st_mtime
+
+    # NOTE: 制御間隔が短く，実際には御できなかった場合，ログを残す．
+    if mode == CONTROL_MODE.MANUAL:
+        if (diff_sec / 60) < EXEC_INTERVAL_MANUAL_MINUTES:
+            app_log(
+                (
+                    "🔔 シャッターを{state}るのを見合わせました。" + "{time_diff_str}前に{state}ています。{by}"
+                ).format(
+                    state="開け" if state == "open" else "閉め",
+                    time_diff_str=minute_str(diff_sec),
+                    by="(by {})".format(host) if host != "" else "",
+                )
+            )
+            return get_shutter_state()
+
+    elif mode == CONTROL_MODE.SCHEDULE:
+        if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:
+            app_log(
+                (
+                    "🔔 スケジュールに従ってシャッターを{state}るのを見合わせました。"
+                    + "{time_diff_str}前に{state}ています。{by}"
+                ).format(
+                    state="開け" if state == "open" else "閉め",
+                    time_diff_str=minute_str(diff_sec),
+                    by="(by {})".format(host) if host != "" else "",
+                )
+            )
+            return get_shutter_state()
 
     result = call_shutter_api(config, state)
+
+    exec_hist.touch()
+    exec_inv_hist = STAT_EXEC["close" if state == "open" else "open"]
+    exec_inv_hist.unlink(missing_ok=True)
 
     if result:
         app_log(
