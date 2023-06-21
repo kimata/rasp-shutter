@@ -49,21 +49,28 @@ def init():
     STAT_EXEC["close"].parent.mkdir(parents=True, exist_ok=True)
 
 
-def minute_str(sec):
-    min = sec / 60
-    hour = 0
-    if min >= 60:
-        hour = int(min / 60)
-        min -= hour * 60
-    min = int(min)
-
-    if hour != 0:
-        if min == 0:
-            return "{hour}時間".format(hour=hour)
-        else:
-            return "{hour}時間{min}分".format(hour=hour, min=min)
+def time_str(time_val):
+    if time_val > (60 * 60):
+        unit = ["分", "時間"]
+        time_val /= 60
     else:
-        return "{min}分".format(min=min)
+        unit = ["秒", "分"]
+
+    upper = 0
+    if time_val >= 60:
+        upper = int(min / 60)
+        time_val -= upper * 60
+    time_val = int(time_val)
+
+    if upper != 0:
+        if min == 0:
+            return "{upper}{unit_1}".format(upper=upper, unit_1=unit[1])
+        else:
+            return "{upper}{unit_1}{time_val}{unit_0}".format(
+                upper=upper, time_val=time_val, unit_0=unit[0], unit_1=unit[1]
+            )
+    else:
+        return "{time_val}{unit_0}".format(time_val=time_val, unit_0=unit[0])
 
 
 def call_shutter_api(config, state):
@@ -125,7 +132,7 @@ def set_shutter_state(state, mode, host=""):
                     "🔔 シャッターを{state}るのを見合わせました。" + "{time_diff_str}前に{state}ています。{by}"
                 ).format(
                     state="開け" if state == "open" else "閉め",
-                    time_diff_str=minute_str(diff_sec),
+                    time_diff_str=time_str(diff_sec),
                     by="(by {})".format(host) if host != "" else "",
                 )
             )
@@ -139,7 +146,7 @@ def set_shutter_state(state, mode, host=""):
                     + "{time_diff_str}前に{state}ています。{by}"
                 ).format(
                     state="開け" if state == "open" else "閉め",
-                    time_diff_str=minute_str(diff_sec),
+                    time_diff_str=time_str(diff_sec),
                     by="(by {})".format(host) if host != "" else "",
                 )
             )
