@@ -2,7 +2,7 @@
     <div class="row mb-4">
         <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
             <h2>実行ログ</h2>
-            <div class="container">
+            <div class="container log">
                 <p v-if="log.length == 0">ログがありません。</p>
                 <div
                     v-else
@@ -24,7 +24,7 @@
                 ></b-pagination>
             </div>
             <div class="container mt-4 mb-2">
-                <button type="button" class="btn btn-success col-12" @click="clear()">
+                <button type="button" class="btn btn-success col-12" @click="clear()" data-testid="clear">
                     <i class="bi bi-file-earmark-x" />
                     クリア
                 </button>

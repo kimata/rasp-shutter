@@ -12,7 +12,13 @@
                     </div>
                 </div>
                 <div class="container mt-4 mb-2">
-                    <button type="button" class="btn btn-success col-12" @click="save()" v-bind:disabled="!isChanged">
+                    <button
+                        type="button"
+                        class="btn btn-success col-12"
+                        @click="save()"
+                        v-bind:disabled="!isChanged"
+                        data-testid="save"
+                    >
                         <i class="bi bi-save" />
                         保存
                     </button>

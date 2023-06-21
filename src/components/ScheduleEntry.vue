@@ -76,7 +76,7 @@
 
         <div class="row">
             <h3>曜日</h3>
-            <div class="container">
+            <div class="container" v-bind:id="name + '-schedule-entry-wday'">
                 <span
                     v-for="(wday, i) in ['日', '月', '火', '水', '木', '金', '土']"
                     :key="name + '-wday-' + i"
