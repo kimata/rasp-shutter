@@ -74,6 +74,9 @@ def time_str(time_val):
 
 
 def call_shutter_api(config, state):
+    if current_app.config["DUMMY_MODE"]:
+        return True
+
     result = True
     for shutter in config["shutter"]:
         if requests.get(shutter["endpoint"][state]).status_code != 200:
