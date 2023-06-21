@@ -120,7 +120,7 @@ def set_shutter_state(state, mode, host=""):
                 app_log(
                     (
                         "🔔 スケジュールに従ってシャッターを{state}るのを見合わせました。"
-                        + "{time_diff_str}前に{done}ています。{by}"
+                        + "{time_diff_str}前に{state}ています。{by}"
                     ).format(
                         state="開け" if state == "open" else "閉め",
                         time_diff_str=minute_str(diff_sec),
