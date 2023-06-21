@@ -37,13 +37,16 @@ blueprint = Blueprint("rasp-shutter-control", __name__, url_prefix=APP_URL_PREFI
 
 config = None
 should_terminate = False
+dummy_mode = False
 
 
 @blueprint.before_app_first_request
 def init():
     global config
+    global dummy_mode
 
     config = current_app.config["CONFIG"]
+    dummy_mode = current_app.config["DUMMY_MODE"]
 
     STAT_EXEC["open"].parent.mkdir(parents=True, exist_ok=True)
     STAT_EXEC["close"].parent.mkdir(parents=True, exist_ok=True)
@@ -74,7 +77,9 @@ def time_str(time_val):
 
 
 def call_shutter_api(config, state):
-    if current_app.config["DUMMY_MODE"]:
+    global dummy_mode
+
+    if dummy_mode:
         return True
 
     result = True
