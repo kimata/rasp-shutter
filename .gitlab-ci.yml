@@ -63,7 +63,7 @@ test-flask:
             - flask_log.txt
             - test/evidence/**
     dependencies:
-        - build-angular
+        - build-vue
 
 test-flask-docker:
     stage: test
