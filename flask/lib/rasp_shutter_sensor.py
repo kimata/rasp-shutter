@@ -12,17 +12,8 @@ from flask_util import support_jsonp, set_acao
 
 blueprint = Blueprint("rasp-shutter-sensor", __name__, url_prefix=APP_URL_PREFIX)
 
-config = None
 
-
-@blueprint.before_app_first_request
-def init():
-    global config
-
-    config = current_app.config["CONFIG"]
-
-
-def get_sensor_data():
+def get_sensor_data(config):
     timezone = pytz.timezone("Asia/Tokyo")
 
     sense_data = {}
@@ -58,4 +49,4 @@ def get_sensor_data():
 @support_jsonp
 @set_acao
 def api_sensor_data():
-    return jsonify(get_sensor_data())
+    return jsonify(get_sensor_data(current_app.config["CONFIG"]))

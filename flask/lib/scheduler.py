@@ -51,10 +51,10 @@ def check_brightness(sense_data, state):
         return BRIGHTNESS_STATE.BRIGHT
 
 
-def exec_shutter_control_impl(state, mode):
+def exec_shutter_control_impl(config, state, mode):
     try:
         # NOTE: Web 経由だと認証つけた場合に困るので，直接関数を呼ぶ
-        rasp_shutter_control.set_shutter_state(state, mode)
+        rasp_shutter_control.set_shutter_state(config, state, mode)
         return True
     except:
         logging.warning(traceback.format_exc())
@@ -63,18 +63,18 @@ def exec_shutter_control_impl(state, mode):
     return False
 
 
-def exec_shutter_control(state, mode):
+def exec_shutter_control(config, state, mode):
     logging.debug("Execute shutter control")
 
     for i in range(RETRY_COUNT):
-        if exec_shutter_control_impl(state, mode):
+        if exec_shutter_control_impl(config, state, mode):
             return True
 
     app_log("😵 シャッターの制御に失敗しました。")
     return False
 
 
-def shutter_auto_open():
+def shutter_auto_open(config):
     if not schedule_data["open"]["is_active"]:
         return
 
@@ -88,7 +88,7 @@ def shutter_auto_open():
         # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない．
         return
 
-    sense_data = rasp_shutter_sensor.get_sensor_data()
+    sense_data = rasp_shutter_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.BRIGHT:
         app_log(
             (
@@ -100,7 +100,7 @@ def shutter_auto_open():
             )
         )
 
-        exec_shutter_control("open", rasp_shutter_control.CONTROL_MODE.AUTO)
+        exec_shutter_control(config, "open", rasp_shutter_control.CONTROL_MODE.AUTO)
         STAT_PENDING_OPEN.unlink(missing_ok=True)
     else:
         logging.debug(
@@ -111,7 +111,7 @@ def shutter_auto_open():
         )
 
 
-def shutter_auto_close():
+def shutter_auto_close(config):
     if not schedule_data["close"]["is_active"]:
         return
 
@@ -125,7 +125,7 @@ def shutter_auto_close():
         # NOTE: 12時間以内に自動で閉めていた場合は処理しない
         return
 
-    sense_data = rasp_shutter_sensor.get_sensor_data()
+    sense_data = rasp_shutter_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.DARK:
         app_log(
             (
@@ -137,7 +137,7 @@ def shutter_auto_close():
             )
         )
 
-        exec_shutter_control("close", rasp_shutter_control.CONTROL_MODE.AUTO)
+        exec_shutter_control(config, "close", rasp_shutter_control.CONTROL_MODE.AUTO)
         STAT_AUTO_CLOSE.touch()
     else:
         logging.debug(
@@ -148,18 +148,18 @@ def shutter_auto_close():
         )
 
 
-def shutter_auto_control():
+def shutter_auto_control(config):
     hour = datetime.datetime.now().hour
 
     # NOTE: 時間帯によって自動制御の内容を分ける
     if (5 < hour) and (hour < 12):
-        return shutter_auto_open()
+        return shutter_auto_open(config)
     elif (12 < hour) and (hour < 20):
-        return shutter_auto_close()
+        return shutter_auto_close(config)
 
 
-def shutter_schedule_control(state):
-    sense_data = rasp_shutter_sensor.get_sensor_data()
+def shutter_schedule_control(config, state):
+    sense_data = rasp_shutter_sensor.get_sensor_data(config)
 
     if check_brightness(sense_data, state) == BRIGHTNESS_STATE.UNKNOWN:
         error_sensor = []
@@ -190,10 +190,12 @@ def shutter_schedule_control(state):
             STAT_PENDING_OPEN.touch()
         else:
             # NOTE: ここにきたときのみ，スケジュールに従って開ける
-            exec_shutter_control(state, rasp_shutter_control.CONTROL_MODE.SCHEDULE)
+            exec_shutter_control(
+                config, state, rasp_shutter_control.CONTROL_MODE.SCHEDULE
+            )
     else:
         STAT_PENDING_OPEN.unlink(missing_ok=True)
-        exec_shutter_control(state, rasp_shutter_control.CONTROL_MODE.SCHEDULE)
+        exec_shutter_control(config, state, rasp_shutter_control.CONTROL_MODE.SCHEDULE)
 
 
 def schedule_validate(schedule_data):
@@ -264,43 +266,43 @@ def set_schedule(schedule_data):
 
     logging.info(schedule_data)
 
-    for name, entry in schedule_data.items():
+    for state, entry in schedule_data.items():
         if not entry["is_active"]:
             continue
 
         if entry["wday"][0]:
             schedule.every().sunday.at(entry["time"]).do(
-                shutter_schedule_control, state=name
+                shutter_schedule_control, config, state
             )
         if entry["wday"][1]:
             schedule.every().monday.at(entry["time"]).do(
-                shutter_schedule_control, state=name
+                shutter_schedule_control, config, state
             )
         if entry["wday"][2]:
             schedule.every().tuesday.at(entry["time"]).do(
-                shutter_schedule_control, state=name
+                shutter_schedule_control, config, state
             )
         if entry["wday"][3]:
             schedule.every().wednesday.at(entry["time"]).do(
-                shutter_schedule_control, state=name
+                shutter_schedule_control, config, state
             )
         if entry["wday"][4]:
             schedule.every().thursday.at(entry["time"]).do(
-                shutter_schedule_control, state=name
+                shutter_schedule_control, config, state
             )
         if entry["wday"][5]:
             schedule.every().friday.at(entry["time"]).do(
-                shutter_schedule_control, state=name
+                shutter_schedule_control, config, state
             )
         if entry["wday"][6]:
             schedule.every().saturday.at(entry["time"]).do(
-                shutter_schedule_control, state=name
+                shutter_schedule_control, config, state
             )
 
     for job in schedule.get_jobs():
         logging.info("Next run: {next_run}".format(next_run=job.next_run))
 
-    schedule.every().minutes.do(shutter_auto_control)
+    schedule.every().minutes.do(shutter_auto_control, config)
 
 
 def schedule_worker(config, queue):

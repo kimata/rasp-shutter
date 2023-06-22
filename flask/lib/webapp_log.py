@@ -10,7 +10,7 @@ from multiprocessing.pool import ThreadPool
 
 from webapp_config import APP_URL_PREFIX, LOG_DB_PATH
 from webapp_event import notify_event, EVENT_TYPE
-from flask_util import support_jsonp, gzipped, set_acao
+from flask_util import support_jsonp, gzipped
 import notify_slack
 
 
@@ -22,20 +22,19 @@ class APP_LOG_LEVEL(IntEnum):
 
 blueprint = Blueprint("webapp-log", __name__, url_prefix=APP_URL_PREFIX)
 
-config = None
 sqlite = None
 log_lock = None
 thread_pool = None
+config = None
 
 
-@blueprint.before_app_first_request
-def init():
+def init(config_):
     global config
     global sqlite
     global log_lock
     global thread_pool
 
-    config = current_app.config["CONFIG"]
+    config = config_
 
     sqlite = sqlite3.connect(LOG_DB_PATH, check_same_thread=False)
     sqlite.execute("CREATE TABLE IF NOT EXISTS log(date INT, message TEXT)")
@@ -47,6 +46,7 @@ def init():
 
 
 def app_log_impl(message, level):
+    global config
     with log_lock:
         sqlite.execute(
             'INSERT INTO log VALUES (DATETIME("now", "localtime"), ?)', [message]
@@ -73,7 +73,7 @@ def app_log_impl(message, level):
             os._exit(-1)
 
 
-def app_log(message, level=APP_LOG_LEVEL.INFO, exit=False):
+def app_log(message, level=APP_LOG_LEVEL.INFO):
     global thread_pool
 
     if level == APP_LOG_LEVEL.ERROR:
@@ -93,7 +93,6 @@ def app_log(message, level=APP_LOG_LEVEL.INFO, exit=False):
 
 @blueprint.route("/api/log_clear", methods=["GET"])
 @support_jsonp
-@set_acao
 def api_log_clear():
     with log_lock:
         cur = sqlite.cursor()
@@ -105,7 +104,6 @@ def api_log_clear():
 
 @blueprint.route("/api/log_view", methods=["GET"])
 @support_jsonp
-@set_acao
 @gzipped
 def api_log_view():
     g.disable_cache = True
@@ -122,11 +120,7 @@ if __name__ == "__main__":
 
     logger.init("test", level=logging.INFO)
 
-    # NOTE: テスト用に強制的に書き換える
-    class current_app:  # noqa: F811
-        config = {"CONFIG": load_config()}
-
-    init()
+    init(load_config())
 
     for i in range(5):
         app_log("テスト {i}".format(i=i))
