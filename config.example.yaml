@@ -1,0 +1,30 @@
+sensor:
+    influxdb:
+        url: http://proxy.green-rabbit.net:8086
+        token: strBCB9segqccgxsR5Xe_9RnCqkBFYX9aOKvxVR4lr3iLEb7HXuGqsN40YU6DIb6TZm9bvKLW5OWQS7sB8AQbQ==
+        org: home
+        bucket: sensor
+
+    lux:
+        name: 屋外の照度
+        measure: sensor.rasp
+        hostname: rasp-meter-8
+    solar_rad:
+        name: 太陽の日射量
+        measure: sensor.rasp
+        hostname: rasp-storeroom
+
+liveness:
+    file:
+        scheduler: /dev/shm/rasp-water/liveness/scheduler
+
+shutter:
+    - name: リビング①
+      endpoint:
+          open: http://127.0.0.1:5000/rasp-shutter/api/dummy/open
+          close: http://127.0.0.1:5000/rasp-shutter/api/dummy/close
+
+    - name: リビング②
+      endpoint:
+          open: http://127.0.0.1:5000/rasp-shutter/api/dummy/open
+          close: http://127.0.0.1:5000/rasp-shutter/api/dummy/close
