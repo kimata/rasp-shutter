@@ -261,10 +261,8 @@ def schedule_load():
     }
 
 
-def set_schedule(schedule_data):
+def set_schedule(config, schedule_data):
     schedule.clear()
-
-    logging.info(schedule_data)
 
     for state, entry in schedule_data.items():
         if not entry["is_active"]:
@@ -317,14 +315,14 @@ def schedule_worker(config, queue):
     logging.info("Load schedule")
     schedule_data = schedule_load()
 
-    set_schedule(schedule_data)
+    set_schedule(config, schedule_data)
 
     logging.info("Start schedule worker")
 
     while True:
         if not queue.empty():
             schedule_data = queue.get()
-            set_schedule(schedule_data)
+            set_schedule(config, schedule_data)
             schedule_store(schedule_data)
 
         schedule.run_pending()
