@@ -7,6 +7,7 @@ from enum import IntEnum, Enum
 import logging
 import requests
 import time
+import os
 
 from webapp_config import APP_URL_PREFIX, STAT_EXEC, STAT_PENDING_OPEN, STAT_AUTO_CLOSE
 from webapp_log import app_log, APP_LOG_LEVEL
@@ -35,19 +36,10 @@ class CONTROL_MODE(Enum):
 
 blueprint = Blueprint("rasp-shutter-control", __name__, url_prefix=APP_URL_PREFIX)
 
-config = None
 should_terminate = False
-dummy_mode = False
 
 
-@blueprint.before_app_first_request
 def init():
-    global config
-    global dummy_mode
-
-    config = current_app.config["CONFIG"]
-    dummy_mode = current_app.config["DUMMY_MODE"]
-
     STAT_EXEC["open"].parent.mkdir(parents=True, exist_ok=True)
     STAT_EXEC["close"].parent.mkdir(parents=True, exist_ok=True)
 
@@ -77,9 +69,7 @@ def time_str(time_val):
 
 
 def call_shutter_api(config, state):
-    global dummy_mode
-
-    if dummy_mode:
+    if os.environ["DUMMY_MODE"] == "true":
         return True
 
     result = True
@@ -112,7 +102,7 @@ def get_shutter_state():
     }
 
 
-def set_shutter_state(state, mode, host=""):
+def set_shutter_state(config, state, mode, host=""):
     if state == "open":
         if mode != CONTROL_MODE.MANUAL:
             # NOTE: 手動以外でシャッターを開けた場合は，
@@ -193,12 +183,15 @@ def set_shutter_state(state, mode, host=""):
 def api_shutter_ctrl():
     cmd = request.args.get("cmd", 0, type=int)
     state = request.args.get("state", "close", type=str)
+    config = current_app.config["CONFIG"]
 
     if cmd == 1:
         return jsonify(
             dict(
                 {"cmd": "set"},
-                **set_shutter_state(state, CONTROL_MODE.MANUAL, remote_host(request))
+                **set_shutter_state(
+                    config, state, CONTROL_MODE.MANUAL, remote_host(request)
+                )
             )
         )
     else:
