@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     config_file = args["-c"]
     port = args["-p"]
-    dummy_mode = os.environ.get("DUMMY_MODE", args["-D"])
+    dummy_mode = args["-D"]
     debug_mode = args["-d"]
 
     if debug_mode:
@@ -47,7 +47,6 @@ if __name__ == "__main__":
 
     # NOTE: オプションでダミーモードが指定された場合，環境変数もそれに揃えておく
     if dummy_mode:
-        logging.warning("Set dummy mode")
         os.environ["DUMMY_MODE"] = "true"
     else:
         os.environ["DUMMY_MODE"] = "false"
@@ -65,6 +64,9 @@ if __name__ == "__main__":
     import webapp_event
 
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        if dummy_mode:
+            logging.warning("Set dummy mode")
+
         rasp_shutter_control.init()
         rasp_shutter_schedule.init(config)
         webapp_log.init(config)
