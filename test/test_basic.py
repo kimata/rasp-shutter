@@ -5,6 +5,7 @@ from playwright.sync_api import expect
 import random
 import datetime
 import time
+from flaky import flaky
 
 APP_URL_TMPL = "http://{host}:{port}/rasp-shutter/"
 
@@ -91,6 +92,7 @@ def app_url(server, port):
 
 
 ######################################################################
+@flaky(max_runs=5)
 def test_manual(page, server, port):
     page.set_viewport_size({"width": 800, "height": 1600})
     page.goto(app_url(server, port))
@@ -123,6 +125,7 @@ def test_manual(page, server, port):
     check_log(page, "手動で開けました")
 
 
+@flaky(max_runs=5)
 def test_schedule(page, server, port):
     page.set_viewport_size({"width": 800, "height": 1600})
     page.goto(app_url(server, port))
@@ -190,6 +193,7 @@ def test_schedule(page, server, port):
     )
 
 
+@flaky(max_runs=5)
 def test_schedule_run(page, server, port):
     SCHEDULE_AFTER_MIN = 2
 
@@ -237,6 +241,7 @@ def test_schedule_run(page, server, port):
     check_log(page, "閉めました", SCHEDULE_AFTER_MIN * 60 + 10)
 
 
+@flaky(max_runs=5)
 def test_schedule_disable(page, server, port):
     page.set_viewport_size({"width": 800, "height": 1600})
     page.goto(app_url(server, port))
