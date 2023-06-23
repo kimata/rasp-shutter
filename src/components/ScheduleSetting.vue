@@ -91,7 +91,6 @@ export default {
                 });
         },
         save: function () {
-            console.log(this.current);
             axios
                 .get(this.AppConfig["apiEndpoint"] + "schedule_ctrl", {
                     params: { cmd: "set", data: JSON.stringify(this.current) },
@@ -135,6 +134,12 @@ export default {
                     this.updateSchedule();
                 }
             });
+            this.eventSource.onerror = () => {
+                if (this.eventSource.readyState == 2) {
+                    this.eventSource.close();
+                    setTimeout(this.watchEvent, 10000);
+                }
+            };
         },
     },
 };
