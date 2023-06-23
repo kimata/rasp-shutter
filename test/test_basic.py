@@ -235,3 +235,50 @@ def test_schedule_run(page, server, port):
     check_log(page, "スケジュールを更新")
 
     check_log(page, "閉めました", SCHEDULE_AFTER_MIN * 60 + 10)
+
+
+def test_schedule_disable(page, server, port):
+    page.set_viewport_size({"width": 800, "height": 1600})
+    page.goto(app_url(server, port))
+
+    page.get_by_test_id("clear").click()
+    time.sleep(1)
+    check_log(page, "ログがクリアされました")
+
+    # NOTE: スケジュールに従って閉める評価をしたいので，一旦あけておく
+    page.get_by_test_id("open").click()
+
+    for (i, state) in enumerate(["open", "close"]):
+        # NOTE: checkbox 自体は hidden にして，CSS で表示しているので，
+        # 通常の locator では操作できない
+        enable_checkbox = page.locator(
+            '//input[contains(@id,"{state}-schedule-entry")]'.format(state=state)
+        )
+        enable_checkbox.evaluate("node => node.checked = false")
+        enable_checkbox.evaluate("node => node.click()")
+
+        # NOET: 1分後にスケジュール設定
+        page.locator(
+            '//div[contains(@id,"{state}-schedule-entry-time")]/input'.format(
+                state=state
+            )
+        ).fill(time_str_after(1))
+
+        # NOTE: 曜日は全てチェック
+        wday_checkbox = page.locator(
+            '//div[contains(@id,"{state}-schedule-entry-wday")]/span/input'.format(
+                state=state
+            )
+        )
+        for j in range(7):
+            wday_checkbox.nth(j).check()
+
+        # NOTE: スケジュールを無効に設定
+        enable_checkbox.evaluate("node => node.click()")
+
+    page.get_by_test_id("save").click()
+    check_log(page, "スケジュールを更新")
+
+    # NOET: 何も実行されていないことを確認
+    time.sleep(60)
+    check_log(page, "スケジュールを更新")
