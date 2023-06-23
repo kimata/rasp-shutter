@@ -24,7 +24,7 @@ def get_sensor_data(config):
             sensor["measure"],
             sensor["hostname"],
             field,
-            "1h",
+            "-1h",
             last=True,
         )
         if data["valid"]:
