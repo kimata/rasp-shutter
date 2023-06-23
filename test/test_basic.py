@@ -168,9 +168,9 @@ def test_schedule(page, server, port):
         )
         for j in range(7):
             if enable_wday_index[i * 7 + j]:
-                wday_checkbox.nth(j).check(True)
+                wday_checkbox.nth(j).check()
             else:
-                wday_checkbox.nth(j).uncheck(True)
+                wday_checkbox.nth(j).uncheck()
 
         if i != enable_schedule_index:
             enable_checkbox.nth(i).evaluate("node => node.click()")
@@ -229,7 +229,7 @@ def test_schedule_run(page, server, port):
             )
         )
         for j in range(7):
-            wday_checkbox.nth(j).check(True)
+            wday_checkbox.nth(j).check()
 
     page.get_by_test_id("save").click()
     check_log(page, "スケジュールを更新")
@@ -271,7 +271,7 @@ def test_schedule_disable(page, server, port):
             )
         )
         for j in range(7):
-            wday_checkbox.nth(j).check(True)
+            wday_checkbox.nth(j).check()
 
         # NOTE: スケジュールを無効に設定
         enable_checkbox.evaluate("node => node.click()")
