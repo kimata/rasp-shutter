@@ -74,6 +74,7 @@ def call_shutter_api(config, state):
 
     result = True
     for shutter in config["shutter"]:
+        logging.debug("Request {url}".format(url=shutter["endpoint"][state]))
         if requests.get(shutter["endpoint"][state]).status_code != 200:
             result = False
 
