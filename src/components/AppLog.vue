@@ -82,6 +82,12 @@ export default {
                     this.updateLog();
                 }
             });
+            this.eventSource.onerror = () => {
+                if (this.eventSource.readyState == 2) {
+                    this.eventSource.close();
+                    setTimeout(this.watchEvent, 10000);
+                }
+            };
         },
         clear: function () {
             axios
