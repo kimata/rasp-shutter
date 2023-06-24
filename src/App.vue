@@ -29,6 +29,12 @@ export default {
 </script>
 
 <style>
+@import url("https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap");
+
+body {
+    font-family: "BIZ UDPGothic", sans-serif !important;
+}
+
 h2 {
     border-bottom: solid 3px #cde6b8;
     position: relative;
