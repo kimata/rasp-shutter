@@ -14,7 +14,7 @@
                         {{ entry.date }}
                         <small class="text-muted">({{ entry.fromNow }})</small>
                     </div>
-                    <div class="col-12" v-html="entry.message.replace(/\n/g, '<br/>')"></div>
+                    <div class="col-12 log-message" v-html="entry.message.replace(/\n/g, '<br/>')"></div>
                 </div>
                 <b-pagination
                     v-model="page"
@@ -120,6 +120,10 @@ export default {
 </script>
 
 <style>
+.log-message {
+    margin-bottom: 1em;
+}
+
 .page-link {
     color: #28a745 !important;
 }
