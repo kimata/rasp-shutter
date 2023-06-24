@@ -2,7 +2,6 @@
 # #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from flask import jsonify, Blueprint, current_app
-import datetime
 import pytz
 
 import sensor_data
@@ -24,17 +23,14 @@ def get_sensor_data(config):
             sensor["measure"],
             sensor["hostname"],
             field,
-            "-1h",
+            start="-1h",
             last=True,
         )
         if data["valid"]:
             sense_data[field] = {
                 "value": data["value"][0],
-                # NOTE: 特に設定しないと InfluxDB は UTC 表記で
-                # JST+9:00 の時刻を返す形になるので，ここで補正しておく．
-                "time": timezone.localize(
-                    (data["time"][0].utcnow() + datetime.timedelta(hours=9))
-                ),
+                # NOTE: タイムゾーン情報を削除しておく．
+                "time": timezone.localize((data["time"][0].replace(tzinfo=None))),
                 "valid": True,
             }
         else:
