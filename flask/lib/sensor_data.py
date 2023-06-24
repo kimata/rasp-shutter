@@ -356,13 +356,15 @@ def get_equip_mode_period(
         return []
 
 
-def get_today_sum(config, measure, hostname, field):
+def get_day_sum(config, measure, hostname, field, offset_day=0):
     try:
         every_min = 1
         window_min = 5
         now = datetime.datetime.now()
 
-        start = "-{hour}h{minute}m".format(hour=now.hour, minute=now.minute)
+        start = "-{offset_day}d{hour}h{minute}m".format(
+            offset_day=offset_day, hour=now.hour, minute=now.minute
+        )
 
         table_list = fetch_data_impl(
             config,
@@ -465,6 +467,6 @@ if __name__ == "__main__":
 
     logging.info(
         "Amount of cooling water used today = {water:.2f} L".format(
-            water=get_today_sum(db_config, measure, hostname, param)
+            water=get_day_sum(db_config, measure, hostname, param)
         )
     )
