@@ -5,10 +5,12 @@ import pathlib
 APP_URL_PREFIX = "/rasp-shutter"
 STATIC_FILE_PATH = "../../dist"
 
-SCHEDULE_DATA_PATH = pathlib.Path(__file__).parent.parent / "data" / "schedule.dat"
-LOG_DB_PATH = pathlib.Path(__file__).parent.parent / "data" / "log.db"
+DATA_PATH = pathlib.Path(__file__).parent.parent / "data"
 
-STAT_DIR_PATH = pathlib.Path(__file__).parent.parent / "data" / "stat"
+SCHEDULE_DATA_PATH = DATA_PATH / "schedule.dat"
+LOG_DB_PATH = DATA_PATH / "log.db"
+
+STAT_DIR_PATH = DATA_PATH / "stat"
 
 STAT_EXEC = {
     "open": STAT_DIR_PATH / "exe" / "open",
