@@ -5,6 +5,7 @@
         <schedule-setting />
         <sensor-data />
         <app-log />
+        <app-footer />
     </div>
 </template>
 
@@ -14,6 +15,7 @@ import ManualControl from "./components/ManualControl";
 import ScheduleSetting from "./components/ScheduleSetting";
 import SensorData from "./components/SensorData";
 import AppLog from "./components/AppLog";
+import AppFooter from "./components/AppFooter";
 
 export default {
     name: "app",
@@ -23,6 +25,7 @@ export default {
         ScheduleSetting,
         SensorData,
         AppLog,
+        AppFooter,
     },
     compatConfig: { MODE: 3 },
 };
