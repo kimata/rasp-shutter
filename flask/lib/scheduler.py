@@ -114,8 +114,17 @@ def shutter_auto_open(config):
 def shutter_auto_close(config):
     if not schedule_data["close"]["is_active"]:
         return
-
-    if STAT_AUTO_CLOSE.exists() and (
+    elif (
+        datetime.datetime.strptime(
+            datetime.datetime.now().strftime("%Y/%m/%d ")
+            + schedule_data["close"]["time"],
+            "%Y/%m/%d %H:%M",
+        )
+        < datetime.datetime.now()
+    ):
+        # NOTE: スケジュールで閉めていた場合は処理しない
+        return
+    elif STAT_AUTO_CLOSE.exists() and (
         (
             datetime.datetime.now()
             - datetime.datetime.fromtimestamp(STAT_AUTO_CLOSE.stat().st_mtime)

@@ -150,6 +150,19 @@ def set_shutter_state(config, state, mode, host=""):
                 )
             )
             return get_shutter_state()
+    elif mode == CONTROL_MODE.AUTO:
+        if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:
+            app_log(
+                (
+                    "🔔 自動でシャッターを{state}るのを見合わせました。"
+                    + "{time_diff_str}前に{state}ています。{by}"
+                ).format(
+                    state="開け" if state == "open" else "閉め",
+                    time_diff_str=time_str(diff_sec),
+                    by="(by {})".format(host) if host != "" else "",
+                )
+            )
+            return get_shutter_state()
 
     result = call_shutter_api(config, state)
 
