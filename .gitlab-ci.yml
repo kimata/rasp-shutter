@@ -141,6 +141,7 @@ deploy-webapp:
         - changes:
               - flask/**/*
               - src/**/*
+              - public/**/*
 
 deploy-webapp-demo:
     stage: deploy
@@ -158,6 +159,7 @@ deploy-webapp-demo:
         - changes:
               - flask/**/*
               - src/**/*
+              - public/**/*
 
 renovate:
     stage: renovate
