@@ -49,7 +49,7 @@ build-image:
 
 test-flask:
     stage: test
-    needs: ["build-webapp"]
+    needs: ["build-vue"]
     dependencies:
         - build-vue
 
