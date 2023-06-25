@@ -1,6 +1,6 @@
 {
-    "short_name": "Pi Shutter",
-    "name": "電動シャッター自動制御システム",
+    "short_name": "電動シャッター",
+    "name": "電動シャッター自動制御アプリ",
     "icons": [
         {
             "src": "img/favicon.ico",
