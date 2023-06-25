@@ -24,7 +24,7 @@ build-vue:
 
 build-image:
     stage: build-image
-    needs: ["build-webapp"]
+    needs: ["build-vue"]
     dependencies:
         - build-vue
 
