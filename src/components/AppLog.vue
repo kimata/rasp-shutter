@@ -6,7 +6,7 @@
                 <p v-if="log.length == 0">ログがありません。</p>
                 <div
                     v-else
-                    class="row mb-2"
+                    class="row"
                     v-for="(entry, index) in log.slice((page - 1) * pageSize, page * pageSize)"
                     :key="index"
                 >
@@ -14,7 +14,8 @@
                         {{ entry.date }}
                         <small class="text-muted">({{ entry.fromNow }})</small>
                     </div>
-                    <div class="col-12 log-message" v-html="entry.message.replace(/\n/g, '<br/>')"></div>
+                    <div class="col-12 log-message mb-1" v-html="entry.message.replace(/\n/g, '<br/>')"></div>
+                    <hr class="dashed" />
                 </div>
                 <b-pagination
                     v-model="page"
@@ -120,10 +121,9 @@ export default {
 </script>
 
 <style>
-.log-message {
-    margin-bottom: 1em;
+hr.dashed {
+    border-top: 2px dashed #999;
 }
-
 .page-link {
     color: #28a745 !important;
 }
