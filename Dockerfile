@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     python3-fluent-logger \
     python3-requests \
     python3-schedule \
+    python3-flask python3-flask-cors \
     python3-flask \
     python3-psutil \
  && apt-get clean \
