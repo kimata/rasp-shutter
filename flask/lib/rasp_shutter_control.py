@@ -2,6 +2,7 @@
 # #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from flask import request, jsonify, Blueprint, current_app
+from flask_cors import cross_origin
 from enum import IntEnum, Enum
 
 import logging
@@ -11,7 +12,7 @@ import os
 
 from webapp_config import APP_URL_PREFIX, STAT_EXEC, STAT_PENDING_OPEN, STAT_AUTO_CLOSE
 from webapp_log import app_log, APP_LOG_LEVEL
-from flask_util import support_jsonp, remote_host, set_acao
+from flask_util import support_jsonp, remote_host
 
 
 # この時間内に同じ制御がスケジューラで再度リクエストされた場合，
@@ -193,7 +194,7 @@ def set_shutter_state(config, state, mode, host=""):
 
 @blueprint.route("/api/shutter_ctrl", methods=["GET", "POST"])
 @support_jsonp
-@set_acao
+@cross_origin()
 def api_shutter_ctrl():
     cmd = request.args.get("cmd", 0, type=int)
     state = request.args.get("state", "close", type=str)
@@ -214,7 +215,7 @@ def api_shutter_ctrl():
 
 @blueprint.route("/api/dummy/open", methods=["GET"])
 @support_jsonp
-@set_acao
+@cross_origin()
 def api_dummy_open():
     logging.info("ダミーのシャッターが開きました．")
     return jsonify({"status": "OK"})
@@ -222,7 +223,7 @@ def api_dummy_open():
 
 @blueprint.route("/api/dummy/close", methods=["GET"])
 @support_jsonp
-@set_acao
+@cross_origin()
 def api_dummy_close():
     logging.info("ダミーのシャッターが閉じました．")
     return jsonify({"status": "OK"})

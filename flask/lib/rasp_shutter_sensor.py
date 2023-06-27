@@ -2,11 +2,12 @@
 # #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from flask import jsonify, Blueprint, current_app
+from flask_cors import cross_origin
 import pytz
 
 import sensor_data
 from webapp_config import APP_URL_PREFIX
-from flask_util import support_jsonp, set_acao
+from flask_util import support_jsonp
 
 
 blueprint = Blueprint("rasp-shutter-sensor", __name__, url_prefix=APP_URL_PREFIX)
@@ -43,6 +44,6 @@ def get_sensor_data(config):
 
 @blueprint.route("/api/sensor", methods=["GET"])
 @support_jsonp
-@set_acao
+@cross_origin()
 def api_sensor_data():
     return jsonify(get_sensor_data(current_app.config["CONFIG"]))

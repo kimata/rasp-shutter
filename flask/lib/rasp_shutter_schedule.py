@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from flask import request, jsonify, Blueprint, url_for
+from flask_cors import cross_origin
 import json
 import threading
 import urllib.parse
@@ -9,7 +10,7 @@ from multiprocessing import Queue
 from webapp_config import APP_URL_PREFIX
 from webapp_event import notify_event, EVENT_TYPE
 from webapp_log import app_log
-from flask_util import support_jsonp, remote_host, set_acao
+from flask_util import support_jsonp, remote_host
 import scheduler
 
 blueprint = Blueprint("rasp-shutter-schedule", __name__, url_prefix=APP_URL_PREFIX)
@@ -71,7 +72,7 @@ def schedule_str(schedule_data):
 
 @blueprint.route("/api/schedule_ctrl", methods=["GET", "POST"])
 @support_jsonp
-@set_acao
+@cross_origin()
 def api_schedule_ctrl():
     cmd = request.args.get("cmd", None)
     data = request.args.get("data", None)
