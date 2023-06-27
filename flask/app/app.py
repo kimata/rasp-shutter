@@ -75,6 +75,13 @@ if __name__ == "__main__":
         rasp_shutter_schedule.init(config)
         webapp_log.init(config)
 
+        def notify_terminate():
+            webapp_log.app_log("🏃 アプリを再起動します．", exit=True)
+            # NOTE: ログを送信できるまでの時間待つ
+            time.sleep(1)
+
+        atexit.register(notify_terminate)
+
     app = Flask(__name__)
 
     CORS(app)
@@ -93,13 +100,6 @@ if __name__ == "__main__":
     app.register_blueprint(webapp_event.blueprint)
     app.register_blueprint(webapp_log.blueprint)
     app.register_blueprint(webapp_util.blueprint)
-
-    def notify_terminate():
-        webapp_log.app_log("🏃 アプリを再起動します．", eixt=True)
-        # NOTE: ログを送信できるまでの時間待つ
-        time.sleep(1)
-
-    atexit.register(notify_terminate)
 
     # app.debug = True
     # NOTE: スクリプトの自動リロード停止したい場合は use_reloader=False にする
