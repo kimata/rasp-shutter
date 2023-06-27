@@ -3,7 +3,8 @@
 import pathlib
 
 APP_URL_PREFIX = "/rasp-shutter"
-STATIC_FILE_PATH = "../../dist"
+
+STATIC_FILE_PATH = pathlib.Path(__file__).parent.parent.parent / "dist"
 
 DATA_PATH = pathlib.Path(__file__).parent.parent / "data"
 

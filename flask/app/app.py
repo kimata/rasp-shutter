@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
         atexit.register(notify_terminate)
 
-    app = Flask(__name__)
+    app = Flask("rasp-shutter")
 
     CORS(app)
 
