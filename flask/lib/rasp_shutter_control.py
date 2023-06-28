@@ -54,12 +54,12 @@ def time_str(time_val):
 
     upper = 0
     if time_val >= 60:
-        upper = int(min / 60)
+        upper = int(time_val / 60)
         time_val -= upper * 60
     time_val = int(time_val)
 
     if upper != 0:
-        if min == 0:
+        if time_val == 0:
             return "{upper}{unit_1}".format(upper=upper, unit_1=unit[1])
         else:
             return "{upper}{unit_1}{time_val}{unit_0}".format(
