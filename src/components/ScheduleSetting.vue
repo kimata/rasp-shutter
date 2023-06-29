@@ -11,7 +11,7 @@
                         <ScheduleEntry label="クローズ" name="close" v-model="current.close" />
                     </div>
                 </div>
-                <div class="container mt-4 mb-2">
+                <div class="mt-4 mb-2">
                     <button
                         type="button"
                         class="btn btn-success col-12"
