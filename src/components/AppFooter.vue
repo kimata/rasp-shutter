@@ -56,10 +56,6 @@ export default {
                     this.sysinfo.uptime = uptime.format("llll");
                     this.sysinfo.uptimeFrom = uptime.fromNow();
                     this.sysinfo.loadAverage = response.data["loadAverage"];
-
-                    console.log(response.data);
-                    console.log(response.data["loadAverage"]);
-                    console.log(this.sysinfo.loadAverage);
                 })
                 .catch(() => {});
         },
