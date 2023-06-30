@@ -210,6 +210,8 @@ def api_shutter_ctrl():
     state = request.args.get("state", "close", type=str)
     config = current_app.config["CONFIG"]
 
+    logging.info(dict(request.headers))
+
     if cmd == 1:
         return jsonify(
             dict(
