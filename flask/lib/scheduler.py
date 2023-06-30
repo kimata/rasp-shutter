@@ -197,11 +197,13 @@ def shutter_schedule_control(config, state):
         else:
             # NOTE: ここにきたときのみ，スケジュールに従って開ける
             exec_shutter_control(
-                config, state, rasp_shutter_control.CONTROL_MODE.SCHEDULE
+                config, state, rasp_shutter_control.CONTROL_MODE.SCHEDULE, sense_data
             )
     else:
         STAT_PENDING_OPEN.unlink(missing_ok=True)
-        exec_shutter_control(config, state, rasp_shutter_control.CONTROL_MODE.SCHEDULE)
+        exec_shutter_control(
+            config, state, rasp_shutter_control.CONTROL_MODE.SCHEDULE, sense_data
+        )
 
 
 def schedule_validate(schedule_data):
