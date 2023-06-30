@@ -14,7 +14,10 @@
                         {{ entry.date }}
                         <small class="text-muted">({{ entry.fromNow }})</small>
                     </div>
-                    <div class="col-12 log-message mb-1" v-html="entry.message.replace(/\n/g, '<br/>')"></div>
+                    <div
+                        class="col-12 log-message mb-1"
+                        v-html="entry.message.replace(/\^2/g, '<sup>2</sup>').replace(/\n/g, '<br/>')"
+                    ></div>
                     <hr class="dashed" />
                 </div>
                 <b-pagination
