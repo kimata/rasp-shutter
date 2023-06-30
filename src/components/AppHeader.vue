@@ -2,7 +2,7 @@
     <header>
         <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
             <div class="bg-light p-5 rounded jumbotron">
-                <h1>電動シャッター制御</h1>
+                <h1>シャッター制御</h1>
             </div>
         </div>
     </header>
