@@ -39,6 +39,27 @@ def init():
     STAT_AUTO_CLOSE.parent.mkdir(parents=True, exist_ok=True)
 
 
+def brightness_text(sense_data, cur_schedule_data):
+    text = []
+    for sensor in ["solar_rad", "lux"]:
+        text.append(
+            "{sensor}: current {current:.1f} {cmp} threshold {threshold.1f}".format(
+                sensor=sensor,
+                current=sense_data[sensor]["value"],
+                threshold=cur_schedule_data[sensor],
+                cmp=">"
+                if sense_data[sensor]["value"] > cur_schedule_data[sensor]
+                else (
+                    "<"
+                    if sense_data[sensor]["value"] < cur_schedule_data[sensor]
+                    else "="
+                ),
+            )
+        )
+
+    return ", ".join(text)
+
+
 def check_brightness(sense_data, state):
     if (not sense_data["lux"]["valid"]) or (not sense_data["solar_rad"]["valid"]):
         return BRIGHTNESS_STATE.UNKNOWN
@@ -46,8 +67,18 @@ def check_brightness(sense_data, state):
     if (sense_data["lux"]["value"] < schedule_data[state]["lux"]) and (
         sense_data["solar_rad"]["value"] < schedule_data[state]["solar_rad"]
     ):
+        if state == "close":
+            logging.info(
+                "Getting darker {brightness_text}.",
+                brightness_text=brightness_text(sense_data, schedule_data[state]),
+            )
         return BRIGHTNESS_STATE.DARK
     else:
+        if state == "open":
+            logging.info(
+                "Getting brighter {brightness_text}.",
+                brightness_text=brightness_text(sense_data, schedule_data[state]),
+            )
         return BRIGHTNESS_STATE.BRIGHT
 
 
