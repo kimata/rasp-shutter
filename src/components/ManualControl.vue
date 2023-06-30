@@ -2,19 +2,24 @@
     <div class="row mb-4">
         <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
             <h2>手動</h2>
-            <div class="container mt-4 mb-2">
+            <div class="mt-4 mb-2">
                 <div class="row">
                     <div class="col-6">
-                        <button class="btn btn-success" @click="control('open')" data-testid="open">
-                            <i class="bi bi-arrow-up-circle" />
-                            上げる
-                        </button>
+                        <div class="container">
+                            <button class="btn btn-success w-75" @click="control('open')" data-testid="open">
+                                <i class="bi bi-arrow-up-circle" />
+                                上げる
+                            </button>
+                        </div>
                     </div>
+
                     <div class="col-6">
-                        <button class="btn btn-success" @click="control('close')" data-testid="close">
-                            <i class="bi bi-arrow-down-circle" />
-                            下げる
-                        </button>
+                        <div class="container">
+                            <button class="btn btn-success w-75" @click="control('close')" data-testid="close">
+                                <i class="bi bi-arrow-down-circle" />
+                                下げる
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
