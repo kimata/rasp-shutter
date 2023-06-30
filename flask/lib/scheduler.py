@@ -51,23 +51,24 @@ def check_brightness(sense_data, state):
         return BRIGHTNESS_STATE.BRIGHT
 
 
-def exec_shutter_control_impl(config, state, mode):
+def exec_shutter_control_impl(config, state, mode, sense_data):
     try:
         # NOTE: Web 経由だと認証つけた場合に困るので，直接関数を呼ぶ
-        rasp_shutter_control.set_shutter_state(config, state, mode)
+        rasp_shutter_control.set_shutter_state(config, state, mode, sense_data)
         return True
-    except:
+    except Exception as e:
+        logging.warning(e)
         logging.warning(traceback.format_exc())
         pass
 
     return False
 
 
-def exec_shutter_control(config, state, mode):
+def exec_shutter_control(config, state, mode, sense_data):
     logging.debug("Execute shutter control")
 
     for i in range(RETRY_COUNT):
-        if exec_shutter_control_impl(config, state, mode):
+        if exec_shutter_control_impl(config, state, mode, sense_data):
             return True
 
     app_log("😵 シャッターの制御に失敗しました。")
@@ -96,7 +97,9 @@ def shutter_auto_open(config):
             )
         )
 
-        exec_shutter_control(config, "open", rasp_shutter_control.CONTROL_MODE.AUTO)
+        exec_shutter_control(
+            config, "open", rasp_shutter_control.CONTROL_MODE.AUTO, sense_data
+        )
         STAT_PENDING_OPEN.unlink(missing_ok=True)
     else:
         logging.debug(
@@ -138,7 +141,9 @@ def shutter_auto_close(config):
             )
         )
 
-        exec_shutter_control(config, "close", rasp_shutter_control.CONTROL_MODE.AUTO)
+        exec_shutter_control(
+            config, "close", rasp_shutter_control.CONTROL_MODE.AUTO, sense_data
+        )
         STAT_AUTO_CLOSE.touch()
     else:
         logging.debug(
