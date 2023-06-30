@@ -7,7 +7,7 @@
                     <i class="bi bi-arrow-up-circle" />
                     上げる
                 </button>
-                <button class="btn btn-success col-5 offset-2" @click="control('close')" data-testid="close">
+                <button class="btn btn-success col-5 offset-1" @click="control('close')" data-testid="close">
                     <i class="bi bi-arrow-down-circle" />
                     下げる
                 </button>
