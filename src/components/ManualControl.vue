@@ -1,6 +1,6 @@
 <template>
     <div class="row mb-4">
-        <div class="col-lg-8 offset-lg-2 col-md-10 offset-md-1">
+        <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
             <h2>手動</h2>
             <div class="mt-4 mb-2">
                 <div class="row">
