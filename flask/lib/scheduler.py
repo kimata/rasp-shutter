@@ -91,12 +91,8 @@ def shutter_auto_open(config):
     sense_data = rasp_shutter_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.BRIGHT:
         app_log(
-            (
-                "📝 暗くて延期されていましたが，明るくなってきたので開けます．"
-                + "(日射: {solar_rad:.1f} W/m^2, 照度: {lux:.1f} LUX)"
-            ).format(
-                solar_rad=sense_data["solar_rad"]["value"],
-                lux=sense_data["lux"]["value"],
+            ("📝 暗くて延期されていましたが，明るくなってきたので開けます．{sensor_text}").format(
+                sensor_text=rasp_shutter_control.sensor_text(sense_data),
             )
         )
 
@@ -137,12 +133,8 @@ def shutter_auto_close(config):
     sense_data = rasp_shutter_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.DARK:
         app_log(
-            (
-                "📝 予定より早いですが，暗くなってきたので閉めます．"
-                + "(日射: {solar_rad:.1f} W/m^2, 照度: {lux:.1f} LUX)"
-            ).format(
-                solar_rad=sense_data["solar_rad"]["value"],
-                lux=sense_data["lux"]["value"],
+            ("📝 予定より早いですが，暗くなってきたので閉めます．{sensor_text}").format(
+                sensor_text=rasp_shutter_control.sensor_text(sense_data),
             )
         )
 

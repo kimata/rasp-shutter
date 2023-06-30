@@ -104,7 +104,7 @@ def get_shutter_state():
     }
 
 
-def set_shutter_state(config, state, mode, host=""):
+def set_shutter_state(config, state, mode, sense_data=None, host=""):
     if state == "open":
         if mode != CONTROL_MODE.MANUAL:
             # NOTE: 手動以外でシャッターを開けた場合は，
@@ -173,23 +173,34 @@ def set_shutter_state(config, state, mode, host=""):
 
     if result:
         app_log(
-            "シャッターを{mode}で{state}ました。{by}".format(
+            "シャッターを{mode}で{state}ました。{sensor_text}{by}".format(
                 mode=mode.value,
                 state="開け" if state == "open" else "閉め",
-                by="(by {})".format(host) if host != "" else "",
+                sensor_text=sensor_text(sense_data),
+                by="\n(by {})".format(host) if host != "" else "",
             )
         )
     else:
         app_log(
-            "シャッターを{mode}で{state}るのに失敗しました。{by}".format(
+            "シャッターを{mode}で{state}るのに失敗しました。{sensor_text}{by}".format(
                 mode=mode.value,
                 state="開け" if state == "open" else "閉め",
-                by="(by {})".format(host) if host != "" else "",
+                sensor_text=sensor_text(sense_data),
+                by="\n(by {})".format(host) if host != "" else "",
             ),
             APP_LOG_LEVEL.ERROR,
         )
 
     return get_shutter_state()
+
+
+def sensor_text(sense_data):
+    if sense_data is None:
+        return ""
+    else:
+        return "(日射: {solar_rad:.1f} W/m^2, 照度: {lux:.1f} LUX)".format(
+            solar_rad=sense_data["solar_rad"]["value"], lux=sense_data["lux"]["value"]
+        )
 
 
 @blueprint.route("/api/shutter_ctrl", methods=["GET", "POST"])
@@ -205,7 +216,7 @@ def api_shutter_ctrl():
             dict(
                 {"cmd": "set"},
                 **set_shutter_state(
-                    config, state, CONTROL_MODE.MANUAL, remote_host(request)
+                    config, state, CONTROL_MODE.MANUAL, host=remote_host(request)
                 )
             )
         )
