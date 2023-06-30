@@ -119,7 +119,6 @@ def set_shutter_state(config, state, mode, sense_data=None, host=""):
     # 開くボタンを押すことが続くと，スイッチがエラーになるので STAT_EXEC を使って
     # 防止する．STAT_EXEC はこれ以外の目的で使わない．
     exec_hist = STAT_EXEC[state]
-
     diff_sec = time.time()
     if exec_hist.exists():
         diff_sec -= exec_hist.stat().st_mtime
