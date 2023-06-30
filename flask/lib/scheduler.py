@@ -187,9 +187,8 @@ def shutter_schedule_control(config, state):
     if state == "open":
         if check_brightness(sense_data, state) == BRIGHTNESS_STATE.DARK:
             app_log(
-                "📝 まだ暗いので開けるのを見合わせます．(日射: {solar_rad:.1f} W/m^2, 照度: {lux:.1f} LUX)".format(
-                    solar_rad=sense_data["solar_rad"]["value"],
-                    lux=sense_data["lux"]["value"],
+                "📝 まだ暗いので開けるのを見合わせます．{sensor_text}".format(
+                    sensor_text=rasp_shutter_control.sensor_text(sense_data)
                 )
             )
             # NOTE: 暗いので開けれなかったことを通知
