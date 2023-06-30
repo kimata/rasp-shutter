@@ -90,7 +90,7 @@ def shutter_auto_open(config):
         return
 
     sense_data = rasp_shutter_sensor.get_sensor_data(config)
-    if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.BRIGHT:
+    if check_brightness(sense_data, "open") == BRIGHTNESS_STATE.BRIGHT:
         app_log(
             ("📝 暗くて延期されていましたが，明るくなってきたので開けます．{sensor_text}").format(
                 sensor_text=rasp_shutter_control.sensor_text(sense_data),
