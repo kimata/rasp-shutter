@@ -6,7 +6,7 @@
                 <div class="row">
                     <div class="col-6">
                         <div class="container">
-                            <button class="btn btn-success w-75" @click="control('open')" data-testid="open">
+                            <button class="btn btn-success w-100" @click="control('open')" data-testid="open">
                                 <i class="bi bi-arrow-up-circle" />
                                 上げる
                             </button>
@@ -15,7 +15,7 @@
 
                     <div class="col-6">
                         <div class="container">
-                            <button class="btn btn-success w-75" @click="control('close')" data-testid="close">
+                            <button class="btn btn-success w-100" @click="control('close')" data-testid="close">
                                 <i class="bi bi-arrow-down-circle" />
                                 下げる
                             </button>
