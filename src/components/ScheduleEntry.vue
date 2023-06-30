@@ -24,7 +24,7 @@
                         name="time"
                         v-model="entry.time"
                         v-bind:disabled="!entry.is_active"
-                        @change="emit()"
+                        @input="emit()"
                     />
                     <div class="input-group-append">
                         <div class="input-group-text time-icon"></div>
@@ -46,7 +46,7 @@
                         name="sorlar_rad"
                         v-model="entry.solar_rad"
                         v-bind:disabled="!entry.is_active"
-                        @change="emit()"
+                        @input="emit()"
                     />
                     <div class="input-group-append">
                         <div class="input-group-text" style="width: 4em">W/m<sup>2</sup></div>
@@ -65,7 +65,7 @@
                         name="lux"
                         v-model="entry.lux"
                         v-bind:disabled="!entry.is_active"
-                        @change="emit()"
+                        @input="emit()"
                     />
                     <div class="input-group-append">
                         <div class="input-group-text" style="width: 4em">LUX</div>
