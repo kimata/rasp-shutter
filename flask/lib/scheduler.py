@@ -196,6 +196,8 @@ def shutter_auto_control(config):
 
 
 def shutter_schedule_control(config, state):
+    logging.info("Execute shcedule control")
+
     sense_data = rasp_shutter_sensor.get_sensor_data(config)
 
     if check_brightness(sense_data, state) == BRIGHTNESS_STATE.UNKNOWN:
