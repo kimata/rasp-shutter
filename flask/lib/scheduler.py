@@ -43,7 +43,7 @@ def brightness_text(sense_data, cur_schedule_data):
     text = []
     for sensor in ["solar_rad", "lux"]:
         text.append(
-            "{sensor}: current {current:.1f} {cmp} threshold {threshold.1f}".format(
+            "{sensor}: current {current:.1f} {cmp} threshold {threshold:.1f}".format(
                 sensor=sensor,
                 current=sense_data[sensor]["value"],
                 threshold=cur_schedule_data[sensor],
@@ -299,7 +299,7 @@ def schedule_load():
 
     return {
         "open": schedule_data | {"time": "08:00", "solar_rad": 150, "lux": 1000},
-        "close": schedule_data | {"time": "17:00", "solar_rad": 100, "lux": 1200},
+        "close": schedule_data | {"time": "17:00", "solar_rad": 80, "lux": 1200},
     }
 
 
