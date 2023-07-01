@@ -296,8 +296,8 @@ def schedule_load():
     }
 
     return {
-        "open": schedule_data | {"time": "08:00", "solar_rad": 1000, "lux": 150},
-        "close": schedule_data | {"time": "17:00", "solar_rad": 1200, "lux": 80},
+        "open": schedule_data | {"time": "08:00", "solar_rad": 150, "lux": 1000},
+        "close": schedule_data | {"time": "17:00", "solar_rad": 100, "lux": 1200},
     }
 
 
