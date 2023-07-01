@@ -12,7 +12,7 @@ import os
 
 from webapp_config import APP_URL_PREFIX, STAT_EXEC, STAT_PENDING_OPEN, STAT_AUTO_CLOSE
 from webapp_log import app_log, APP_LOG_LEVEL
-from flask_util import support_jsonp, remote_host
+from flask_util import support_jsonp, auth_user
 
 
 # この時間内に同じ制御がスケジューラで再度リクエストされた場合，
@@ -104,7 +104,7 @@ def get_shutter_state():
     }
 
 
-def set_shutter_state(config, state, mode, sense_data=None, host=""):
+def set_shutter_state(config, state, mode, sense_data=None, user=""):
     if state == "open":
         if mode != CONTROL_MODE.MANUAL:
             # NOTE: 手動以外でシャッターを開けた場合は，
@@ -132,7 +132,7 @@ def set_shutter_state(config, state, mode, sense_data=None, host=""):
                 ).format(
                     state="開け" if state == "open" else "閉め",
                     time_diff_str=time_str(diff_sec),
-                    by="(by {})".format(host) if host != "" else "",
+                    by="(by {})".format(user) if user != "" else "",
                 )
             )
             return get_shutter_state()
@@ -146,7 +146,7 @@ def set_shutter_state(config, state, mode, sense_data=None, host=""):
                 ).format(
                     state="開け" if state == "open" else "閉め",
                     time_diff_str=time_str(diff_sec),
-                    by="(by {})".format(host) if host != "" else "",
+                    by="(by {})".format(user) if user != "" else "",
                 )
             )
             return get_shutter_state()
@@ -159,7 +159,7 @@ def set_shutter_state(config, state, mode, sense_data=None, host=""):
                 ).format(
                     state="開け" if state == "open" else "閉め",
                     time_diff_str=time_str(diff_sec),
-                    by="(by {})".format(host) if host != "" else "",
+                    by="(by {})".format(user) if user != "" else "",
                 )
             )
             return get_shutter_state()
@@ -176,7 +176,7 @@ def set_shutter_state(config, state, mode, sense_data=None, host=""):
                 mode=mode.value,
                 state="開け" if state == "open" else "閉め",
                 sensor_text=sensor_text(sense_data),
-                by="\n(by {})".format(host) if host != "" else "",
+                by="\n(by {})".format(user) if user != "" else "",
             )
         )
     else:
@@ -185,7 +185,7 @@ def set_shutter_state(config, state, mode, sense_data=None, host=""):
                 mode=mode.value,
                 state="開け" if state == "open" else "閉め",
                 sensor_text=sensor_text(sense_data),
-                by="\n(by {})".format(host) if host != "" else "",
+                by="\n(by {})".format(user) if user != "" else "",
             ),
             APP_LOG_LEVEL.ERROR,
         )
@@ -210,14 +210,12 @@ def api_shutter_ctrl():
     state = request.args.get("state", "close", type=str)
     config = current_app.config["CONFIG"]
 
-    logging.info(dict(request.headers))
-
     if cmd == 1:
         return jsonify(
             dict(
                 {"cmd": "set"},
                 **set_shutter_state(
-                    config, state, CONTROL_MODE.MANUAL, host=remote_host(request)
+                    config, state, CONTROL_MODE.MANUAL, user=auth_user(request)
                 )
             )
         )
