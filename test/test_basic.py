@@ -253,6 +253,7 @@ def test_schedule_disable(page, host, port):
 
     # NOTE: スケジュールに従って閉める評価をしたいので，一旦あけておく
     page.get_by_test_id("open").click()
+    time.sleep(1)
 
     for (i, state) in enumerate(["open", "close"]):
         # NOTE: checkbox 自体は hidden にして，CSS で表示しているので，
