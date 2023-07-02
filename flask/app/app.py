@@ -19,7 +19,6 @@ from flask import Flask
 from flask_cors import CORS
 import sys
 import pathlib
-import time
 import logging
 import atexit
 
@@ -77,8 +76,7 @@ if __name__ == "__main__":
 
         def notify_terminate():
             webapp_log.app_log("🏃 アプリを再起動します．", exit=True)
-            # NOTE: ログを送信できるまでの時間待つ
-            time.sleep(1)
+            webapp_log.term()
 
         atexit.register(notify_terminate)
 
