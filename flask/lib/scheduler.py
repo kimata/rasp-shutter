@@ -69,15 +69,17 @@ def check_brightness(sense_data, state):
     ):
         if state == "close":
             logging.info(
-                "Getting darker {brightness_text}.",
-                brightness_text=brightness_text(sense_data, schedule_data[state]),
+                "Getting darker {brightness_text}.".format(
+                    brightness_text=brightness_text(sense_data, schedule_data[state])
+                ),
             )
         return BRIGHTNESS_STATE.DARK
     else:
         if state == "open":
             logging.info(
-                "Getting brighter {brightness_text}.",
-                brightness_text=brightness_text(sense_data, schedule_data[state]),
+                "Getting brighter {brightness_text}.".format(
+                    brightness_text=brightness_text(sense_data, schedule_data[state])
+                ),
             )
         return BRIGHTNESS_STATE.BRIGHT
 
