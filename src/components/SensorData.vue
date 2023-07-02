@@ -28,7 +28,7 @@
                                 <span v-else>不明</span>
                             </td>
                             <td class="text-start col-4 text-nowrap">
-                                <span v-if="sensor[name].valid">{{ sensor.lux.time.format("YYYY-MM-DD HH:mm") }}</span>
+                                <span v-if="sensor[name].valid">{{ sensor.lux.time.format("M/D HH:mm") }}</span>
                                 <span v-else>不明</span>
                             </td>
                         </tr>
