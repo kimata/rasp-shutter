@@ -82,10 +82,10 @@ def check_brightness(sense_data, state):
         return BRIGHTNESS_STATE.BRIGHT
 
 
-def exec_shutter_control_impl(config, state, mode, sense_data):
+def exec_shutter_control_impl(config, state, mode, sense_data, user):
     try:
         # NOTE: Web 経由だと認証つけた場合に困るので，直接関数を呼ぶ
-        rasp_shutter_control.set_shutter_state(config, state, mode, sense_data)
+        rasp_shutter_control.set_shutter_state(config, state, mode, sense_data, user)
         return True
     except Exception as e:
         logging.warning(e)
@@ -95,11 +95,11 @@ def exec_shutter_control_impl(config, state, mode, sense_data):
     return False
 
 
-def exec_shutter_control(config, state, mode, sense_data):
+def exec_shutter_control(config, state, mode, sense_data, user):
     logging.debug("Execute shutter control")
 
     for i in range(RETRY_COUNT):
-        if exec_shutter_control_impl(config, state, mode, sense_data):
+        if exec_shutter_control_impl(config, state, mode, sense_data, user):
             return True
 
     app_log("😵 シャッターの制御に失敗しました。")
@@ -129,7 +129,7 @@ def shutter_auto_open(config):
         )
 
         exec_shutter_control(
-            config, "open", rasp_shutter_control.CONTROL_MODE.AUTO, sense_data
+            config, "open", rasp_shutter_control.CONTROL_MODE.AUTO, sense_data, "sensor"
         )
         STAT_PENDING_OPEN.unlink(missing_ok=True)
     else:
@@ -173,7 +173,11 @@ def shutter_auto_close(config):
         )
 
         exec_shutter_control(
-            config, "close", rasp_shutter_control.CONTROL_MODE.AUTO, sense_data
+            config,
+            "close",
+            rasp_shutter_control.CONTROL_MODE.AUTO,
+            sense_data,
+            "sensor",
         )
         STAT_AUTO_CLOSE.touch()
     else:
@@ -229,12 +233,20 @@ def shutter_schedule_control(config, state):
         else:
             # NOTE: ここにきたときのみ，スケジュールに従って開ける
             exec_shutter_control(
-                config, state, rasp_shutter_control.CONTROL_MODE.SCHEDULE, sense_data
+                config,
+                state,
+                rasp_shutter_control.CONTROL_MODE.SCHEDULE,
+                sense_data,
+                "scheduler",
             )
     else:
         STAT_PENDING_OPEN.unlink(missing_ok=True)
         exec_shutter_control(
-            config, state, rasp_shutter_control.CONTROL_MODE.SCHEDULE, sense_data
+            config,
+            state,
+            rasp_shutter_control.CONTROL_MODE.SCHEDULE,
+            sense_data,
+            "scheduler",
         )
 
 
