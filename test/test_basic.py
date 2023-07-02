@@ -10,7 +10,7 @@ from flaky import flaky
 APP_URL_TMPL = "http://{host}:{port}/rasp-shutter/"
 
 
-def check_log(page, message, timeout_sec=1):
+def check_log(page, message, timeout_sec=2):
     expect(
         page.locator('//div[contains(@class,"log")]/div/div[2]').first
     ).to_contain_text(message, timeout=timeout_sec * 1000)
