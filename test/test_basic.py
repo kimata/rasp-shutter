@@ -103,6 +103,7 @@ def test_manual(page, host, port):
 
     # NOTE: 連続してテスト実行する場合に open がはじかれないようにまず閉める
     page.get_by_test_id("close").click()
+    time.sleep(1)
 
     page.get_by_test_id("open").click()
     check_log(page, "手動で開けました")
