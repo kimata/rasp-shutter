@@ -94,7 +94,7 @@ def app_url(server, port):
 ######################################################################
 @flaky(max_runs=5)
 def test_manual(page, host, port):
-    page.set_viewport_size({"width": 800, "height": 1600})
+    page.set_viewport_size({"width": 2400, "height": 1600})
     page.goto(app_url(host, port))
 
     page.get_by_test_id("clear").click()
@@ -127,7 +127,7 @@ def test_manual(page, host, port):
 
 @flaky(max_runs=5)
 def test_schedule(page, host, port):
-    page.set_viewport_size({"width": 800, "height": 1600})
+    page.set_viewport_size({"width": 2400, "height": 1600})
     page.goto(app_url(host, port))
 
     page.get_by_test_id("clear").click()
@@ -197,7 +197,7 @@ def test_schedule(page, host, port):
 def test_schedule_run(page, host, port):
     SCHEDULE_AFTER_MIN = 2
 
-    page.set_viewport_size({"width": 800, "height": 1600})
+    page.set_viewport_size({"width": 2400, "height": 1600})
     page.goto(app_url(host, port))
 
     page.get_by_test_id("clear").click()
@@ -243,7 +243,7 @@ def test_schedule_run(page, host, port):
 
 @flaky(max_runs=5)
 def test_schedule_disable(page, host, port):
-    page.set_viewport_size({"width": 800, "height": 1600})
+    page.set_viewport_size({"width": 2400, "height": 1600})
     page.goto(app_url(host, port))
 
     page.get_by_test_id("clear").click()
