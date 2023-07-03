@@ -75,7 +75,7 @@ if __name__ == "__main__":
         webapp_log.init(config)
 
         def notify_terminate():
-            webapp_log.app_log("🏃 アプリを再起動します．", exit=True)
+            webapp_log.app_log("🏃 アプリを再起動します．")
             webapp_log.term()
 
         atexit.register(notify_terminate)
