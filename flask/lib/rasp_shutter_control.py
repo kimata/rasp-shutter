@@ -2,7 +2,6 @@
 # #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from flask import request, jsonify, Blueprint, current_app
-from flask_cors import cross_origin
 from enum import IntEnum, Enum
 
 import logging
@@ -204,7 +203,6 @@ def sensor_text(sense_data):
 
 @blueprint.route("/api/shutter_ctrl", methods=["GET", "POST"])
 @support_jsonp
-@cross_origin()
 def api_shutter_ctrl():
     cmd = request.args.get("cmd", 0, type=int)
     state = request.args.get("state", "close", type=str)
@@ -225,7 +223,6 @@ def api_shutter_ctrl():
 
 @blueprint.route("/api/dummy/open", methods=["GET"])
 @support_jsonp
-@cross_origin()
 def api_dummy_open():
     logging.info("ダミーのシャッターが開きました．")
     return jsonify({"status": "OK"})
@@ -233,7 +230,6 @@ def api_dummy_open():
 
 @blueprint.route("/api/dummy/close", methods=["GET"])
 @support_jsonp
-@cross_origin()
 def api_dummy_close():
     logging.info("ダミーのシャッターが閉じました．")
     return jsonify({"status": "OK"})
