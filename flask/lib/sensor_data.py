@@ -365,6 +365,7 @@ def get_day_sum(config, measure, hostname, field, offset_day=0):
         start = "-{offset_day}d{hour}h{minute}m".format(
             offset_day=offset_day, hour=now.hour, minute=now.minute
         )
+        stop = "-{offset_day}d".format(offset_day=offset_day)
 
         table_list = fetch_data_impl(
             config,
@@ -373,7 +374,7 @@ def get_day_sum(config, measure, hostname, field, offset_day=0):
             hostname,
             field,
             start,
-            "now()",
+            stop,
             every_min,
             window_min,
             True,
