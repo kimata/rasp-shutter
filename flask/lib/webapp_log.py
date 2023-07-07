@@ -94,8 +94,6 @@ def app_log_impl(message, level):
 
 
 def app_log_worker(log_queue):
-    global should_terminate
-
     while True:
         if not log_queue.empty():
             log = log_queue.get()
