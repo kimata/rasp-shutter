@@ -43,11 +43,12 @@ def init(config_):
     config = config_
 
     sqlite = sqlite3.connect(LOG_DB_PATH, check_same_thread=False)
-    sqlite.execute("CREATE TABLE IF NOT EXISTS log(date INT, message TEXT)")
+    sqlite.execute(
+        "CREATE TABLE IF NOT EXISTS log(id INTEGER primary key autoincrement, date INTEGER, message TEXT)"
+    )
     sqlite.commit()
     sqlite.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
 
-    should_terminate = False
     log_lock = threading.Lock()
     log_queue = Queue()
     log_thread = threading.Thread(target=app_log_worker, args=(log_queue,))
@@ -59,19 +60,16 @@ def term():
     global log_thread
     global should_terminate
 
-    should_terminate = True
+    should_terminate = False
     log_thread.join()
     sqlite.close()
 
 
 def app_log_impl(message, level):
-    global sqlite
-    global log_lock
     global config
-
     with log_lock:
         sqlite.execute(
-            'INSERT INTO log VALUES (DATETIME("now", "localtime"), ?)', [message]
+            'INSERT INTO log VALUES (NULL, DATETIME("now", "localtime"), ?)', [message]
         )
         sqlite.execute(
             'DELETE FROM log WHERE date <= DATETIME("now", "localtime", "-60 days")'
@@ -129,7 +127,7 @@ def get_log(stop_day):
 
     cur = sqlite.cursor()
     cur.execute(
-        'SELECT * FROM log WHERE date <= DATETIME("now", "localtime", ?) ORDER BY date DESC LIMIT 500',
+        'SELECT * FROM log WHERE date <= DATETIME("now", "localtime", ?) ORDER BY id DESC LIMIT 500',
         ["-{stop_day} days".format(stop_day=stop_day)],
     )
     return cur.fetchall()
