@@ -14,6 +14,11 @@
                 <small>load average: {{ sysinfo.loadAverage }}</small>
             </p>
         </small>
+        <p className="display-6">
+            <a href="https://github.com/kimata/rasp-shutter/" className="text-secondary">
+                <i class="bi bi-github" />
+            </a>
+        </p>
     </div>
 </template>
 
