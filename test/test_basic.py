@@ -105,20 +105,29 @@ def test_manual(page, host, port):
     page.get_by_test_id("close").click()
     time.sleep(1)
 
-    page.get_by_test_id("open").click()
+    page.get_by_test_id("open-1").click()
     check_log(page, "手動で開けました")
 
-    page.get_by_test_id("close").click()
+    page.get_by_test_id("open-2").click()
+    check_log(page, "手動で開けました")
+
+    page.get_by_test_id("close-1").click()
     check_log(page, "手動で閉めました")
 
-    page.get_by_test_id("close").click()
+    page.get_by_test_id("close-1").click()
     check_log(page, "閉めるのを見合わせました")
 
-    page.get_by_test_id("open").click()
+    page.get_by_test_id("close-2").click()
+    check_log(page, "手動で閉めました")
+
+    page.get_by_test_id("open-1").click()
     check_log(page, "手動で開けました")
 
-    page.get_by_test_id("open").click()
+    page.get_by_test_id("open-1").click()
     check_log(page, "開けるのを見合わせました")
+
+    page.get_by_test_id("open-2").click()
+    check_log(page, "手動で開けました")
 
     time.sleep(60)
 
@@ -206,7 +215,8 @@ def test_schedule_run(page, host, port):
     check_log(page, "ログがクリアされました")
 
     # NOTE: スケジュールに従って閉める評価をしたいので，一旦あけておく
-    page.get_by_test_id("open").click()
+    page.get_by_test_id("open-1").click()
+    page.get_by_test_id("open-2").click()
 
     for (i, state) in enumerate(["open", "close"]):
         # NOTE: checkbox 自体は hidden にして，CSS で表示しているので，
@@ -252,7 +262,8 @@ def test_schedule_disable(page, host, port):
     check_log(page, "ログがクリアされました")
 
     # NOTE: スケジュールに従って閉める評価をしたいので，一旦あけておく
-    page.get_by_test_id("open").click()
+    page.get_by_test_id("open-1").click()
+    page.get_by_test_id("open-2").click()
     time.sleep(1)
 
     for (i, state) in enumerate(["open", "close"]):
