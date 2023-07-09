@@ -1,7 +1,6 @@
 # rasp-shutter
 
-a
-ESP32 で制御できるようにした電動シャッターを制御するアプリです．
+電動シャッターを自動制御するアプリです．
 
 ## 機能
 
@@ -20,9 +19,11 @@ ESP32 のソフト関係は[ブログ](https://rabbit-note.com/2019/03/17/shutte
 
 ![システム構成](./img/システム構成.png)
 
-## スクリーンショット
+## デモ
 
-<img src="screenshot.png" width="432">
+下記で，擬似的にシャッターを操作できます．
+
+https://rasp-shutter-demo.kubernetes.green-rabbit.net/rasp-shutter/
 
 ## カスタマイズ
 
