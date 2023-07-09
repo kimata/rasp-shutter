@@ -87,7 +87,9 @@ def check_brightness(sense_data, state):
 def exec_shutter_control_impl(config, state, mode, sense_data, user):
     try:
         # NOTE: Web 経由だと認証つけた場合に困るので，直接関数を呼ぶ
-        rasp_shutter_control.set_shutter_state(config, state, mode, sense_data, user)
+        rasp_shutter_control.set_shutter_state(
+            config, list(range(len(config["shutter"]))), state, mode, sense_data, user
+        )
         return True
     except Exception as e:
         logging.warning(e)
