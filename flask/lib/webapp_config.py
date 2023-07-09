@@ -13,9 +13,9 @@ LOG_DB_PATH = DATA_PATH / "log.db"
 
 STAT_DIR_PATH = DATA_PATH / "stat"
 
-STAT_EXEC = {
-    "open": STAT_DIR_PATH / "exe" / "open",
-    "close": STAT_DIR_PATH / "exe" / "close",
+STAT_EXEC_TMPL = {
+    "open": STAT_DIR_PATH / "exe" / "{index}_open",
+    "close": STAT_DIR_PATH / "exe" / "{index}_close",
 }
 
 STAT_PENDING_OPEN = STAT_DIR_PATH / "pending" / "open"

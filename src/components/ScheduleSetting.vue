@@ -2,28 +2,26 @@
     <div class="row mb-4 mt-4">
         <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
             <h2>自動</h2>
-            <form class="schedule-setting">
-                <div class="row">
-                    <div class="col-lg-6 col-md-12">
-                        <ScheduleEntry label="オープン" name="open" v-model="current.open" />
-                    </div>
-                    <div class="col-lg-6 col-md-12">
-                        <ScheduleEntry label="クローズ" name="close" v-model="current.close" />
-                    </div>
+            <div class="row schedule-setting">
+                <div class="col-lg-6 col-md-12">
+                    <ScheduleEntry label="オープン" name="open" v-model="current.open" />
                 </div>
-                <div class="mt-4 mb-2">
-                    <button
-                        type="button"
-                        class="btn btn-success col-12"
-                        @click="save()"
-                        v-bind:disabled="!isChanged"
-                        data-testid="save"
-                    >
-                        <i class="bi bi-save" />
-                        保存
-                    </button>
+                <div class="col-lg-6 col-md-12">
+                    <ScheduleEntry label="クローズ" name="close" v-model="current.close" />
                 </div>
-            </form>
+            </div>
+            <div class="mt-4 mb-2">
+                <button
+                    type="button"
+                    class="btn btn-success col-12"
+                    @click="save()"
+                    v-bind:disabled="!isChanged"
+                    data-testid="save"
+                >
+                    <i class="bi bi-save" />
+                    保存
+                </button>
+            </div>
         </div>
     </div>
 </template>
