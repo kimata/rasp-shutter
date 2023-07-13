@@ -9,38 +9,51 @@ from multiprocessing import Queue
 
 from webapp_config import APP_URL_PREFIX
 from webapp_event import notify_event, EVENT_TYPE
-from webapp_log import app_log
+from webapp_log import app_log, APP_LOG_LEVEL
 from flask_util import support_jsonp, auth_user
 import scheduler
+
+WDAY_STR = ["日", "月", "火", "水", "木", "金", "土"]
+
 
 blueprint = Blueprint("rasp-shutter-schedule", __name__, url_prefix=APP_URL_PREFIX)
 
 schedule_lock = threading.Lock()
 schedule_queue = None
-
-WDAY_STR = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
-WDAY_STR_JA = ["日", "月", "火", "水", "木", "金", "土"]
+worker = None
 
 
 def init(config):
+    global worker
     global schedule_queue
+
+    assert worker is None
 
     schedule_queue = Queue()
     scheduler.init()
-    threading.Thread(
+    worker = threading.Thread(
         target=scheduler.schedule_worker,
         args=(
             config,
             schedule_queue,
         ),
-    ).start()
+    )
+    worker.start()
+
+
+def term():
+    global worker
+
+    if worker is None:
+        return
+
+    scheduler.should_terminate = True
+    worker.join()
+    worker = None
 
 
 def wday_str_list(wday_list, lang="en"):
     wday_str = WDAY_STR
-    if lang == "ja":
-        wday_str = WDAY_STR_JA
-
     return map(
         lambda i: wday_str[i], (i for i in range(len(wday_list)) if wday_list[i])
     )
@@ -77,11 +90,18 @@ def api_schedule_ctrl():
     cmd = request.args.get("cmd", None)
     data = request.args.get("data", None)
     if cmd == "set":
+        schedule_data = json.loads(data)
+
+        if not scheduler.schedule_validate(schedule_data):
+            app_log(
+                "😵 スケジュールの指定が不正です．",
+                APP_LOG_LEVEL.ERROR,
+            )
+            return jsonify(scheduler.schedule_load())
+
         with schedule_lock:
             schedule_data = json.loads(data)
-            import logging
 
-            logging.info(schedule_data)
             endpoint = urllib.parse.urljoin(
                 request.url_root,
                 url_for("rasp-shutter-control.api_shutter_ctrl"),

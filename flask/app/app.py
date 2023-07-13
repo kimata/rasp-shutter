@@ -21,22 +21,15 @@ import sys
 import pathlib
 import logging
 import atexit
+import os
 
-if __name__ == "__main__":
-    import os
+sys.path.append(str(pathlib.Path(__file__).parent.parent / "lib"))
+import logger
+from config import load_config
 
-    sys.path.append(str(pathlib.Path(__file__).parent.parent / "lib"))
-    import logger
-    from config import load_config
 
-    args = docopt(__doc__)
-
-    config_file = args["-c"]
-    port = args["-p"]
-    dummy_mode = args["-D"]
-    debug_mode = args["-d"]
-
-    if debug_mode:
+def create_app(config_file, port=5000, dummy_mode=False, debug_mode=False):
+    if debug_mode:  # pragma: no cover
         log_level = logging.DEBUG
     else:
         log_level = logging.INFO
@@ -48,11 +41,8 @@ if __name__ == "__main__":
     # NOTE: オプションでダミーモードが指定された場合，環境変数もそれに揃えておく
     if dummy_mode:
         os.environ["DUMMY_MODE"] = "true"
-    else:
+    else:  # pragma: no cover
         os.environ["DUMMY_MODE"] = "false"
-
-    # NOTE: アクセスログは無効にする
-    logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
     import rasp_shutter_control
     import rasp_shutter_schedule
@@ -63,24 +53,28 @@ if __name__ == "__main__":
     import webapp_log
     import webapp_event
 
+    app = Flask("rasp-shutter")
+
     # NOTE: アクセスログは無効にする
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         if dummy_mode:
             logging.warning("Set dummy mode")
+        else:  # pragma: no cover
+            pass
 
         rasp_shutter_control.init()
         rasp_shutter_schedule.init(config)
         webapp_log.init(config)
 
-        def notify_terminate():
+        def notify_terminate():  # pragma: no cover
             webapp_log.app_log("🏃 アプリを再起動します．")
             webapp_log.term()
 
         atexit.register(notify_terminate)
-
-    app = Flask("rasp-shutter")
+    else:  # pragma: no cover
+        pass
 
     CORS(app)
 
@@ -100,5 +94,19 @@ if __name__ == "__main__":
     app.register_blueprint(webapp_util.blueprint)
 
     # app.debug = True
+
+    return app
+
+
+if __name__ == "__main__":
+    args = docopt(__doc__)
+
+    config_file = args["-c"]
+    port = args["-p"]
+    dummy_mode = args["-D"]
+    debug_mode = args["-d"]
+
+    app = create_app(config_file, port, dummy_mode, debug_mode)
+
     # NOTE: スクリプトの自動リロード停止したい場合は use_reloader=False にする
     app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=True)

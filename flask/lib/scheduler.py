@@ -39,6 +39,14 @@ def init():
     STAT_AUTO_CLOSE.parent.mkdir(parents=True, exist_ok=True)
 
 
+def elapsed_time(exec_hist):
+    diff_sec = time.time()
+    if exec_hist.exists():
+        diff_sec -= exec_hist.stat().st_mtime
+
+    return diff_sec
+
+
 def brightness_text(sense_data, cur_schedule_data):
     text = []
     for sensor in ["solar_rad", "lux"]:
@@ -158,13 +166,7 @@ def shutter_auto_close(config):
     ):
         # NOTE: スケジュールで閉めていた場合は処理しない
         return
-    elif STAT_AUTO_CLOSE.exists() and (
-        (
-            datetime.datetime.now()
-            - datetime.datetime.fromtimestamp(STAT_AUTO_CLOSE.stat().st_mtime)
-        ).total_seconds()
-        <= 12 * 60 * 60
-    ):
+    elif STAT_AUTO_CLOSE.exists() and (elapsed_time(STAT_AUTO_CLOSE) <= 12 * 60 * 60):
         # NOTE: 12時間以内に自動で閉めていた場合は処理しない
         return
 
@@ -201,6 +203,8 @@ def shutter_auto_control(config):
         return shutter_auto_open(config)
     elif (12 < hour) and (hour < 20):
         return shutter_auto_close(config)
+    else:  # pragma: no cover
+        pass
 
 
 def shutter_schedule_control(config, state):
@@ -378,20 +382,25 @@ def schedule_worker(config, queue):
     logging.info("Start schedule worker")
 
     while True:
-        if not queue.empty():
-            schedule_data = queue.get()
-            set_schedule(config, schedule_data)
-            schedule_store(schedule_data)
-
-        schedule.run_pending()
-
         if should_terminate:
             break
 
-        liveness_file.touch()
+        try:
+            if not queue.empty():
+                schedule_data = queue.get()
+                set_schedule(config, schedule_data)
+                schedule_store(schedule_data)
 
-        logging.debug("Sleep {sleep_sec} sec...".format(sleep_sec=sleep_sec))
-        time.sleep(sleep_sec)
+            schedule.run_pending()
+
+            liveness_file.touch()
+
+            logging.debug("Sleep {sleep_sec} sec...".format(sleep_sec=sleep_sec))
+            time.sleep(sleep_sec)
+        except OverflowError:  # pragma: no cover
+            # NOTE: テストする際，freezer 使って日付をいじるとこの例外が発生する
+            logging.debug(traceback.format_exc())
+            pass
 
     logging.info("Terminate schedule worker")
 
