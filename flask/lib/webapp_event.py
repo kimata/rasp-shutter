@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from flask import Blueprint, Response
+from flask import Blueprint, Response, request
 from enum import Enum
 import threading
 import time
 import logging
 import multiprocessing
+import traceback
 
 from webapp_config import APP_URL_PREFIX
 
@@ -30,12 +31,17 @@ def notify_watch_impl(queue):
     logging.info("Start notify watch thread")
 
     while True:
-        while not queue.empty():
-            notify_event(queue.get())
-        time.sleep(0.1)
-
         if is_stop_watch:
             break
+
+        try:
+            while not queue.empty():
+                notify_event(queue.get())
+            time.sleep(0.1)
+        except OverflowError:  # pragma: no cover
+            # NOTE: テストする際，freezer 使って日付をいじるとこの例外が発生する
+            logging.debug(traceback.format_exc())
+            pass
 
     logging.info("Stop notify watch thread")
 
@@ -60,7 +66,7 @@ def event_index(event_type):
         return 1
     elif event_type == EVENT_TYPE.LOG:
         return 2
-    else:
+    else:  # pragma: no cover
         return 3
 
 
@@ -73,20 +79,27 @@ def notify_event(event_type):
 def api_event():
     global event_count
 
+    count = request.args.get("count", 0, type=int)
+
     def event_stream():
         last_count = []
         for i in range(len(event_count)):
             last_count.append(event_count[i])
 
+        i = 0
         while True:
             time.sleep(1)
             for name, event_type in EVENT_TYPE.__members__.items():
-                i = event_index(event_type)
+                index = event_index(event_type)
 
-                if last_count[i] != event_count[i]:
+                if last_count[index] != event_count[index]:
                     logging.debug("notify event: {name}".format(name=event_type.value))
                     yield "data: {}\n\n".format(event_type.value)
-                    last_count[i] = event_count[i]
+                    last_count[index] = event_count[index]
+            i += 1
+
+            if i == count:
+                return
 
     res = Response(event_stream(), mimetype="text/event-stream")
     res.headers.add("Access-Control-Allow-Origin", "*")

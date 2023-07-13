@@ -14,6 +14,7 @@ from webapp_config import APP_URL_PREFIX, LOG_DB_PATH
 from webapp_event import notify_event, EVENT_TYPE
 from flask_util import support_jsonp, gzipped
 import notify_slack
+import traceback
 
 
 class APP_LOG_LEVEL(IntEnum):
@@ -42,6 +43,8 @@ def init(config_):
 
     config = config_
 
+    assert sqlite is None
+
     sqlite = sqlite3.connect(LOG_DB_PATH, check_same_thread=False)
     sqlite.execute(
         "CREATE TABLE IF NOT EXISTS log(id INTEGER primary key autoincrement, date INTEGER, message TEXT)"
@@ -62,9 +65,15 @@ def term():
     global log_thread
     global should_terminate
 
+    if log_thread is None:
+        return
+
     should_terminate = True
+
     log_thread.join()
+    log_thread = None
     sqlite.close()
+    sqlite = None
 
 
 def app_log_impl(message, level):
@@ -90,7 +99,9 @@ def app_log_impl(message, level):
                 config["slack"]["error"]["interval_min"],
             )
 
-        if os.environ.get("DUMMY_MODE", "false") == "true":
+        if (os.environ.get("DUMMY_MODE", "false") == "true") and (
+            os.environ.get("TEST", "false") != "true"
+        ):  # pragma: no cover
             logging.error("This application is terminated because it is in dummy mode.")
             os._exit(-1)
 
@@ -99,13 +110,17 @@ def app_log_worker(log_queue):
     global should_terminate
 
     while True:
-        if not log_queue.empty():
-            log = log_queue.get()
-            app_log_impl(log["message"], log["level"])
         if should_terminate:
             break
 
-        time.sleep(0.2)
+        try:
+            if not log_queue.empty():
+                log = log_queue.get()
+                app_log_impl(log["message"], log["level"])
+        except OverflowError:  # pragma: no cover
+            # NOTE: テストする際，freezer 使って日付をいじるとこの例外が発生する
+            logging.debug(traceback.format_exc())
+            pass
 
 
 def app_log(message, level=APP_LOG_LEVEL.INFO):

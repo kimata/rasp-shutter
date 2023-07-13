@@ -7,7 +7,6 @@ from enum import IntEnum, Enum
 import pathlib
 import logging
 import requests
-import time
 import os
 
 from webapp_config import (
@@ -18,7 +17,7 @@ from webapp_config import (
 )
 from webapp_log import app_log, APP_LOG_LEVEL
 from flask_util import support_jsonp, auth_user
-
+from scheduler import elapsed_time
 
 # この時間内に同じ制御がスケジューラで再度リクエストされた場合，
 # 実行をやめる．
@@ -42,8 +41,6 @@ class CONTROL_MODE(Enum):
 
 blueprint = Blueprint("rasp-shutter-control", __name__, url_prefix=APP_URL_PREFIX)
 
-should_terminate = False
-
 
 def init():
     STAT_EXEC_TMPL["open"].parent.mkdir(parents=True, exist_ok=True)
@@ -51,7 +48,7 @@ def init():
 
 
 def time_str(time_val):
-    if time_val > (60 * 60):
+    if time_val >= (60 * 60):
         unit = ["分", "時間"]
         time_val /= 60
     else:
@@ -127,9 +124,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
     # 開くボタンを押すことが続くと，スイッチがエラーになるので exec_hist を使って
     # 防止する．exec_hist はこれ以外の目的で使わない．
     exec_hist = stat_exec_file(state, index)
-    diff_sec = time.time()
-    if exec_hist.exists():
-        diff_sec -= exec_hist.stat().st_mtime
+    diff_sec = elapsed_time(exec_hist)
 
     # NOTE: 制御間隔が短く，実際には御できなかった場合，ログを残す．
     if mode == CONTROL_MODE.MANUAL:
@@ -162,7 +157,8 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
             )
             return get_shutter_state(config)
     elif mode == CONTROL_MODE.AUTO:
-        if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:
+        if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:  # pragma: no cover
+            # NOTE: shutter_auto_close の段階で撥ねられているので，ここには来ない．
             app_log(
                 (
                     "🔔 自動で{name}のシャッターを{state}るのを見合わせました。"
@@ -175,6 +171,8 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
                 )
             )
             return get_shutter_state(config)
+    else:  # pragma: no cover
+        pass
 
     result = call_shutter_api(config, state)
 
