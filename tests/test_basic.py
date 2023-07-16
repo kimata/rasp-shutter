@@ -573,6 +573,7 @@ def test_schedule_ctrl_invalid(client, mocker):
 
     ctrl_log_check(client, [])
 
+    # NOTE: ログを出し切らせる
     time.sleep(2)
 
 
