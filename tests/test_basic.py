@@ -37,15 +37,7 @@ def app():
 @pytest.fixture()
 def client(app, mocker):
     import slack_sdk
-    import requests
 
-    def request_mock():
-        response = requests.models.Response()
-        response.status_code = 200
-
-        return response
-
-    mocker.patch("requests.get", return_value=request_mock())
     mocker.patch(
         "notify_slack.slack_sdk.web.client.WebClient.chat_postMessage",
         side_effect=slack_sdk.errors.SlackClientError(),
@@ -215,9 +207,25 @@ def test_shutter_ctrl_inconsistent_read(client):
     ctrl_log_check(client, [])
 
 
-def test_valve_ctrl_manual_single_1(client):
+def test_valve_ctrl_manual_single_1(client, mocker):
+    import requests
+
     ctrl_log_clear(client)
     ctrl_stat_clear()
+
+    def request_mock():
+        request_mock.i += 1
+        response = requests.models.Response()
+        if request_mock.i == 1:
+            response.status_code = 500
+        else:
+            response.status_code = 200
+        return response
+
+    request_mock.i = 0
+
+    mocker.patch.dict(os.environ, {"TEST": "false"}, clear=True)
+    mocker.patch("requests.get", return_value=request_mock())
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
