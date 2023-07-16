@@ -1392,6 +1392,18 @@ def test_sensor_fail2(client, mocker):
     response = client.get("/rasp-shutter/api/sensor")
     assert response.status_code == 200
 
+    mocker.patch(
+        "sensor_data.fetch_data",
+        return_value={
+            "valid": True,
+            "value": [0],
+            "time": [datetime.datetime.now(datetime.timezone.utc)],
+        },
+    )
+
+    response = client.get("/rasp-shutter/api/sensor")
+    assert response.status_code == 200
+
 
 def test_log_view(client):
     response = client.get(
