@@ -16,8 +16,8 @@ exclude_lines =
     # sensor_data.py
     def get_equip_on_minutes
     def get_equip_mode_period
-    get_day_sum
-    dump_data
+    def get_day_sum
+    def dump_data
 
     # notify_slack.py
     def info

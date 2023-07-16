@@ -7,6 +7,7 @@ from enum import IntEnum, Enum
 import pathlib
 import logging
 import requests
+import threading
 import os
 
 from webapp_config import (
@@ -17,7 +18,7 @@ from webapp_config import (
 )
 from webapp_log import app_log, APP_LOG_LEVEL
 from flask_util import support_jsonp, auth_user
-from scheduler import elapsed_time
+from scheduler import exec_check_update, exec_check_elapsed_time
 
 # この時間内に同じ制御がスケジューラで再度リクエストされた場合，
 # 実行をやめる．
@@ -41,10 +42,15 @@ class CONTROL_MODE(Enum):
 
 blueprint = Blueprint("rasp-shutter-control", __name__, url_prefix=APP_URL_PREFIX)
 
+control_lock = threading.Lock()
+cmd_hist = []
+
 
 def init():
+    global cmd_hist
     STAT_EXEC_TMPL["open"].parent.mkdir(parents=True, exist_ok=True)
     STAT_EXEC_TMPL["close"].parent.mkdir(parents=True, exist_ok=True)
+    cmd_hist = []
 
 
 def time_str(time_val):
@@ -71,21 +77,37 @@ def time_str(time_val):
         return "{time_val}{unit_0}".format(time_val=time_val, unit_0=unit[0])
 
 
-def call_shutter_api(config, state):
+def call_shutter_api(config, index, state):
+    global cmd_hist
+
+    cmd_hist.append(
+        {
+            "index": index,
+            "state": state,
+        }
+    )
+
     if os.environ["DUMMY_MODE"] == "true":
         return True
 
     result = True
-    for shutter in config["shutter"]:
-        logging.debug("Request {url}".format(url=shutter["endpoint"][state]))
-        if requests.get(shutter["endpoint"][state]).status_code != 200:
-            result = False
+    shutter = config["shutter"][index]
+
+    logging.debug("Request {url}".format(url=shutter["endpoint"][state]))
+    if requests.get(shutter["endpoint"][state]).status_code != 200:
+        result = False
 
     return result
 
 
-def stat_exec_file(state, index):
+def exec_stat_file(state, index):
     return pathlib.Path(str(STAT_EXEC_TMPL[state]).format(index=index))
+
+
+def clean_stat_exec(config):
+    for index in range(len(config["shutter"])):
+        exec_stat_file("open", index).unlink(missing_ok=True)
+        exec_stat_file("close", index).unlink(missing_ok=True)
 
 
 def get_shutter_state(config):
@@ -95,19 +117,19 @@ def get_shutter_state(config):
             "name": shutter["name"],
         }
 
-        stat_exec_open = stat_exec_file("open", index)
-        stat_exec_close = stat_exec_file("close", index)
+        exec_stat_open = exec_stat_file("open", index)
+        exec_stat_close = exec_stat_file("close", index)
 
-        if stat_exec_open.exists():
-            if stat_exec_close.exists():
-                if stat_exec_open.stat().st_mtime > stat_exec_close.stat().st_mtime:
+        if exec_stat_open.exists():
+            if exec_stat_close.exists():
+                if exec_stat_open.stat().st_mtime > exec_stat_close.stat().st_mtime:
                     shutter_state["state"] = SHUTTER_STATE.OPEN
                 else:
                     shutter_state["state"] = SHUTTER_STATE.CLOSE
             else:
                 shutter_state["state"] = SHUTTER_STATE.OPEN
         else:
-            if stat_exec_close.exists():
+            if exec_stat_close.exists():
                 shutter_state["state"] = SHUTTER_STATE.CLOSE
             else:
                 shutter_state["state"] = SHUTTER_STATE.UNKNOWN
@@ -123,8 +145,8 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
     # NOTE: 閉じている場合に再度閉じるボタンをおしたり，逆に開いている場合に再度
     # 開くボタンを押すことが続くと，スイッチがエラーになるので exec_hist を使って
     # 防止する．exec_hist はこれ以外の目的で使わない．
-    exec_hist = stat_exec_file(state, index)
-    diff_sec = elapsed_time(exec_hist)
+    exec_hist = exec_stat_file(state, index)
+    diff_sec = exec_check_elapsed_time(exec_hist)
 
     # NOTE: 制御間隔が短く，実際には御できなかった場合，ログを残す．
     if mode == CONTROL_MODE.MANUAL:
@@ -174,10 +196,10 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
     else:  # pragma: no cover
         pass
 
-    result = call_shutter_api(config, state)
+    result = call_shutter_api(config, index, state)
 
-    exec_hist.touch()
-    exec_inv_hist = stat_exec_file("close" if state == "open" else "open", index)
+    exec_check_update(exec_hist)
+    exec_inv_hist = exec_stat_file("close" if state == "open" else "open", index)
     exec_inv_hist.unlink(missing_ok=True)
 
     if result:
@@ -214,8 +236,9 @@ def set_shutter_state(config, index_list, state, mode, sense_data=None, user="")
         # 暗くて延期されていた開ける制御を取り消す．
         STAT_PENDING_OPEN.unlink(missing_ok=True)
 
-    for index in index_list:
-        set_shutter_state_impl(config, index, state, mode)
+    with control_lock:
+        for index in index_list:
+            set_shutter_state_impl(config, index, state, mode)
 
     return get_shutter_state(config)
 
@@ -258,6 +281,24 @@ def api_shutter_ctrl():
         )
     else:
         return jsonify(dict({"cmd": "get"}, **get_shutter_state(config)))
+
+
+# NOTE: テスト用
+@blueprint.route("/api/ctrl/log", methods=["GET"])
+@support_jsonp
+def api_shutter_ctrl_log():
+    global cmd_hist
+
+    cmd = request.args.get("cmd", "get")
+    if cmd == "clear":
+        cmd_hist = []
+        return jsonify(
+            {
+                "result": "success",
+            }
+        )
+    else:
+        return jsonify({"result": "success", "log": cmd_hist})
 
 
 @blueprint.route("/api/shutter_list", methods=["GET"])
