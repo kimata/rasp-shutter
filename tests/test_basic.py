@@ -1356,7 +1356,6 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, freezer):
     sensor_data_mock.return_value = sensor_data
 
     schedule_data = gen_schedule_data()
-    schedule_data["close"]["time"] = time_str(time_evening(1))
     schedule_data["open"]["is_active"] = False
     response = client.get(
         "/rasp-shutter/api/schedule_ctrl",
@@ -1449,26 +1448,59 @@ def test_sensor_1(client):
 
 
 def test_sensor_2(client, mocker):
-    # mocker.patch("sensor_data.fetch_data", return_value={"valid": False})
+    mocker.patch("sensor_data.fetch_data", return_value={"valid": False})
 
-    # response = client.get("/rasp-shutter/api/sensor")
-    # assert response.status_code == 200
+    response = client.get("/rasp-shutter/api/sensor")
+    assert response.status_code == 200
 
-    # mocker.patch(
-    #     "sensor_data.fetch_data",
-    #     return_value={
-    #         "valid": True,
-    #         "value": [0],
-    #         "time": [datetime.datetime.now(datetime.timezone.utc)],
-    #     },
-    # )
+    mocker.patch(
+        "sensor_data.fetch_data",
+        return_value={
+            "valid": True,
+            "value": [0],
+            "time": [datetime.datetime.now(datetime.timezone.utc)],
+        },
+    )
+
+    response = client.get("/rasp-shutter/api/sensor")
+    assert response.status_code == 200
+
+
+def test_sensor_dummy(client, mocker):
+    # NOTE: 何かがまだ足りない
+    table_entry_mock = mocker.MagicMock()
+    record_list_mock = mocker.MagicMock()
+    record_mock = mocker.MagicMock()
+    query_api_mock = mocker.MagicMock()
+    mocker.patch.object(
+        record_mock,
+        "get_value",
+        return_value=None,
+    )
+    mocker.patch.object(
+        record_mock,
+        "get_time",
+        return_value=datetime.datetime.now(datetime.timezone.utc),
+    )
+    record_list_mock.__iter__.return_value = [record_mock]
+    mocker.patch.object(
+        table_entry_mock,
+        "records",
+        return_value=record_list_mock,
+    )
+    mocker.patch.object(query_api_mock, "query", return_value=[table_entry_mock])
+
+    mocker.patch(
+        "influxdb_client.InfluxDBClient.query_api",
+        return_value=query_api_mock,
+    )
 
     response = client.get("/rasp-shutter/api/sensor")
     assert response.status_code == 200
 
 
 def test_sensor_fail_1(client, mocker):
-    mocker.patch("influxdb_client.InfluxDBClient", side_effect=RuntimeError())
+    mocker.patch("influxdb_client.InfluxDBClient.query_api", side_effect=RuntimeError())
 
     response = client.get("/rasp-shutter/api/sensor")
     assert response.status_code == 200
