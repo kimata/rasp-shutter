@@ -14,7 +14,7 @@ sys.path.append(str(pathlib.Path(__file__).parent.parent / "flask" / "app"))
 
 from app import create_app
 
-CONFIG_FILE = "config.yaml"
+CONFIG_FILE = "config.example.yaml"
 
 
 @pytest.fixture(scope="session")
