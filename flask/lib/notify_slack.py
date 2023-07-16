@@ -61,7 +61,11 @@ def send(token, ch_name, message):
 def split_send(token, ch_name, title, message, formatter=format_simple):
     LINE_SPLIT = 20
 
-    logging.info("Post slack channel: {ch_name}".format(ch_name=ch_name))
+    logging.info(
+        "Post slack ch: {ch_name}, message: {message}".format(
+            ch_name=ch_name, message=message
+        )
+    )
 
     message_lines = message.splitlines()
     for i in range(0, len(message_lines), LINE_SPLIT):

@@ -39,10 +39,18 @@ def init():
     STAT_AUTO_CLOSE.parent.mkdir(parents=True, exist_ok=True)
 
 
-def elapsed_time(exec_hist):
+# NOTE: feeezer でテストしやすくするため，ファイルの mtime ではなく，
+# epoch time を書き込んでそれを使う．
+def exec_check_update(check_file):
+    with open(check_file, mode="w") as f:
+        f.write(str(time.time()))
+
+
+def exec_check_elapsed_time(check_file):
     diff_sec = time.time()
-    if exec_hist.exists():
-        diff_sec -= exec_hist.stat().st_mtime
+    if check_file.exists():
+        with open(check_file) as f:
+            diff_sec -= float(f.read())
 
     return diff_sec
 
@@ -123,11 +131,7 @@ def shutter_auto_open(config):
         return
 
     if (not STAT_PENDING_OPEN.exists()) or (
-        (
-            datetime.datetime.now()
-            - datetime.datetime.fromtimestamp(STAT_PENDING_OPEN.stat().st_mtime)
-        ).total_seconds()
-        > 12 * 60 * 60
+        exec_check_elapsed_time(STAT_PENDING_OPEN) > 12 * 60 * 60
     ):
         # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない．
         return
@@ -166,7 +170,9 @@ def shutter_auto_close(config):
     ):
         # NOTE: スケジュールで閉めていた場合は処理しない
         return
-    elif STAT_AUTO_CLOSE.exists() and (elapsed_time(STAT_AUTO_CLOSE) <= 12 * 60 * 60):
+    elif STAT_AUTO_CLOSE.exists() and (
+        exec_check_elapsed_time(STAT_AUTO_CLOSE) <= 12 * 60 * 60
+    ):
         # NOTE: 12時間以内に自動で閉めていた場合は処理しない
         return
 
@@ -185,8 +191,9 @@ def shutter_auto_close(config):
             sense_data,
             "sensor",
         )
-        STAT_AUTO_CLOSE.touch()
-    else:
+        exec_check_update(STAT_AUTO_CLOSE)
+    else:  # pragma: no cover
+        # NOTE: pending close の制御は無いのでここには来ない．
         logging.debug(
             "Skip pendding close (solar_rad: {solar_rad:.1f} W/m^2, lux: {lux:.1f} LUX)".format(
                 solar_rad=sense_data["solar_rad"]["value"],
@@ -236,8 +243,15 @@ def shutter_schedule_control(config, state):
                     sensor_text=rasp_shutter_control.sensor_text(sense_data)
                 )
             )
+            rasp_shutter_control.cmd_hist.append(
+                {
+                    "cmd": "pending",
+                    "state": state,
+                }
+            )
+
             # NOTE: 暗いので開けれなかったことを通知
-            STAT_PENDING_OPEN.touch()
+            exec_check_update(STAT_PENDING_OPEN)
         else:
             # NOTE: ここにきたときのみ，スケジュールに従って開ける
             exec_shutter_control(
@@ -260,24 +274,52 @@ def shutter_schedule_control(config, state):
 
 def schedule_validate(schedule_data):
     if len(schedule_data) != 2:
+        logging.warning(
+            "Count of entry is Invalid: {count}".format(count=len(schedule_data))
+        )
         return False
 
     for name, entry in schedule_data.items():
         for key in ["is_active", "time", "wday", "solar_rad", "lux"]:
             if key not in entry:
+                logging.warning("Does not contain {key}".format(key=key))
                 return False
         if type(entry["is_active"]) != bool:
+            logging.warning(
+                "Type of is_active is invalid: {type}".format(
+                    type=type(entry["is_active"])
+                )
+            )
             return False
         if type(entry["lux"]) != int:
+            logging.warning(
+                "Type of lux is invalid: {type}".format(type=type(entry["is_active"]))
+            )
             return False
         if type(entry["solar_rad"]) != int:
+            logging.warning(
+                "Type of solar_rad is invalid: {type}".format(
+                    type=type(entry["is_active"])
+                )
+            )
             return False
         if not re.compile(r"\d{2}:\d{2}").search(entry["time"]):
+            logging.warning(
+                "Format of time is invalid: {time}".format(time=entry["time"])
+            )
             return False
         if len(entry["wday"]) != 7:
+            logging.warning(
+                "Count of wday is Invalid: {count}".format(count=len(entry["wday"]))
+            )
             return False
-        for wday_flag in entry["wday"]:
+        for i, wday_flag in enumerate(entry["wday"]):
             if type(wday_flag) != bool:
+                logging.warning(
+                    "Type of wday[{i}] is Invalid: {type}".format(
+                        i=i, type=type(entry["wday"][i])
+                    )
+                )
                 return False
     return True
 
@@ -369,7 +411,7 @@ def schedule_worker(config, queue):
     global should_terminate
     global schedule_data
 
-    sleep_sec = 1
+    sleep_sec = 0.4
 
     liveness_file = pathlib.Path(config["liveness"]["file"]["scheduler"])
     liveness_file.parent.mkdir(parents=True, exist_ok=True)
@@ -396,11 +438,11 @@ def schedule_worker(config, queue):
             liveness_file.touch()
 
             logging.debug("Sleep {sleep_sec} sec...".format(sleep_sec=sleep_sec))
-            time.sleep(sleep_sec)
         except OverflowError:  # pragma: no cover
             # NOTE: テストする際，freezer 使って日付をいじるとこの例外が発生する
             logging.debug(traceback.format_exc())
             pass
+        time.sleep(sleep_sec)
 
     logging.info("Terminate schedule worker")
 

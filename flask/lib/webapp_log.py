@@ -109,6 +109,8 @@ def app_log_impl(message, level):
 def app_log_worker(log_queue):
     global should_terminate
 
+    sleep_sec = 0.4
+
     while True:
         if should_terminate:
             break
@@ -121,6 +123,7 @@ def app_log_worker(log_queue):
             # NOTE: テストする際，freezer 使って日付をいじるとこの例外が発生する
             logging.debug(traceback.format_exc())
             pass
+        time.sleep(sleep_sec)
 
 
 def app_log(message, level=APP_LOG_LEVEL.INFO):
