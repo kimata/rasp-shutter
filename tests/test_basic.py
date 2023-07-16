@@ -208,25 +208,8 @@ def test_shutter_ctrl_inconsistent_read(client):
 
 
 def test_valve_ctrl_manual_single_1(client, mocker):
-    import requests
-
     ctrl_log_clear(client)
     ctrl_stat_clear()
-
-    # NOTE: このテストだけは，制御の止め方を変える
-    def request_mock():
-        request_mock.i += 1
-        response = requests.models.Response()
-        if request_mock.i == 1:
-            response.status_code = 500
-        else:
-            response.status_code = 200
-        return response
-
-    request_mock.i = 0
-
-    mocker.patch.dict(os.environ, {"DUMMY_MODE": "false"}, clear=True)
-    mocker.patch("requests.get", return_value=request_mock())
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -425,25 +408,71 @@ def test_valve_ctrl_manual_all(client):
 
 
 def test_valve_ctrl_manual_single_fail(client, mocker):
+    import requests
+    import notify_slack
+
     ctrl_log_clear(client)
     ctrl_stat_clear()
+    notify_slack.clear_interval()
 
-    mocker.patch(
-        "rasp_shutter_control.call_shutter_api",
-        return_value=False,
-    )
+    # NOTE: このテストだけは，制御の止め方を変える
+    def request_mock(url):
+        request_mock.i += 1
+        response = requests.models.Response()
+        if request_mock.i == 1:
+            response.status_code = 500
+        else:
+            response.status_code = 200
+        return response
+
+    request_mock.i = 0
+
+    mocker.patch.dict(os.environ, {"DUMMY_MODE": "false"}, clear=True)
+    mocker.patch("rasp_shutter_control.requests.get", side_effect=request_mock)
+
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
         query_string={
             "cmd": 1,
-            "index": 0,
+            "index": 1,
             "state": "open",
         },
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    ctrl_log_check(client, [])
+    time.sleep(0.6)
+
+    ctrl_log_check(
+        client,
+        [
+            {"index": 1, "state": "open"},
+        ],
+    )
+
+    response = client.get(
+        "/rasp-shutter/api/shutter_ctrl",
+        query_string={
+            "cmd": 1,
+            "index": 1,
+            "state": "close",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json["result"] == "success"
+
+    time.sleep(0.6)
+
+    ctrl_log_check(
+        client,
+        [
+            {"index": 1, "state": "open"},
+            {"index": 1, "state": "close"},
+        ],
+    )
+
+    # NOTE: ログを出し切らせる
+    time.sleep(2)
 
 
 def test_event(client):
@@ -468,6 +497,7 @@ def test_schedule_ctrl_inactive(client, freezer):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
+    time.sleep(0.6)
 
     freezer.move_to(time_morning(1))
     time.sleep(0.6)
@@ -496,6 +526,7 @@ def test_schedule_ctrl_inactive(client, freezer):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
+    time.sleep(0.6)
 
     freezer.move_to(time_morning(1))
     time.sleep(0.6)
@@ -1186,6 +1217,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
+    time.sleep(0.6)
 
     freezer.move_to(time_evening(1))
     time.sleep(0.6)
