@@ -37,7 +37,15 @@ def app():
 @pytest.fixture()
 def client(app, mocker):
     import slack_sdk
+    import requests
 
+    def request_mock():
+        response = requests.models.Response()
+        response.status_code = 200
+
+        return response
+
+    mocker.patch("requests.get", return_value=request_mock())
     mocker.patch(
         "notify_slack.slack_sdk.web.client.WebClient.chat_postMessage",
         side_effect=slack_sdk.errors.SlackClientError(),
