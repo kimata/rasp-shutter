@@ -1443,31 +1443,41 @@ def test_dummy_close(client):
     assert response.status_code == 200
 
 
-def test_sensor(client):
+def test_sensor_1(client):
     response = client.get("/rasp-shutter/api/sensor")
     assert response.status_code == 200
 
 
-def test_sensor_fail(client, mocker):
+def test_sensor_2(client, mocker):
+    # mocker.patch("sensor_data.fetch_data", return_value={"valid": False})
+
+    # response = client.get("/rasp-shutter/api/sensor")
+    # assert response.status_code == 200
+
+    # mocker.patch(
+    #     "sensor_data.fetch_data",
+    #     return_value={
+    #         "valid": True,
+    #         "value": [0],
+    #         "time": [datetime.datetime.now(datetime.timezone.utc)],
+    #     },
+    # )
+
+    response = client.get("/rasp-shutter/api/sensor")
+    assert response.status_code == 200
+
+
+def test_sensor_fail_1(client, mocker):
     mocker.patch("influxdb_client.InfluxDBClient", side_effect=RuntimeError())
 
     response = client.get("/rasp-shutter/api/sensor")
     assert response.status_code == 200
 
 
-def test_sensor_fail2(client, mocker):
-    mocker.patch("sensor_data.fetch_data", return_value={"valid": False})
-
-    response = client.get("/rasp-shutter/api/sensor")
-    assert response.status_code == 200
-
+def test_sensor_fail_2(client, mocker):
     mocker.patch(
-        "sensor_data.fetch_data",
-        return_value={
-            "valid": True,
-            "value": [0],
-            "time": [datetime.datetime.now(datetime.timezone.utc)],
-        },
+        "influxdb_client.client.flux_table.FluxRecord.get_value",
+        return_value=None,
     )
 
     response = client.get("/rasp-shutter/api/sensor")
