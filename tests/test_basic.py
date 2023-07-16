@@ -213,6 +213,7 @@ def test_valve_ctrl_manual_single_1(client, mocker):
     ctrl_log_clear(client)
     ctrl_stat_clear()
 
+    # NOTE: このテストだけは，制御の止め方を変える
     def request_mock():
         request_mock.i += 1
         response = requests.models.Response()
@@ -224,7 +225,7 @@ def test_valve_ctrl_manual_single_1(client, mocker):
 
     request_mock.i = 0
 
-    mocker.patch.dict(os.environ, {"TEST": "false"}, clear=True)
+    mocker.patch.dict(os.environ, {"DUMMY_MODE": "false"}, clear=True)
     mocker.patch("requests.get", return_value=request_mock())
 
     response = client.get(
