@@ -2,3 +2,4 @@ influxdb-client[ciso]
 slack_sdk
 pytest-freezegun
 pytest-html
+py-xml
