@@ -87,9 +87,7 @@ def call_shutter_api(config, index, state):
         }
     )
 
-    if (os.environ.get("DUMMY_MODE", "false") == "true") and (
-        os.environ.get("TEST", "false") == "true"
-    ):
+    if os.environ.get("DUMMY_MODE", "false") == "true":
         return True
 
     result = True

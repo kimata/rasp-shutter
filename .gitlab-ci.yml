@@ -61,8 +61,9 @@ test-flask:
         - mv hems_config/rasp-shutter.yaml config.yaml
         - apt-get install -y curl
         - curl -sSL https://install.python-poetry.org | python3 -
-        - $HOME/.poetry/bin/poetry install --no-interaction
-        - $HOME/.poetry/bin/poetry run pytest --verbose --cov=flask --cov-config=.coveragerc --cov-branch --cov-report=html
+        - export PATH="/root/.local/bin:$PATH"
+        - poetry install --no-interaction
+        - poetry run pytest --verbose --cov=flask --cov-config=.coveragerc --cov-branch --cov-report=html
           --html=tests/evidence/index.htm --self-contained-html tests/test_basic.py
 
     artifacts:
