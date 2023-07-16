@@ -1468,28 +1468,31 @@ def test_sensor_2(client, mocker):
 
 def test_sensor_dummy(client, mocker):
     # NOTE: 何かがまだ足りない
+    def value_mock():
+        value_mock.i += 1
+        if value_mock.i == 1:
+            return None
+        else:
+            return 1
+
+    value_mock.i = 0
+
     table_entry_mock = mocker.MagicMock()
-    record_list_mock = mocker.MagicMock()
     record_mock = mocker.MagicMock()
     query_api_mock = mocker.MagicMock()
     mocker.patch.object(
         record_mock,
         "get_value",
-        return_value=None,
+        side_effect=value_mock,
     )
     mocker.patch.object(
         record_mock,
         "get_time",
         return_value=datetime.datetime.now(datetime.timezone.utc),
     )
-    record_list_mock.__iter__.return_value = [record_mock]
-    mocker.patch.object(
-        table_entry_mock,
-        "records",
-        return_value=record_list_mock,
-    )
-    mocker.patch.object(query_api_mock, "query", return_value=[table_entry_mock])
-
+    table_entry_mock.__iter__.return_value = [record_mock, record_mock]
+    type(table_entry_mock).records = table_entry_mock
+    query_api_mock.query.return_value = [table_entry_mock]
     mocker.patch(
         "influxdb_client.InfluxDBClient.query_api",
         return_value=query_api_mock,
