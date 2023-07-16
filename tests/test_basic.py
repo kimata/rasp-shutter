@@ -1313,26 +1313,25 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
-    freezer.move_to(time_evening(0))
+    freezer.move_to(time_morning(0))
     time.sleep(0.6)
 
-    sensor_data = SENSOR_DATA_DARK.copy()
+    sensor_data = SENSOR_DATA_BRIGHT.copy()
     sensor_data["lux"] = {"valid": False, "value": 5000}
     sensor_data_mock.return_value = sensor_data
 
     schedule_data = gen_schedule_data()
-    schedule_data["close"]["time"] = time_str(time_evening(1))
-    schedule_data["open"]["is_active"] = False
+    schedule_data["close"]["is_active"] = False
     response = client.get(
         "/rasp-shutter/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
 
-    freezer.move_to(time_evening(1))
+    freezer.move_to(time_morning(1))
     time.sleep(0.6)
 
-    freezer.move_to(time_evening(2))
+    freezer.move_to(time_morning(2))
     time.sleep(0.6)
 
     ctrl_log_check(
@@ -1348,25 +1347,26 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, freezer):
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
-    freezer.move_to(time_evening(0))
+    freezer.move_to(time_morning(0))
     time.sleep(0.6)
 
-    sensor_data = SENSOR_DATA_DARK.copy()
+    sensor_data = SENSOR_DATA_BRIGHT.copy()
     sensor_data["solar_rad"] = {"valid": False, "value": 5000}
     sensor_data_mock.return_value = sensor_data
 
     schedule_data = gen_schedule_data()
-    schedule_data["open"]["is_active"] = False
+    schedule_data["close"]["is_active"] = False
     response = client.get(
         "/rasp-shutter/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-
-    freezer.move_to(time_evening(1))
     time.sleep(0.6)
 
-    freezer.move_to(time_evening(2))
+    freezer.move_to(time_morning(1))
+    time.sleep(0.6)
+
+    freezer.move_to(time_morning(2))
     time.sleep(0.6)
 
     ctrl_log_check(client, [])
