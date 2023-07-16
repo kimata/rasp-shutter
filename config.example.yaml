@@ -14,6 +14,17 @@ sensor:
         measure: sensor.rasp
         hostname: rasp-storeroom
 
+slack:
+    bot_token: xoxb-000000000000-0000000000000-000000000000000000000000
+
+    from: Shutter
+
+    error:
+        channel:
+            name: "#error"
+            id: 00000000000
+        interval_min: 180
+
 liveness:
     file:
         scheduler: /dev/shm/rasp-water/liveness/scheduler
