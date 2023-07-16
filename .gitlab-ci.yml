@@ -59,9 +59,10 @@ test-flask:
         - export GIT_SSL_NO_VERIFY=1
         - git clone https://gitlab.green-rabbit.net/kimata/hems_config.git
         - mv hems_config/rasp-shutter.yaml config.yaml
+        - apt-get install -y curl
         - curl -sSL https://install.python-poetry.org | python3 -
         - $HOME/.poetry/bin/poetry install --no-interaction
-        - $HOME/.poetry/bin/poetry run pytest --cov=flask --cov-config=.coveragerc --cov-branch --cov-report=html
+        - $HOME/.poetry/bin/poetry run pytest --verbose --cov=flask --cov-config=.coveragerc --cov-branch --cov-report=html
           --html=tests/evidence/index.htm --self-contained-html tests/test_basic.py
 
     artifacts:
