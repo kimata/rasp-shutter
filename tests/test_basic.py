@@ -1175,6 +1175,9 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
     freezer.move_to(time_evening(2))
     time.sleep(0.6)
 
+    freezer.move_to(time_evening(3))
+    time.sleep(0.6)
+
     ctrl_log_check(
         client,
         [
