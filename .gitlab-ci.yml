@@ -63,7 +63,7 @@ test-flask:
           python3-schedule python3-fluent-logger python3-coloredlogs python3-docopt
           python3-psutil python3-pytest-cov python3-pytest-mock python3-pip
         - pip install -r requirements.txt
-        - python3 -m --cov=flask --cov-config=.coveragerc
+        - python3 -m pytest --cov=flask --cov-config=.coveragerc
           --cov-branch --cov-report=html --capture=no --html=tests/evidence/index.htm --self-contained-html tests/test_basic.py
 
     artifacts:
