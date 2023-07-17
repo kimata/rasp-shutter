@@ -243,7 +243,8 @@ def shutter_schedule_control(config, state):
                     sensor_text=rasp_shutter_control.sensor_text(sense_data)
                 )
             )
-            rasp_shutter_control.cmd_hist.append(
+
+            rasp_shutter_control.cmd_hist_push(
                 {
                     "cmd": "pending",
                     "state": state,

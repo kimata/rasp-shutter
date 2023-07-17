@@ -80,7 +80,7 @@ def time_str(time_val):
 def call_shutter_api(config, index, state):
     global cmd_hist
 
-    cmd_hist.append(
+    cmd_hist_push(
         {
             "index": index,
             "state": state,
@@ -250,6 +250,13 @@ def sensor_text(sense_data):
         return "(日射: {solar_rad:.1f} W/m^2, 照度: {lux:.1f} LUX)".format(
             solar_rad=sense_data["solar_rad"]["value"], lux=sense_data["lux"]["value"]
         )
+
+
+def cmd_hist_push(cmd):
+    global cmd_hist
+
+    if os.environ.get("TEST", "false") == "true":
+        cmd_hist.append(cmd)
 
 
 @blueprint.route("/api/shutter_ctrl", methods=["GET", "POST"])
