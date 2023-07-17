@@ -19,12 +19,12 @@ CONFIG_FILE = "config.example.yaml"
 
 @pytest.fixture(scope="session")
 def app():
+    os.environ["TEST"] = "true"
+    os.environ["WERKZEUG_RUN_MAIN"] = "true"
+
     import webapp_config
 
     webapp_config.SCHEDULE_DATA_PATH.unlink(missing_ok=True)
-
-    os.environ["TEST"] = "true"
-    os.environ["WERKZEUG_RUN_MAIN"] = "true"
 
     app = create_app(CONFIG_FILE, dummy_mode=True)
 
