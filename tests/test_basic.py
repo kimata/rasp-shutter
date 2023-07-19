@@ -165,16 +165,16 @@ def test_shutter_ctrl_read(client):
 
 
 def test_shutter_ctrl_inconsistent_read(client):
-    import scheduler
+    import app_scheduler
     import rasp_shutter_control
 
     ctrl_log_clear(client)
 
     # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (close が後)
     ctrl_stat_clear()
-    scheduler.exec_check_update(rasp_shutter_control.exec_stat_file("open", 0))
+    app_scheduler.exec_check_update(rasp_shutter_control.exec_stat_file("open", 0))
     time.sleep(0.1)
-    scheduler.exec_check_update(rasp_shutter_control.exec_stat_file("close", 0))
+    app_scheduler.exec_check_update(rasp_shutter_control.exec_stat_file("close", 0))
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -190,9 +190,9 @@ def test_shutter_ctrl_inconsistent_read(client):
 
     # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (open が後)
     ctrl_stat_clear()
-    scheduler.exec_check_update(rasp_shutter_control.exec_stat_file("close", 1))
+    app_scheduler.exec_check_update(rasp_shutter_control.exec_stat_file("close", 1))
     time.sleep(0.1)
-    scheduler.exec_check_update(rasp_shutter_control.exec_stat_file("open", 1))
+    app_scheduler.exec_check_update(rasp_shutter_control.exec_stat_file("open", 1))
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1208,7 +1208,7 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
     ctrl_log_clear(client)
     ctrl_stat_clear()
 
-    mocker.patch("scheduler.exec_shutter_control_impl", return_value=False)
+    mocker.patch("app_scheduler.exec_shutter_control_impl", return_value=False)
     mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
 
     response = client.get(
@@ -1276,7 +1276,8 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
     )
 
     mocker.patch(
-        "scheduler.rasp_shutter_control.set_shutter_state", side_effect=RuntimeError()
+        "app_scheduler.rasp_shutter_control.set_shutter_state",
+        side_effect=RuntimeError(),
     )
 
     schedule_data = gen_schedule_data()
@@ -1420,7 +1421,7 @@ def test_schedule_ctrl_write_fail(client, mocker):
 
 
 def test_schedule_ctrl_validate_fail(client, mocker):
-    mocker.patch("scheduler.schedule_validate", return_value=False)
+    mocker.patch("app_scheduler.schedule_validate", return_value=False)
 
     response = client.get("/rasp-shutter/api/schedule_ctrl")
     assert response.status_code == 200
