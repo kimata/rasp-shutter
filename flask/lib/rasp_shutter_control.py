@@ -18,7 +18,7 @@ from webapp_config import (
 )
 from webapp_log import app_log, APP_LOG_LEVEL
 from flask_util import support_jsonp, auth_user
-from scheduler import exec_check_update, exec_check_elapsed_time
+from app_scheduler import exec_check_update, exec_check_elapsed_time
 
 # この時間内に同じ制御がスケジューラで再度リクエストされた場合，
 # 実行をやめる．
