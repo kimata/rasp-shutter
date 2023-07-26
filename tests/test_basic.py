@@ -28,20 +28,18 @@ def slack_mock():
 
 
 @pytest.fixture(scope="session")
-def app(mocker):
-    mocker.patch.dict("os.environ", {"TEST": "true"})
-    mocker.patch.dict("os.environ", {"WERKZEUG_RUN_MAIN": "true"})
+def app():
+    with mock.patch.dict("os.environ", {"TEST": "true", "WERKZEUG_RUN_MAIN": "true"}):
+        import webapp_config
 
-    import webapp_config
+        webapp_config.SCHEDULE_DATA_PATH.unlink(missing_ok=True)
 
-    webapp_config.SCHEDULE_DATA_PATH.unlink(missing_ok=True)
+        app = create_app(CONFIG_FILE, dummy_mode=True)
 
-    app = create_app(CONFIG_FILE, dummy_mode=True)
+        yield app
 
-    yield app
-
-    # NOTE: 特定のテストのみ実行したときのため，ここでも呼ぶ
-    test_terminate()
+        # NOTE: 特定のテストのみ実行したときのため，ここでも呼ぶ
+        test_terminate()
 
 
 @pytest.fixture()
