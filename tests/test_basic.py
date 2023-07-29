@@ -18,7 +18,7 @@ from app import create_app
 CONFIG_FILE = "config.example.yaml"
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def env_mock():
     with mock.patch.dict(
         "os.environ",
