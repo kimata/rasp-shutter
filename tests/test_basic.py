@@ -853,6 +853,80 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
     )
 
 
+def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
+    ctrl_log_clear(client)
+    ctrl_stat_clear()
+
+    sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
+
+    response = client.get(
+        "/rasp-shutter/api/shutter_ctrl",
+        query_string={
+            "cmd": 1,
+            "state": "close",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json["result"] == "success"
+
+    sensor_data_mock.return_value = SENSOR_DATA_DARK
+
+    schedule_data = gen_schedule_data()
+    schedule_data["open"]["time"] = time_str(time_morning(2))
+    response = client.get(
+        "/rasp-shutter/api/schedule_ctrl",
+        query_string={"cmd": "set", "data": json.dumps(schedule_data)},
+    )
+    assert response.status_code == 200
+
+    ctrl_log_check(
+        client,
+        [
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+        ],
+    )
+
+    freezer.move_to(time_morning(1))
+    time.sleep(0.6)
+
+    freezer.move_to(time_morning(2))
+    time.sleep(0.6)
+
+    freezer.move_to(time_morning(3))
+    time.sleep(0.6)
+
+    sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
+
+    freezer.move_to(time_morning(4))
+    time.sleep(0.6)
+
+    sensor_data_mock.return_value = SENSOR_DATA_DARK
+
+    freezer.move_to(time_morning(5))
+    time.sleep(0.6)
+
+    sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
+
+    freezer.move_to(time_morning(6))
+    time.sleep(0.6)
+
+    ctrl_log_check(
+        client,
+        [
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+            {"cmd": "pending", "state": "open"},
+            {"index": 0, "state": "open"},
+            {"index": 1, "state": "open"},
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+            {"index": 0, "state": "open"},
+            {"index": 1, "state": "open"},
+        ],
+    )
+
+
 def test_schedule_ctrl_auto_inactive(client, freezer):
     ctrl_log_clear(client)
     ctrl_stat_clear()

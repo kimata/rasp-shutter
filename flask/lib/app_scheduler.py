@@ -148,6 +148,7 @@ def shutter_auto_open(config):
             config, "open", rasp_shutter_control.CONTROL_MODE.AUTO, sense_data, "sensor"
         )
         STAT_PENDING_OPEN.unlink(missing_ok=True)
+        STAT_AUTO_CLOSE.unlink(missing_ok=True)
     else:
         logging.debug(
             "Skip pendding open (solar_rad: {solar_rad:.1f} W/m^2, lux: {lux:.1f} LUX)".format(
@@ -157,15 +158,24 @@ def shutter_auto_open(config):
         )
 
 
+def conv_schedule_time_to_datetime(schedule_time):
+    return datetime.datetime.strptime(
+        datetime.datetime.now().strftime("%Y/%m/%d ") + schedule_time,
+        "%Y/%m/%d %H:%M",
+    )
+
+
 def shutter_auto_close(config):
     if not schedule_data["close"]["is_active"]:
         return
     elif (
-        datetime.datetime.strptime(
-            datetime.datetime.now().strftime("%Y/%m/%d ")
-            + schedule_data["close"]["time"],
-            "%Y/%m/%d %H:%M",
-        )
+        datetime.datetime.now()
+        < conv_schedule_time_to_datetime(schedule_data["open"]["time"])
+    ) or STAT_PENDING_OPEN.exists():
+        # NOTE: 開ける時刻よりも早い場合は処理しない
+        return
+    elif (
+        conv_schedule_time_to_datetime(schedule_data["close"]["time"])
         < datetime.datetime.now()
     ):
         # NOTE: スケジュールで閉めていた場合は処理しない
@@ -192,6 +202,12 @@ def shutter_auto_close(config):
             "sensor",
         )
         exec_check_update(STAT_AUTO_CLOSE)
+
+        # NOTE: まだ明るくなる可能性がある時間帯の場合，再度自動的に開けるようにする
+        hour = datetime.datetime.now().hour
+        if (5 < hour) and (hour < 13):
+            exec_check_update(STAT_PENDING_OPEN)
+
     else:  # pragma: no cover
         # NOTE: pending close の制御は無いのでここには来ない．
         logging.debug(
@@ -207,11 +223,10 @@ def shutter_auto_control(config):
 
     # NOTE: 時間帯によって自動制御の内容を分ける
     if (5 < hour) and (hour < 12):
-        return shutter_auto_open(config)
-    elif (12 < hour) and (hour < 20):
-        return shutter_auto_close(config)
-    else:  # pragma: no cover
-        pass
+        shutter_auto_open(config)
+
+    if (5 < hour) and (hour < 20):
+        shutter_auto_close(config)
 
 
 def shutter_schedule_control(config, state):
