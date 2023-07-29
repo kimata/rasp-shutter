@@ -255,7 +255,7 @@ def cmd_hist_push(cmd):  # pragma: no cover
     global cmd_hist
 
     cmd_hist.append(cmd)
-    if len(cmd_hist) > 10:
+    if len(cmd_hist) > 20:
         cmd_hist.pop(0)
 
 

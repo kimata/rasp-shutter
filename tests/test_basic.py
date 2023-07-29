@@ -923,6 +923,12 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
     freezer.move_to(time_morning(6))
     time.sleep(0.6)
 
+    freezer.move_to(time_evening(1))
+    time.sleep(0.6)
+
+    freezer.move_to(time_evening(2))
+    time.sleep(0.6)
+
     ctrl_log_check(
         client,
         [
@@ -935,6 +941,8 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
             {"index": 1, "state": "close"},
             {"index": 0, "state": "open"},
             {"index": 1, "state": "open"},
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
         ],
     )
 
