@@ -10,10 +10,10 @@
     "dependencies": {
         "@vue/compat": "^3.1.0",
         "axios": "1.4.0",
-        "bootstrap": "5.3.0",
+        "bootstrap": "5.3.1",
         "bootstrap-icons": "^1.10.5",
         "bootstrap-vue": "2.23.1",
-        "core-js": "3.31.1",
+        "core-js": "3.32.0",
         "eslint-plugin-cypress": "^2.13.3",
         "moment": "2.29.4",
         "moment-timezone": "^0.5.43",
@@ -21,14 +21,14 @@
         "vue-toast-notification": "^3.1.1"
     },
     "devDependencies": {
-        "@babel/core": "7.22.8",
-        "@babel/eslint-parser": "7.22.7",
+        "@babel/core": "7.22.9",
+        "@babel/eslint-parser": "7.22.9",
         "@vue/cli-plugin-babel": "5.0.8",
         "@vue/cli-plugin-eslint": "5.0.8",
         "@vue/cli-service": "5.0.8",
         "@vue/compiler-sfc": "^3.1.0",
-        "cypress": "12.17.0",
-        "eslint": "8.44.0",
+        "cypress": "12.17.2",
+        "eslint": "8.46.0",
         "eslint-plugin-vue": "9.15.1"
     },
     "eslintConfig": {
