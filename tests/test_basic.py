@@ -18,6 +18,18 @@ from app import create_app
 CONFIG_FILE = "config.example.yaml"
 
 
+@pytest.fixture(scope="function", autouse=True)
+def env_mock():
+    with mock.patch.dict(
+        "os.environ",
+        {
+            "TEST": "true",
+            "NO_COLORED_LOGS": "true",
+        },
+    ) as fixture:
+        yield fixture
+
+
 @pytest.fixture(scope="session", autouse=True)
 def slack_mock():
     with mock.patch(
@@ -29,7 +41,7 @@ def slack_mock():
 
 @pytest.fixture(scope="session")
 def app():
-    with mock.patch.dict("os.environ", {"TEST": "true", "WERKZEUG_RUN_MAIN": "true"}):
+    with mock.patch.dict("os.environ", {"WERKZEUG_RUN_MAIN": "true"}):
         import webapp_config
 
         webapp_config.SCHEDULE_DATA_PATH.unlink(missing_ok=True)
