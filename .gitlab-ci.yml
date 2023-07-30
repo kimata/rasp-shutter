@@ -54,7 +54,7 @@ test-flask:
     dependencies:
         - build-vue
 
-    image: registry.green-rabbit.net:5000/kimata/local_playwright:230623A
+    image: registry.green-rabbit.net:5000/kimata/local_playwright:01323795
     script:
         - export GIT_SSL_NO_VERIFY=1
         - git clone https://gitlab.green-rabbit.net/kimata/hems_config.git
@@ -80,7 +80,7 @@ test-playwright:
     dependencies:
         - build-vue
 
-    image: registry.green-rabbit.net:5000/kimata/local_playwright:230623A
+    image: registry.green-rabbit.net:5000/kimata/local_playwright:01323795
     script:
         - export GIT_SSL_NO_VERIFY=1
         - git clone https://gitlab.green-rabbit.net/kimata/hems_config.git
@@ -103,7 +103,7 @@ test-playwright-docker:
     stage: test
     needs: ["build-image"]
 
-    image: registry.green-rabbit.net:5000/kimata/local_playwright:230623A
+    image: registry.green-rabbit.net:5000/kimata/local_playwright:01323795
 
     script:
         # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
@@ -126,7 +126,7 @@ test-playwright-docker-demo:
     stage: test
     needs: ["build-image"]
 
-    image: registry.green-rabbit.net:5000/kimata/local_playwright:230623A
+    image: registry.green-rabbit.net:5000/kimata/local_playwright:01323795
 
     script:
         # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
