@@ -48,6 +48,9 @@ def exec_check_update(check_file):
 
 def exec_check_elapsed_time(check_file):
     diff_sec = time.time()
+    if not check_file.exists():
+        return diff_sec
+
     if check_file.exists():
         with open(check_file) as f:
             diff_sec -= float(f.read())
@@ -130,10 +133,12 @@ def shutter_auto_open(config):
     if not schedule_data["open"]["is_active"]:
         return
 
-    if (not STAT_PENDING_OPEN.exists()) or (
-        exec_check_elapsed_time(STAT_PENDING_OPEN) > 12 * 60 * 60
-    ):
+    if exec_check_elapsed_time(STAT_PENDING_OPEN) > 6 * 60 * 60:
         # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない．
+        return
+
+    if exec_check_elapsed_time(STAT_AUTO_CLOSE) < 10 * 60:
+        # NOTE: 自動で閉めてから時間が経っていない場合は，処理を行わない．
         return
 
     sense_data = rasp_shutter_sensor.get_sensor_data(config)
