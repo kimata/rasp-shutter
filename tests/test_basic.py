@@ -927,14 +927,14 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
     freezer.move_to(time_morning(6))
     time.sleep(0.6)
 
-    # NOT OPEN
+    # NOT OPEN (自動的に閉じてから時間が経過してない)
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     freezer.move_to(time_morning(7))
     time.sleep(0.6)
 
-    # NOT CLOSE
+    # NOT CLOSE (開いていない)
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
