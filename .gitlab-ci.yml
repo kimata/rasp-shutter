@@ -179,7 +179,7 @@ deploy-webapp:
         - kubectl --insecure-skip-tls-verify=true rollout restart -n hems deployment rasp-shutter
     rules:
         # NOTE: 自動実行ではデプロイしない
-        - if: $CI_PIPELINE_SOURCE == "schedule"
+        - if: '$CI_PIPELINE_SOURCE == "schedule"'
           when: never
         - changes:
               - flask/**/*
@@ -199,7 +199,7 @@ deploy-webapp-demo:
         - kubectl --insecure-skip-tls-verify=true rollout restart -n hems deployment rasp-shutter-demo
     rules:
         # NOTE: 自動実行ではデプロイしない
-        - if: $CI_PIPELINE_SOURCE == "schedule"
+        - if: '$CI_PIPELINE_SOURCE == "schedule"'
           when: never
         - changes:
               - flask/**/*
@@ -215,8 +215,7 @@ renovate:
     script:
         - renovate --platform gitlab --token ${RENOVATE_TOKEN} --endpoint ${CI_SERVER_URL}/api/v4 ${CI_PROJECT_PATH}
     rules:
-        - if: $CI_COMMIT_BRANCH == "master"
-        - if: $CI_PIPELINE_SOURCE == "schedule"
-          when: always
+        - if: '$CI_COMMIT_BRANCH == "master"'
+        - if: '$CI_PIPELINE_SOURCE == "schedule"'
         - changes:
               - renovate.json
