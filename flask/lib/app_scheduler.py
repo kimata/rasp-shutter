@@ -377,6 +377,8 @@ def set_schedule(config, schedule_data):
     for job in schedule.get_jobs():
         logging.info("Next run: {next_run}".format(next_run=job.next_run))
 
+    logging.info("Time to next jobs is {idle} sec".format(idle=schedule.idle_seconds()))
+
     schedule.every().minutes.do(shutter_auto_control, config)
 
 
