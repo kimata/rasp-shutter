@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
  && apt-get clean \
  && rm -rf /va/rlib/apt/lists/*
 
-WORKDIR /opt/rasp-water
+WORKDIR /opt/rasp-shutter
 
 RUN curl -sSL https://install.python-poetry.org | python3 -
 ENV PATH="/root/.local/bin:$PATH"
@@ -25,7 +25,7 @@ FROM python:3.11.4-slim-bookworm as prod
 
 COPY --from=build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
-WORKDIR /opt/rasp-water
+WORKDIR /opt/rasp-shutter
 
 COPY . .
 
