@@ -35,10 +35,7 @@ ESP32 の REST API のアドレスは flask/config.py にて定義していま�
 ### ライブラリのインストール
 
 ```bash:bash
-sudo apt install npm
-sudo apt install python3-pip
-sudo apt install python3-flask
-sudo pip3 install python-crontab
+poetry install
 ```
 
 Ubuntu 18.04 の場合，apt install python3-crontab でインストールしたライブラ
@@ -54,7 +51,7 @@ npm run build
 ## 実行方法
 
 ```bash:bash
-python3 flask/app.py
+poetry run python3 flask/app.py
 ```
 
 ## テスト結果
