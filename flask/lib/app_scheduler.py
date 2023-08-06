@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from enum import IntEnum
-import logging
-import schedule
 import datetime
-import time
-import pickle
-import traceback
-import threading
+import logging
 import pathlib
+import pickle
 import re
+import threading
+import time
+import traceback
+from enum import IntEnum
 
 import rasp_shutter_control
 import rasp_shutter_sensor
-from webapp_config import SCHEDULE_DATA_PATH, STAT_PENDING_OPEN, STAT_AUTO_CLOSE
-from webapp_log import app_log, APP_LOG_LEVEL
+import schedule
+from webapp_config import SCHEDULE_DATA_PATH, STAT_AUTO_CLOSE, STAT_PENDING_OPEN, TIMEZONE
+from webapp_log import APP_LOG_LEVEL, app_log
 
 
 class BRIGHTNESS_STATE(IntEnum):
@@ -68,11 +68,7 @@ def brightness_text(sense_data, cur_schedule_data):
                 threshold=cur_schedule_data[sensor],
                 cmp=">"
                 if sense_data[sensor]["value"] > cur_schedule_data[sensor]
-                else (
-                    "<"
-                    if sense_data[sensor]["value"] < cur_schedule_data[sensor]
-                    else "="
-                ),
+                else ("<" if sense_data[sensor]["value"] < cur_schedule_data[sensor] else "="),
             )
         )
 
@@ -149,9 +145,7 @@ def shutter_auto_open(config):
             )
         )
 
-        exec_shutter_control(
-            config, "open", rasp_shutter_control.CONTROL_MODE.AUTO, sense_data, "sensor"
-        )
+        exec_shutter_control(config, "open", rasp_shutter_control.CONTROL_MODE.AUTO, sense_data, "sensor")
         STAT_PENDING_OPEN.unlink(missing_ok=True)
         STAT_AUTO_CLOSE.unlink(missing_ok=True)
     else:
@@ -174,20 +168,14 @@ def shutter_auto_close(config):
     if not schedule_data["close"]["is_active"]:
         return
     elif (
-        datetime.datetime.now()
-        < conv_schedule_time_to_datetime(schedule_data["open"]["time"])
+        datetime.datetime.now() < conv_schedule_time_to_datetime(schedule_data["open"]["time"])
     ) or STAT_PENDING_OPEN.exists():
         # NOTE: 開ける時刻よりも早い場合は処理しない
         return
-    elif (
-        conv_schedule_time_to_datetime(schedule_data["close"]["time"])
-        < datetime.datetime.now()
-    ):
+    elif conv_schedule_time_to_datetime(schedule_data["close"]["time"]) < datetime.datetime.now():
         # NOTE: スケジュールで閉めていた場合は処理しない
         return
-    elif STAT_AUTO_CLOSE.exists() and (
-        exec_check_elapsed_time(STAT_AUTO_CLOSE) <= 12 * 60 * 60
-    ):
+    elif STAT_AUTO_CLOSE.exists() and (exec_check_elapsed_time(STAT_AUTO_CLOSE) <= 12 * 60 * 60):
         # NOTE: 12時間以内に自動で閉めていた場合は処理しない
         return
 
@@ -259,9 +247,7 @@ def shutter_schedule_control(config, state):
     if state == "open":
         if check_brightness(sense_data, state) == BRIGHTNESS_STATE.DARK:
             app_log(
-                "📝 まだ暗いので開けるのを見合わせます．{sensor_text}".format(
-                    sensor_text=rasp_shutter_control.sensor_text(sense_data)
-                )
+                "📝 まだ暗いので開けるのを見合わせます．{sensor_text}".format(sensor_text=rasp_shutter_control.sensor_text(sense_data))
             )
 
             rasp_shutter_control.cmd_hist_push(
@@ -295,9 +281,7 @@ def shutter_schedule_control(config, state):
 
 def schedule_validate(schedule_data):
     if len(schedule_data) != 2:
-        logging.warning(
-            "Count of entry is Invalid: {count}".format(count=len(schedule_data))
-        )
+        logging.warning("Count of entry is Invalid: {count}".format(count=len(schedule_data)))
         return False
 
     for name, entry in schedule_data.items():
@@ -306,41 +290,23 @@ def schedule_validate(schedule_data):
                 logging.warning("Does not contain {key}".format(key=key))
                 return False
         if type(entry["is_active"]) != bool:
-            logging.warning(
-                "Type of is_active is invalid: {type}".format(
-                    type=type(entry["is_active"])
-                )
-            )
+            logging.warning("Type of is_active is invalid: {type}".format(type=type(entry["is_active"])))
             return False
         if type(entry["lux"]) != int:
-            logging.warning(
-                "Type of lux is invalid: {type}".format(type=type(entry["is_active"]))
-            )
+            logging.warning("Type of lux is invalid: {type}".format(type=type(entry["is_active"])))
             return False
         if type(entry["solar_rad"]) != int:
-            logging.warning(
-                "Type of solar_rad is invalid: {type}".format(
-                    type=type(entry["is_active"])
-                )
-            )
+            logging.warning("Type of solar_rad is invalid: {type}".format(type=type(entry["is_active"])))
             return False
         if not re.compile(r"\d{2}:\d{2}").search(entry["time"]):
-            logging.warning(
-                "Format of time is invalid: {time}".format(time=entry["time"])
-            )
+            logging.warning("Format of time is invalid: {time}".format(time=entry["time"]))
             return False
         if len(entry["wday"]) != 7:
-            logging.warning(
-                "Count of wday is Invalid: {count}".format(count=len(entry["wday"]))
-            )
+            logging.warning("Count of wday is Invalid: {count}".format(count=len(entry["wday"])))
             return False
         for i, wday_flag in enumerate(entry["wday"]):
             if type(wday_flag) != bool:
-                logging.warning(
-                    "Type of wday[{i}] is Invalid: {type}".format(
-                        i=i, type=type(entry["wday"][i])
-                    )
-                )
+                logging.warning("Type of wday[{i}] is Invalid: {type}".format(i=i, type=type(entry["wday"][i])))
                 return False
     return True
 
@@ -394,33 +360,19 @@ def set_schedule(config, schedule_data):
             continue
 
         if entry["wday"][0]:
-            schedule.every().sunday.at(entry["time"]).do(
-                shutter_schedule_control, config, state
-            )
+            schedule.every().sunday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
         if entry["wday"][1]:
-            schedule.every().monday.at(entry["time"]).do(
-                shutter_schedule_control, config, state
-            )
+            schedule.every().monday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
         if entry["wday"][2]:
-            schedule.every().tuesday.at(entry["time"]).do(
-                shutter_schedule_control, config, state
-            )
+            schedule.every().tuesday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
         if entry["wday"][3]:
-            schedule.every().wednesday.at(entry["time"]).do(
-                shutter_schedule_control, config, state
-            )
+            schedule.every().wednesday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
         if entry["wday"][4]:
-            schedule.every().thursday.at(entry["time"]).do(
-                shutter_schedule_control, config, state
-            )
+            schedule.every().thursday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
         if entry["wday"][5]:
-            schedule.every().friday.at(entry["time"]).do(
-                shutter_schedule_control, config, state
-            )
+            schedule.every().friday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
         if entry["wday"][6]:
-            schedule.every().saturday.at(entry["time"]).do(
-                shutter_schedule_control, config, state
-            )
+            schedule.every().saturday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
 
     for job in schedule.get_jobs():
         logging.info("Next run: {next_run}".format(next_run=job.next_run))
@@ -469,9 +421,11 @@ def schedule_worker(config, queue):
 
 
 if __name__ == "__main__":
-    from multiprocessing.pool import ThreadPool
     from multiprocessing import Queue
+    from multiprocessing.pool import ThreadPool
+
     import logger
+
     from config import load_config
 
     logger.init("test", level=logging.DEBUG)

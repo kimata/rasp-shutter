@@ -1,24 +1,19 @@
 # -*- coding: utf-8 -*-
 # #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from flask import request, jsonify, Blueprint, current_app
-from enum import IntEnum, Enum
-
-import pathlib
 import logging
-import requests
-import threading
 import os
+import pathlib
+import threading
+from enum import Enum, IntEnum
 
-from webapp_config import (
-    APP_URL_PREFIX,
-    STAT_EXEC_TMPL,
-    STAT_PENDING_OPEN,
-    STAT_AUTO_CLOSE,
-)
-from webapp_log import app_log, APP_LOG_LEVEL
-from flask_util import support_jsonp, auth_user
-from app_scheduler import exec_check_update, exec_check_elapsed_time
+import requests
+from app_scheduler import exec_check_elapsed_time, exec_check_update
+from flask_util import auth_user, support_jsonp
+from webapp_config import APP_URL_PREFIX, STAT_AUTO_CLOSE, STAT_EXEC_TMPL, STAT_PENDING_OPEN
+from webapp_log import APP_LOG_LEVEL, app_log
+
+from flask import Blueprint, current_app, jsonify, request
 
 # この時間内に同じ制御がスケジューラで再度リクエストされた場合，
 # 実行をやめる．
@@ -150,10 +145,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
     if mode == CONTROL_MODE.MANUAL:
         if (diff_sec / 60) < EXEC_INTERVAL_MANUAL_MINUTES:
             app_log(
-                (
-                    "🔔 {name}のシャッターを{state}るのを見合わせました。"
-                    + "{time_diff_str}前に{state}ています。{by}"
-                ).format(
+                ("🔔 {name}のシャッターを{state}るのを見合わせました。" + "{time_diff_str}前に{state}ています。{by}").format(
                     name=config["shutter"][index]["name"],
                     state="開け" if state == "open" else "閉め",
                     time_diff_str=time_str(diff_sec),
@@ -165,10 +157,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
     elif mode == CONTROL_MODE.SCHEDULE:
         if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:
             app_log(
-                (
-                    "🔔 スケジュールに従って{name}のシャッターを{state}るのを見合わせました。"
-                    + "{time_diff_str}前に{state}ています。{by}"
-                ).format(
+                ("🔔 スケジュールに従って{name}のシャッターを{state}るのを見合わせました。" + "{time_diff_str}前に{state}ています。{by}").format(
                     name=config["shutter"][index]["name"],
                     state="開け" if state == "open" else "閉め",
                     time_diff_str=time_str(diff_sec),
@@ -180,10 +169,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
         if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:  # pragma: no cover
             # NOTE: shutter_auto_close の段階で撥ねられているので，ここには来ない．
             app_log(
-                (
-                    "🔔 自動で{name}のシャッターを{state}るのを見合わせました。"
-                    + "{time_diff_str}前に{state}ています。{by}"
-                ).format(
+                ("🔔 自動で{name}のシャッターを{state}るのを見合わせました。" + "{time_diff_str}前に{state}ています。{by}").format(
                     name=config["shutter"][index]["name"],
                     state="開け" if state == "open" else "閉め",
                     time_diff_str=time_str(diff_sec),
@@ -283,7 +269,7 @@ def api_shutter_ctrl():
                     state,
                     CONTROL_MODE.MANUAL,
                     user=auth_user(request),
-                )
+                ),
             )
         )
     else:
