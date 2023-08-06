@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from playwright.sync_api import expect
-import random
 import datetime
+import random
 import time
+
 from flaky import flaky
+from playwright.sync_api import expect
 
 APP_URL_TMPL = "http://{host}:{port}/rasp-shutter/"
 
 
 def check_log(page, message, timeout_sec=2):
-    expect(
-        page.locator('//div[contains(@class,"log")]/div/div[2]').first
-    ).to_contain_text(message, timeout=timeout_sec * 1000)
+    expect(page.locator('//div[contains(@class,"log")]/div/div[2]').first).to_contain_text(
+        message, timeout=timeout_sec * 1000
+    )
 
     # NOTE: ログクリアする場合，ログの内容が変化しているので，ここで再取得する
     log_list = page.locator('//div[contains(@class,"log")]/div/div[2]')
@@ -23,9 +24,7 @@ def check_log(page, message, timeout_sec=2):
 
 
 def time_str_random():
-    return "{hour:02d}:{min:02d}".format(
-        hour=int(24 * random.random()), min=int(60 * random.random())
-    )
+    return "{hour:02d}:{min:02d}".format(hour=int(24 * random.random()), min=int(60 * random.random()))
 
 
 def time_str_after(min):
@@ -40,9 +39,7 @@ def bool_random():
     return random.random() >= 0.5
 
 
-def check_schedule(
-    page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index
-):
+def check_schedule(page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index):
     enable_checkbox = page.locator('//input[contains(@id,"-schedule-entry")]')
 
     for (i, state) in enumerate(["open", "close"]):
@@ -52,33 +49,19 @@ def check_schedule(
             expect(enable_checkbox.nth(i)).not_to_be_checked()
 
         expect(
-            page.locator(
-                '//div[contains(@id,"{state}-schedule-entry-time")]/input'.format(
-                    state=state
-                )
-            )
+            page.locator('//div[contains(@id,"{state}-schedule-entry-time")]/input'.format(state=state))
         ).to_have_value(schedule_time[i])
 
         expect(
-            page.locator(
-                '//div[contains(@id,"{state}-schedule-entry-solar_rad")]/input'.format(
-                    state=state
-                )
-            )
+            page.locator('//div[contains(@id,"{state}-schedule-entry-solar_rad")]/input'.format(state=state))
         ).to_have_value(solar_rad[i])
 
         expect(
-            page.locator(
-                '//div[contains(@id,"{state}-schedule-entry-lux")]/input'.format(
-                    state=state
-                )
-            )
+            page.locator('//div[contains(@id,"{state}-schedule-entry-lux")]/input'.format(state=state))
         ).to_have_value(lux[i])
 
         wday_checkbox = page.locator(
-            '//div[contains(@id,"{state}-schedule-entry-wday")]/span/input'.format(
-                state=state
-            )
+            '//div[contains(@id,"{state}-schedule-entry-wday")]/span/input'.format(state=state)
         )
         for j in range(7):
             if enable_wday_index[i * 7 + j]:
@@ -161,28 +144,18 @@ def test_schedule(page, host, port):
         enable_checkbox.nth(i).evaluate("node => node.checked = false")
         enable_checkbox.nth(i).evaluate("node => node.click()")
 
-        page.locator(
-            '//div[contains(@id,"{state}-schedule-entry-time")]/input'.format(
-                state=state
-            )
-        ).fill(schedule_time[i])
+        page.locator('//div[contains(@id,"{state}-schedule-entry-time")]/input'.format(state=state)).fill(
+            schedule_time[i]
+        )
 
-        page.locator(
-            '//div[contains(@id,"{state}-schedule-entry-solar_rad")]/input'.format(
-                state=state
-            )
-        ).fill(solar_rad[i])
+        page.locator('//div[contains(@id,"{state}-schedule-entry-solar_rad")]/input'.format(state=state)).fill(
+            solar_rad[i]
+        )
 
-        page.locator(
-            '//div[contains(@id,"{state}-schedule-entry-lux")]/input'.format(
-                state=state
-            )
-        ).fill(lux[i])
+        page.locator('//div[contains(@id,"{state}-schedule-entry-lux")]/input'.format(state=state)).fill(lux[i])
 
         wday_checkbox = page.locator(
-            '//div[contains(@id,"{state}-schedule-entry-wday")]/span/input'.format(
-                state=state
-            )
+            '//div[contains(@id,"{state}-schedule-entry-wday")]/span/input'.format(state=state)
         )
         for j in range(7):
             if enable_wday_index[i * 7 + j]:
@@ -197,15 +170,11 @@ def test_schedule(page, host, port):
 
     check_log(page, "スケジュールを更新")
 
-    check_schedule(
-        page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index
-    )
+    check_schedule(page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index)
 
     page.reload()
 
-    check_schedule(
-        page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index
-    )
+    check_schedule(page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index)
 
 
 @flaky(max_runs=5)
@@ -226,9 +195,7 @@ def test_schedule_run(page, host, port):
     for (i, state) in enumerate(["open", "close"]):
         # NOTE: checkbox 自体は hidden にして，CSS で表示しているので，
         # 通常の locator では操作できない
-        enable_checkbox = page.locator(
-            '//input[contains(@id,"{state}-schedule-entry")]'.format(state=state)
-        )
+        enable_checkbox = page.locator('//input[contains(@id,"{state}-schedule-entry")]'.format(state=state))
         enable_checkbox.evaluate("node => node.checked = false")
         enable_checkbox.evaluate("node => node.click()")
 
@@ -236,17 +203,11 @@ def test_schedule_run(page, host, port):
             schedule_time = time_str_after(SCHEDULE_AFTER_MIN)
         else:
             schedule_time = time_str_random()
-        page.locator(
-            '//div[contains(@id,"{state}-schedule-entry-time")]/input'.format(
-                state=state
-            )
-        ).fill(schedule_time)
+        page.locator('//div[contains(@id,"{state}-schedule-entry-time")]/input'.format(state=state)).fill(schedule_time)
 
         # NOTE: 曜日は全てチェック
         wday_checkbox = page.locator(
-            '//div[contains(@id,"{state}-schedule-entry-wday")]/span/input'.format(
-                state=state
-            )
+            '//div[contains(@id,"{state}-schedule-entry-wday")]/span/input'.format(state=state)
         )
         for j in range(7):
             wday_checkbox.nth(j).check()
@@ -274,24 +235,18 @@ def test_schedule_disable(page, host, port):
     for (i, state) in enumerate(["open", "close"]):
         # NOTE: checkbox 自体は hidden にして，CSS で表示しているので，
         # 通常の locator では操作できない
-        enable_checkbox = page.locator(
-            '//input[contains(@id,"{state}-schedule-entry")]'.format(state=state)
-        )
+        enable_checkbox = page.locator('//input[contains(@id,"{state}-schedule-entry")]'.format(state=state))
         enable_checkbox.evaluate("node => node.checked = false")
         enable_checkbox.evaluate("node => node.click()")
 
         # NOET: 1分後にスケジュール設定
-        page.locator(
-            '//div[contains(@id,"{state}-schedule-entry-time")]/input'.format(
-                state=state
-            )
-        ).fill(time_str_after(1))
+        page.locator('//div[contains(@id,"{state}-schedule-entry-time")]/input'.format(state=state)).fill(
+            time_str_after(1)
+        )
 
         # NOTE: 曜日は全てチェック
         wday_checkbox = page.locator(
-            '//div[contains(@id,"{state}-schedule-entry-wday")]/span/input'.format(
-                state=state
-            )
+            '//div[contains(@id,"{state}-schedule-entry-wday")]/span/input'.format(state=state)
         )
         for j in range(7):
             wday_checkbox.nth(j).check()

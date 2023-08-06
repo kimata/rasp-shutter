@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from flask import request, jsonify, Blueprint, url_for
-from flask_cors import cross_origin
 import json
 import threading
 import urllib.parse
 from multiprocessing import Queue
 
-from webapp_config import APP_URL_PREFIX
-from webapp_event import notify_event, EVENT_TYPE
-from webapp_log import app_log, APP_LOG_LEVEL
-from flask_util import support_jsonp, auth_user
 import app_scheduler
+from flask_cors import cross_origin
+from flask_util import auth_user, support_jsonp
+from webapp_config import APP_URL_PREFIX
+from webapp_event import EVENT_TYPE, notify_event
+from webapp_log import APP_LOG_LEVEL, app_log
+
+from flask import Blueprint, jsonify, request, url_for
 
 WDAY_STR = ["日", "月", "火", "水", "木", "金", "土"]
 
@@ -54,9 +55,7 @@ def term():
 
 def wday_str_list(wday_list, lang="en"):
     wday_str = WDAY_STR
-    return map(
-        lambda i: wday_str[i], (i for i in range(len(wday_list)) if wday_list[i])
-    )
+    return map(lambda i: wday_str[i], (i for i in range(len(wday_list)) if wday_list[i]))
 
 
 def schedule_entry_str(name, entry):

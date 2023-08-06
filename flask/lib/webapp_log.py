@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import os
-from enum import IntEnum
-from flask import jsonify, Blueprint, request, g
+import datetime
 import logging
+import os
+import sqlite3
 import threading
 import time
-import sqlite3
-import datetime
+import traceback
+from enum import IntEnum
 from multiprocessing import Queue
 from wsgiref.handlers import format_date_time
-from webapp_config import APP_URL_PREFIX, LOG_DB_PATH
-from webapp_event import notify_event, EVENT_TYPE
-from flask_util import support_jsonp, gzipped
+
 import notify_slack
-import traceback
+from flask_util import gzipped, support_jsonp
+from webapp_config import APP_URL_PREFIX, LOG_DB_PATH
+from webapp_event import EVENT_TYPE, notify_event
+
+from flask import Blueprint, g, jsonify, request
 
 
 class APP_LOG_LEVEL(IntEnum):
@@ -46,9 +48,7 @@ def init(config_):
     assert sqlite is None
 
     sqlite = sqlite3.connect(LOG_DB_PATH, check_same_thread=False)
-    sqlite.execute(
-        "CREATE TABLE IF NOT EXISTS log(id INTEGER primary key autoincrement, date INTEGER, message TEXT)"
-    )
+    sqlite.execute("CREATE TABLE IF NOT EXISTS log(id INTEGER primary key autoincrement, date INTEGER, message TEXT)")
     sqlite.commit()
     sqlite.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
 
@@ -79,12 +79,8 @@ def term():
 def app_log_impl(message, level):
     global config
     with log_lock:
-        sqlite.execute(
-            'INSERT INTO log VALUES (NULL, DATETIME("now", "localtime"), ?)', [message]
-        )
-        sqlite.execute(
-            'DELETE FROM log WHERE date <= DATETIME("now", "localtime", "-60 days")'
-        )
+        sqlite.execute('INSERT INTO log VALUES (NULL, DATETIME("now", "localtime"), ?)', [message])
+        sqlite.execute('DELETE FROM log WHERE date <= DATETIME("now", "localtime", "-60 days")')
         sqlite.commit()
 
         notify_event(EVENT_TYPE.LOG)
@@ -179,9 +175,7 @@ def api_log_view():
     if len(log) == 0:
         last_time = time.time()
     else:
-        last_time = datetime.datetime.strptime(
-            log[0]["date"], "%Y-%m-%d %H:%M:%S"
-        ).timestamp()
+        last_time = datetime.datetime.strptime(log[0]["date"], "%Y-%m-%d %H:%M:%S").timestamp()
 
     response = jsonify({"data": log, "last_time": last_time})
 
@@ -193,6 +187,7 @@ def api_log_view():
 
 if __name__ == "__main__":
     import logger
+
     from config import load_config
 
     logger.init("test", level=logging.INFO)

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import urllib.request
 import json
 import os
 import sys
+import urllib.request
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../flask"))
 from config import CONTROL_ENDPOONT

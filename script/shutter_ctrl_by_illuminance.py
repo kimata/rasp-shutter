@@ -9,19 +9,18 @@ Options:
     MODE    mode of control (open | close)
     TYPE    type of control (check | ctrl) [default: ctrl]
 """
-from docopt import docopt
-
-import urllib.request
-import yaml
+import gzip
 import json
-import os
-import sys
-import pathlib
 import logging
 import logging.handlers
-import gzip
+import os
+import pathlib
+import sys
+import urllib.request
 
 import influxdb_client
+import yaml
+from docopt import docopt
 
 FLUX_QUERY = """
 from(bucket: "{bucket}")
@@ -65,7 +64,6 @@ SENSOR = {
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../flask"))
 from config import CONTROL_ENDPOONT, EXE_HIST_FILE_FORMAT, EXE_RESV_FILE_FORMAT
-
 
 CONFIG_PATH = "./config.yml"
 
@@ -135,9 +133,7 @@ def get_sensor_value():
     config = load_config()
 
     return {
-        stype: get_db_value(
-            config, SENSOR[stype]["HOST"], "sensor.rasp", SENSOR[stype]["PARAM"]
-        )
+        stype: get_db_value(config, SENSOR[stype]["HOST"], "sensor.rasp", SENSOR[stype]["PARAM"])
         for stype in SENSOR.keys()
     }
 

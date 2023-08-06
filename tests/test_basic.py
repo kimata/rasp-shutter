@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
-import sys
-import pathlib
-import pytest
-import re
-import time
-import json
 import datetime
+import json
+import os
+import pathlib
+import re
+import sys
+import time
 from unittest import mock
+
+import pytest
 
 sys.path.append(str(pathlib.Path(__file__).parent.parent / "flask" / "app"))
 
@@ -94,10 +95,8 @@ def gen_schedule_data():
     }
 
     return {
-        "open": schedule_data
-        | {"time": time_str(time_morning(1)), "solar_rad": 150, "lux": 1000},
-        "close": schedule_data
-        | {"time": time_str(time_evening(1)), "solar_rad": 80, "lux": 1200},
+        "open": schedule_data | {"time": time_str(time_morning(1)), "solar_rad": 150, "lux": 1000},
+        "close": schedule_data | {"time": time_str(time_evening(1)), "solar_rad": 80, "lux": 1200},
     }
 
 
@@ -122,8 +121,9 @@ def ctrl_log_check(client, expect):
 
 def ctrl_stat_clear():
     import rasp_shutter_control
-    from config import load_config
     from webapp_config import STAT_AUTO_CLOSE
+
+    from config import load_config
 
     rasp_shutter_control.clean_stat_exec(load_config(CONFIG_FILE))
 
@@ -194,12 +194,8 @@ def test_shutter_ctrl_inconsistent_read(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    assert (
-        response.json["state"][0]["state"] == rasp_shutter_control.SHUTTER_STATE.CLOSE
-    )
-    assert (
-        response.json["state"][1]["state"] == rasp_shutter_control.SHUTTER_STATE.UNKNOWN
-    )
+    assert response.json["state"][0]["state"] == rasp_shutter_control.SHUTTER_STATE.CLOSE
+    assert response.json["state"][1]["state"] == rasp_shutter_control.SHUTTER_STATE.UNKNOWN
 
     # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (open が後)
     ctrl_stat_clear()
@@ -213,9 +209,7 @@ def test_shutter_ctrl_inconsistent_read(client):
     assert response.status_code == 200
     assert response.json["result"] == "success"
     assert response.json["state"][1]["state"] == rasp_shutter_control.SHUTTER_STATE.OPEN
-    assert (
-        response.json["state"][0]["state"] == rasp_shutter_control.SHUTTER_STATE.UNKNOWN
-    )
+    assert response.json["state"][0]["state"] == rasp_shutter_control.SHUTTER_STATE.UNKNOWN
 
     ctrl_log_check(client, [])
 
@@ -248,9 +242,7 @@ def test_valve_ctrl_manual_single_1(client, mocker):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    ctrl_log_check(
-        client, [{"index": 0, "state": "open"}, {"index": 0, "state": "close"}]
-    )
+    ctrl_log_check(client, [{"index": 0, "state": "open"}, {"index": 0, "state": "close"}])
 
 
 def test_valve_ctrl_manual_single_2(client):
@@ -281,9 +273,7 @@ def test_valve_ctrl_manual_single_2(client):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    ctrl_log_check(
-        client, [{"index": 1, "state": "open"}, {"index": 1, "state": "close"}]
-    )
+    ctrl_log_check(client, [{"index": 1, "state": "open"}, {"index": 1, "state": "close"}])
 
 
 def test_valve_ctrl_manual_all(client):
@@ -314,9 +304,7 @@ def test_valve_ctrl_manual_all(client):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    ctrl_log_check(
-        client, [{"index": 0, "state": "open"}, {"index": 1, "state": "open"}]
-    )
+    ctrl_log_check(client, [{"index": 0, "state": "open"}, {"index": 1, "state": "open"}])
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -421,8 +409,8 @@ def test_valve_ctrl_manual_all(client):
 
 
 def test_valve_ctrl_manual_single_fail(client, mocker):
-    import requests
     import notify_slack
+    import requests
 
     ctrl_log_clear(client)
     ctrl_stat_clear()
@@ -1700,8 +1688,8 @@ def test_second_str():
 
 
 def test_terminate():
-    import webapp_log
     import rasp_shutter_schedule
+    import webapp_log
 
     webapp_log.term()
     rasp_shutter_schedule.term()
