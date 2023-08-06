@@ -80,7 +80,7 @@ def init(page):
 
 
 ######################################################################
-@flaky(max_runs=5)
+@flaky(max_runs=3)
 def test_manual(page, host, port):
     init(page)
     page.goto(app_url(host, port))
@@ -123,7 +123,7 @@ def test_manual(page, host, port):
     check_log(page, "手動で開けました")
 
 
-@flaky(max_runs=5)
+@flaky(max_runs=3)
 def test_schedule(page, host, port):
     init(page)
     page.goto(app_url(host, port))
@@ -177,7 +177,7 @@ def test_schedule(page, host, port):
     check_schedule(page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index)
 
 
-@flaky(max_runs=5)
+@flaky(max_runs=3)
 def test_schedule_run(page, host, port):
     SCHEDULE_AFTER_MIN = 2
 
@@ -215,10 +215,10 @@ def test_schedule_run(page, host, port):
     page.get_by_test_id("save").click()
     check_log(page, "スケジュールを更新")
 
-    check_log(page, "閉めました", SCHEDULE_AFTER_MIN * 60 + 10)
+    check_log(page, "閉めました", (SCHEDULE_AFTER_MIN * 60) + 10)
 
 
-@flaky(max_runs=5)
+@flaky(max_runs=3)
 def test_schedule_disable(page, host, port):
     init(page)
     page.goto(app_url(host, port))
