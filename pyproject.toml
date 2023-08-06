@@ -29,7 +29,15 @@ pytest-playwright = "^0.3.3"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--verbose --cov=app --cov=flask --capture=sys --cov-report=html --html=tests/evidence/index.htm --self-contained-html"
+addopts = [
+    "--verbose",
+    "--cov=app",
+    "--cov=flask",
+    "--capture=sys",
+    "--cov-report=html",
+    "--html=tests/evidence/index.htm",
+    "--self-contained-html",
+]
 testpaths = [
     "tests",
 ]
@@ -82,7 +90,7 @@ exclude_lines = [
 directory = "tests/evidence/coverage"
 
 [tool.black]
-target-version = ['py39']
+target-version = ['py310']
 line-length = 120
 
 
