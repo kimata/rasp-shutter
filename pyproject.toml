@@ -5,25 +5,92 @@ description = "電動シャッターを自動制御するアプリです．"
 authors = ["KIMATA Tetsuya <kimata@green-rabbit.net>"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
-influxdb-client = {extras = ["ciso"], version = "^1.36.1"}
-pytest-freezegun = "^0.4.2"
-slack-bolt = "^1.18.0"
-docopt = "^0.6.2"
-pytest-cov = "^4.1.0"
-pytest-mock = "^3.11.1"
-PyYAML = "^6.0"
 Flask = "^2.3.2"
 Flask-Cors = "^4.0.0"
+PyYAML = "^6.0"
 coloredlogs = "^15.0.1"
-pytest-html = "^3.2.0"
-playwright = "^1.36.0"
-pytest-playwright = "^0.3.3"
-schedule = "^1.2.0"
-pytz = "^2023.3"
+docopt = "^0.6.2"
+influxdb-client = {extras = ["ciso"], version = "^1.36.1"}
 psutil = "^5.9.5"
+python = "^3.10"
+pytz = "^2023.3"
+schedule = "^1.2.0"
+slack-sdk = "^3.21.3"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.test.dependencies]
+flaky = "^3.7.0"
+playwright = "^1.36.0"
+pytest-cov = "^4.1.0"
+pytest-freezegun = "^0.4.2"
+pytest-html = "^3.2.0"
+pytest-mock = "^3.11.1"
+pytest-playwright = "^0.3.3"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--verbose --cov=app --cov=flask --capture=sys --cov-report=html --html=tests/evidence/index.htm --self-contained-html"
+testpaths = [
+    "tests",
+]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "if __name__ == .__main__.:",
+
+  # 以下，未使用関数
+
+  # config.py
+  "def get_db_config",
+
+  # logger.py
+  "class GZipRotator",
+  "def log_formatter",
+  "if log_dir_path is not None:",
+  "if log_queue is not None:",
+  "if is_str_log:",
+
+  # sensor_data.py
+  "if create_empty and not last:",
+  "def get_equip_on_minutes",
+  "def get_equip_mode_period",
+  "def get_day_sum",
+  "def dump_data",
+
+  # notify_slack.py
+  "def info",
+  "def error_img",
+  "def error_with_image",
+
+  # webapp_event.py
+  "def notify_watch_impl",
+  "def notify_watch",
+  "def stop_watch",
+
+  # webapp_log.py
+  "elif level == APP_LOG_LEVEL.WARN:",
+
+  # flask_util.py
+  "def remote_host",
+]
+
+[tool.coverage.html]
+directory = "tests/evidence/coverage"
+
+[tool.black]
+target-version = ['py39']
+line-length = 120
+
+
+[tool.isort]
+profile = "black"
+line_length = 120
+multi_line_output = 5
+include_trailing_comma = true
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
