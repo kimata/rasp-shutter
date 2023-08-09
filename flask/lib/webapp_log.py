@@ -13,7 +13,7 @@ from wsgiref.handlers import format_date_time
 
 import notify_slack
 from flask_util import gzipped, support_jsonp
-from webapp_config import APP_URL_PREFIX, LOG_DB_PATH
+from webapp_config import APP_URL_PREFIX, LOG_DB_PATH, TIMEZONE_OFFSET
 from webapp_event import EVENT_TYPE, notify_event
 
 from flask import Blueprint, g, jsonify, request
@@ -79,8 +79,15 @@ def term():
 def app_log_impl(message, level):
     global config
     with log_lock:
-        sqlite.execute('INSERT INTO log VALUES (NULL, DATETIME("now", "localtime"), ?)', [message])
-        sqlite.execute('DELETE FROM log WHERE date <= DATETIME("now", "localtime", "-60 days")')
+        # NOTE: SQLite に記録する時刻はローカルタイムにする
+        sqlite.execute(
+            'INSERT INTO log VALUES (NULL, DATETIME("now", ?), ?)',
+            ["{offset} hours".format(offset=TIMEZONE_OFFSET), message],
+        )
+        sqlite.execute(
+            'DELETE FROM log WHERE date <= DATETIME("now", ?, "-60 days")',
+            ["{offset} hours".format(offset=TIMEZONE_OFFSET)],
+        )
         sqlite.commit()
 
         notify_event(EVENT_TYPE.LOG)
@@ -139,12 +146,11 @@ def app_log(message, level=APP_LOG_LEVEL.INFO):
 def get_log(stop_day):
     global sqlite
 
-    # NOTE: stop_day 日前までののログしか出さない
-
     cur = sqlite.cursor()
     cur.execute(
-        'SELECT * FROM log WHERE date <= DATETIME("now", "localtime", ?) ORDER BY id DESC LIMIT 500',
-        ["-{stop_day} days".format(stop_day=stop_day)],
+        'SELECT * FROM log WHERE date <= DATETIME("now", ?,?) ORDER BY id DESC LIMIT 500',
+        # NOTE: デモ用に stop_day 日前までののログしか出さない指定ができるようにるす
+        ["{offset} hours".format(offset=TIMEZONE_OFFSET), "-{stop_day} days".format(stop_day=stop_day)],
     )
     return cur.fetchall()
 
