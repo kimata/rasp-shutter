@@ -76,7 +76,7 @@ test-walk-through:
 
 test-playwright:
     stage: test
-    needs: ["build-vue", "test-flask"]
+    needs: ["build-vue", "test-walk-through"]
     dependencies:
         - build-vue
 
