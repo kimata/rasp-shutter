@@ -236,7 +236,7 @@ def shutter_schedule_control(config, state):
             error_sensor.append("照度センサ")
 
         app_log(
-            "😵 {error_sensor}の値が不明なので{state}るのを見合わせます．".format(
+            "😵 {error_sensor}の値が不明なので{state}るのを見合わせます。".format(
                 error_sensor="と".join(error_sensor),
                 state="開け" if state == "open" else "閉め",
             ),
