@@ -13,7 +13,7 @@ from wsgiref.handlers import format_date_time
 
 import notify_slack
 from flask_util import gzipped, support_jsonp
-from webapp_config import APP_URL_PREFIX, LOG_DB_PATH, TIMEZONE_OFFSET
+from webapp_config import APP_URL_PREFIX, LOG_DB_PATH, TIMEZONE, TIMEZONE_OFFSET
 from webapp_event import EVENT_TYPE, notify_event
 
 from flask import Blueprint, g, jsonify, request
@@ -80,6 +80,8 @@ def term():
 
 def app_log_impl(message, level):
     global config
+    global sqlite
+
     with log_lock:
         # NOTE: SQLite に記録する時刻はローカルタイムにする
         sqlite.execute(
@@ -114,7 +116,7 @@ def app_log_impl(message, level):
 def app_log_worker(log_queue):
     global should_terminate
 
-    sleep_sec = 0.4
+    sleep_sec = 0.1
 
     while True:
         if should_terminate:
@@ -157,12 +159,18 @@ def get_log(stop_day):
     return cur.fetchall()
 
 
-@blueprint.route("/api/log_clear", methods=["GET"])
-@support_jsonp
-def api_log_clear():
+def clear_log():
+    global sqlite
+
     with log_lock:
         cur = sqlite.cursor()
         cur.execute("DELETE FROM log")
+
+
+@blueprint.route("/api/log_clear", methods=["GET"])
+@support_jsonp
+def api_log_clear():
+    clear_log()
     app_log("🧹 ログがクリアされました。")
 
     return jsonify({"result": "success"})
@@ -183,7 +191,11 @@ def api_log_view():
     if len(log) == 0:
         last_time = time.time()
     else:
-        last_time = datetime.datetime.strptime(log[0]["date"], "%Y-%m-%d %H:%M:%S").timestamp()
+        last_time = (
+            datetime.datetime.strptime(log[0]["date"], "%Y-%m-%d %H:%M:%S")
+            .replace(tzinfo=TIMEZONE)
+            .timestamp()
+        )
 
     response = jsonify({"data": log, "last_time": last_time})
 
