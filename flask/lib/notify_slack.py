@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import datetime
 import json
 import logging
 import os
@@ -9,7 +8,11 @@ import pathlib
 import tempfile
 import threading
 
+import footprint
 import slack_sdk
+
+# NOTE: テスト用
+notify_hist = []
 
 ERROR_NOTIFY_FOOTPRINT = pathlib.Path(os.path.dirname(__file__)).parent / "data" / "error_notify"
 
@@ -57,7 +60,7 @@ def send(token, ch_name, message):
 def split_send(token, ch_name, title, message, formatter=format_simple):
     LINE_SPLIT = 20
 
-    logging.info("Post slack ch: {ch_name}, message: {message}".format(ch_name=ch_name, message=message))
+    logging.info("Post slack channel: {ch_name}".format(ch_name=ch_name))
 
     message_lines = message.splitlines()
     for i in range(0, len(message_lines), LINE_SPLIT):
@@ -73,24 +76,12 @@ def info(token, ch_name, name, message, formatter=format_simple):
     split_send(token, ch_name, title, message, formatter)
 
 
-def check_interval(interval_min):
-    with interval_check_lock:
-        if (
-            ERROR_NOTIFY_FOOTPRINT.exists()
-            and (
-                datetime.datetime.now() - datetime.datetime.fromtimestamp(ERROR_NOTIFY_FOOTPRINT.stat().st_mtime)
-            ).seconds
-            < interval_min * 60
-        ):
-            logging.info("skip slack nofity")
-            return False
-
-        return True
+def interval_check(interval_min):
+    return footprint.elapsed(ERROR_NOTIFY_FOOTPRINT) > interval_min * 60
 
 
-def clear_interval():
-    with interval_check_lock:
-        ERROR_NOTIFY_FOOTPRINT.unlink(missing_ok=True)
+def interval_clear():
+    footprint.clear(ERROR_NOTIFY_FOOTPRINT)
 
 
 def error_img(token, ch_id, title, img, text):
@@ -116,14 +107,15 @@ def error(
 ):
     title = "Error: " + name
 
-    if not check_interval(interval_min):
+    hist_add(message)
+
+    if not interval_check(interval_min):
         logging.warning("Interval is too short. Skipping.")
         return
 
     split_send(token, ch_name, title, message, formatter)
 
-    ERROR_NOTIFY_FOOTPRINT.parent.mkdir(parents=True, exist_ok=True)
-    ERROR_NOTIFY_FOOTPRINT.touch()
+    footprint.update(ERROR_NOTIFY_FOOTPRINT)
 
 
 def error_with_image(
@@ -138,20 +130,40 @@ def error_with_image(
 ):  # def error_with_image
     title = "Error: " + name
 
-    if not check_interval(interval_min):
+    hist_add(message)
+
+    if not interval_check(interval_min):
         logging.warning("Interval is too short. Skipping.")
         return
 
     split_send(token, ch_name, title, message, formatter)
 
     if attatch_img is not None:
-        if ch_id is None:
-            logging.error("ch_id is not specified.")
-
+        assert ch_id is not None
         error_img(token, ch_id, title, attatch_img["data"], attatch_img["text"])
 
-    ERROR_NOTIFY_FOOTPRINT.parent.mkdir(parents=True, exist_ok=True)
-    ERROR_NOTIFY_FOOTPRINT.touch()
+    footprint.update(ERROR_NOTIFY_FOOTPRINT)
+
+
+# NOTE: テスト用
+def hist_clear():
+    global notify_hist
+
+    notify_hist = []
+
+
+# NOTE: テスト用
+def hist_add(message):
+    global notify_hist
+
+    notify_hist.append(message)
+
+
+# NOTE: テスト用
+def hist_get():
+    global notify_hist
+
+    return notify_hist
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ from enum import IntEnum
 import rasp_shutter_control
 import rasp_shutter_sensor
 import schedule
-from webapp_config import SCHEDULE_DATA_PATH, STAT_AUTO_CLOSE, STAT_PENDING_OPEN, TIMEZONE
+from webapp_config import SCHEDULE_DATA_PATH, STAT_AUTO_CLOSE, STAT_PENDING_OPEN, TIMEZONE, TIMEZONE_PYTZ
 from webapp_log import APP_LOG_LEVEL, app_log
 
 
@@ -51,9 +51,8 @@ def exec_check_elapsed_time(check_file):
     if not check_file.exists():
         return diff_sec
 
-    if check_file.exists():
-        with open(check_file) as f:
-            diff_sec -= float(f.read())
+    with open(check_file) as f:
+        diff_sec -= float(f.read())
 
     return diff_sec
 
@@ -159,7 +158,7 @@ def shutter_auto_open(config):
 
 def conv_schedule_time_to_datetime(schedule_time):
     return datetime.datetime.strptime(
-        datetime.datetime.now().strftime("%Y/%m/%d ") + schedule_time,
+        datetime.datetime.now(TIMEZONE).strftime("%Y/%m/%d ") + schedule_time,
         "%Y/%m/%d %H:%M",
     )
 
@@ -168,11 +167,11 @@ def shutter_auto_close(config):
     if not schedule_data["close"]["is_active"]:
         return
     elif (
-        datetime.datetime.now() < conv_schedule_time_to_datetime(schedule_data["open"]["time"])
+        datetime.datetime.now(TIMEZONE) < conv_schedule_time_to_datetime(schedule_data["open"]["time"])
     ) or STAT_PENDING_OPEN.exists():
         # NOTE: 開ける時刻よりも早い場合は処理しない
         return
-    elif conv_schedule_time_to_datetime(schedule_data["close"]["time"]) < datetime.datetime.now():
+    elif conv_schedule_time_to_datetime(schedule_data["close"]["time"]) < datetime.datetime.now(TIMEZONE):
         # NOTE: スケジュールで閉めていた場合は処理しない
         return
     elif STAT_AUTO_CLOSE.exists() and (exec_check_elapsed_time(STAT_AUTO_CLOSE) <= 12 * 60 * 60):
@@ -197,7 +196,7 @@ def shutter_auto_close(config):
         exec_check_update(STAT_AUTO_CLOSE)
 
         # NOTE: まだ明るくなる可能性がある時間帯の場合，再度自動的に開けるようにする
-        hour = datetime.datetime.now().hour
+        hour = datetime.datetime.now(TIMEZONE).hour
         if (5 < hour) and (hour < 13):
             exec_check_update(STAT_PENDING_OPEN)
 
@@ -212,7 +211,7 @@ def shutter_auto_close(config):
 
 
 def shutter_auto_control(config):
-    hour = datetime.datetime.now().hour
+    hour = datetime.datetime.now(TIMEZONE).hour
 
     # NOTE: 時間帯によって自動制御の内容を分ける
     if (5 < hour) and (hour < 12):
@@ -247,7 +246,9 @@ def shutter_schedule_control(config, state):
     if state == "open":
         if check_brightness(sense_data, state) == BRIGHTNESS_STATE.DARK:
             app_log(
-                "📝 まだ暗いので開けるのを見合わせます．{sensor_text}".format(sensor_text=rasp_shutter_control.sensor_text(sense_data))
+                "📝 まだ暗いので開けるのを見合わせます．{sensor_text}".format(
+                    sensor_text=rasp_shutter_control.sensor_text(sense_data)
+                )
             )
 
             rasp_shutter_control.cmd_hist_push(
@@ -306,7 +307,9 @@ def schedule_validate(schedule_data):
             return False
         for i, wday_flag in enumerate(entry["wday"]):
             if type(wday_flag) != bool:
-                logging.warning("Type of wday[{i}] is Invalid: {type}".format(i=i, type=type(entry["wday"][i])))
+                logging.warning(
+                    "Type of wday[{i}] is Invalid: {type}".format(i=i, type=type(entry["wday"][i]))
+                )
                 return False
     return True
 
@@ -360,19 +363,33 @@ def set_schedule(config, schedule_data):
             continue
 
         if entry["wday"][0]:
-            schedule.every().sunday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
+            schedule.every().sunday.at(entry["time"], TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
         if entry["wday"][1]:
-            schedule.every().monday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
+            schedule.every().monday.at(entry["time"], TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
         if entry["wday"][2]:
-            schedule.every().tuesday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
+            schedule.every().tuesday.at(entry["time"], TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
         if entry["wday"][3]:
-            schedule.every().wednesday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
+            schedule.every().wednesday.at(entry["time"], TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
         if entry["wday"][4]:
-            schedule.every().thursday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
+            schedule.every().thursday.at(entry["time"], TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
         if entry["wday"][5]:
-            schedule.every().friday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
+            schedule.every().friday.at(entry["time"], TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
         if entry["wday"][6]:
-            schedule.every().saturday.at(entry["time"], TIMEZONE).do(shutter_schedule_control, config, state)
+            schedule.every().saturday.at(entry["time"], TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
 
     for job in schedule.get_jobs():
         logging.info("Next run: {next_run}".format(next_run=job.next_run))
@@ -446,7 +463,7 @@ if __name__ == "__main__":
     pool = ThreadPool(processes=1)
     result = pool.apply_async(schedule_worker, (config, queue))
 
-    exec_time = datetime.datetime.now() + datetime.timedelta(seconds=5)
+    exec_time = datetime.datetime.now(TIMEZONE) + datetime.timedelta(seconds=5)
     queue.put(
         {
             "open": {

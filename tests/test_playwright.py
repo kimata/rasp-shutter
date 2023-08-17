@@ -148,11 +148,13 @@ def test_schedule(page, host, port):
             schedule_time[i]
         )
 
-        page.locator('//div[contains(@id,"{state}-schedule-entry-solar_rad")]/input'.format(state=state)).fill(
-            solar_rad[i]
-        )
+        page.locator(
+            '//div[contains(@id,"{state}-schedule-entry-solar_rad")]/input'.format(state=state)
+        ).fill(solar_rad[i])
 
-        page.locator('//div[contains(@id,"{state}-schedule-entry-lux")]/input'.format(state=state)).fill(lux[i])
+        page.locator('//div[contains(@id,"{state}-schedule-entry-lux")]/input'.format(state=state)).fill(
+            lux[i]
+        )
 
         wday_checkbox = page.locator(
             '//div[contains(@id,"{state}-schedule-entry-wday")]/span/input'.format(state=state)
@@ -203,7 +205,9 @@ def test_schedule_run(page, host, port):
             schedule_time = time_str_after(SCHEDULE_AFTER_MIN)
         else:
             schedule_time = time_str_random()
-        page.locator('//div[contains(@id,"{state}-schedule-entry-time")]/input'.format(state=state)).fill(schedule_time)
+        page.locator('//div[contains(@id,"{state}-schedule-entry-time")]/input'.format(state=state)).fill(
+            schedule_time
+        )
 
         # NOTE: 曜日は全てチェック
         wday_checkbox = page.locator(
