@@ -3,6 +3,7 @@
 
 import datetime
 import logging
+import os
 import pathlib
 import pickle
 import re
@@ -14,7 +15,14 @@ from enum import IntEnum
 import rasp_shutter_control
 import rasp_shutter_sensor
 import schedule
-from webapp_config import SCHEDULE_DATA_PATH, STAT_AUTO_CLOSE, STAT_PENDING_OPEN, TIMEZONE, TIMEZONE_PYTZ
+from webapp_config import (
+    SCHEDULE_DATA_PATH,
+    STAT_AUTO_CLOSE,
+    STAT_PENDING_OPEN,
+    TIMEZONE,
+    TIMEZONE_OFFSET,
+    TIMEZONE_PYTZ,
+)
 from webapp_log import APP_LOG_LEVEL, app_log
 
 
@@ -125,15 +133,20 @@ def exec_shutter_control(config, state, mode, sense_data, user):
 
 
 def shutter_auto_open(config):
+    logging.debug("try auto open")
+
     if not schedule_data["open"]["is_active"]:
+        logging.debug("inactive")
         return
 
     if exec_check_elapsed_time(STAT_PENDING_OPEN) > 6 * 60 * 60:
         # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない．
+        logging.debug("NOT pending")
         return
 
     if exec_check_elapsed_time(STAT_AUTO_CLOSE) < 10 * 60:
         # NOTE: 自動で閉めてから時間が経っていない場合は，処理を行わない．
+        logging.debug("just closed")
         return
 
     sense_data = rasp_shutter_sensor.get_sensor_data(config)
@@ -157,25 +170,36 @@ def shutter_auto_open(config):
 
 
 def conv_schedule_time_to_datetime(schedule_time):
-    return datetime.datetime.strptime(
-        datetime.datetime.now(TIMEZONE).strftime("%Y/%m/%d ") + schedule_time,
-        "%Y/%m/%d %H:%M",
-    ).replace(tzinfo=TIMEZONE)
+    return (
+        datetime.datetime.strptime(
+            datetime.datetime.now(TIMEZONE).strftime("%Y/%m/%d ") + schedule_time,
+            "%Y/%m/%d %H:%M",
+        )
+        # NOTE: freezegun と scheduler を組み合わせて使うと，
+        # タイムゾーンの扱いがおかしくなるので補正する．
+        + datetime.timedelta(hours=int(TIMEZONE_OFFSET) if os.environ.get("FROZEN", "false") == "true" else 0)
+    ).replace(tzinfo=TIMEZONE, day=datetime.datetime.now(TIMEZONE).day)
 
 
 def shutter_auto_close(config):
+    logging.debug("try auto close")
+
     if not schedule_data["close"]["is_active"]:
+        logging.debug("inactive")
         return
     elif (
         datetime.datetime.now(TIMEZONE) < conv_schedule_time_to_datetime(schedule_data["open"]["time"])
     ) or STAT_PENDING_OPEN.exists():
         # NOTE: 開ける時刻よりも早い場合は処理しない
+        logging.debug("before open time")
         return
     elif conv_schedule_time_to_datetime(schedule_data["close"]["time"]) < datetime.datetime.now(TIMEZONE):
         # NOTE: スケジュールで閉めていた場合は処理しない
+        logging.debug("after close time")
         return
     elif STAT_AUTO_CLOSE.exists() and (exec_check_elapsed_time(STAT_AUTO_CLOSE) <= 12 * 60 * 60):
         # NOTE: 12時間以内に自動で閉めていた場合は処理しない
+        logging.debug("already close")
         return
 
     sense_data = rasp_shutter_sensor.get_sensor_data(config)

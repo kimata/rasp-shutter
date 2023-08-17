@@ -13,8 +13,10 @@ from unittest import mock
 import pytest
 
 sys.path.append(str(pathlib.Path(__file__).parent.parent / "flask" / "app"))
+sys.path.append(str(pathlib.Path(__file__).parent.parent / "flask" / "lib"))
 
 from app import create_app
+from webapp_config import TIMEZONE, TIMEZONE_OFFSET, TIMEZONE_PYTZ
 
 CONFIG_FILE = "config.example.yaml"
 
@@ -69,21 +71,27 @@ def app():
 def client(app, mocker):
     test_client = app.test_client()
 
+    ctrl_log_clear(test_client)
+
     yield test_client
 
     test_client.delete()
 
 
 def time_morning(offset_min=0):
-    return datetime.datetime.now().replace(hour=7, minute=0 + offset_min, second=0)
+    return datetime.datetime.now(TIMEZONE).replace(hour=7, minute=0 + offset_min, second=0)
 
 
 def time_evening(offset_min=0):
-    return datetime.datetime.now().replace(hour=17, minute=0 + offset_min, second=0)
+    return datetime.datetime.now(TIMEZONE).replace(hour=17, minute=0 + offset_min, second=0)
 
 
 def time_str(time):
-    return time.strftime("%H:%M")
+    return (time - datetime.timedelta(hours=int(TIMEZONE_OFFSET))).strftime("%H:%M")
+
+
+def move_to(freezer, target_time):
+    freezer.move_to(target_time)
 
 
 SENSOR_DATA_DARK = {
@@ -122,9 +130,13 @@ def ctrl_log_clear(client):
 
 
 def ctrl_log_check(client, expect):
+    import logging
+
     response = client.get("/rasp-shutter/api/ctrl/log")
     assert response.status_code == 200
     assert response.json["result"] == "success"
+
+    logging.debug(response.json["log"])
 
     assert response.json["log"] == expect
 
@@ -141,6 +153,46 @@ def ctrl_stat_clear():
 
 
 ######################################################################
+def test_time(freezer):
+    import logging
+
+    import schedule
+
+    logging.debug(
+        "datetime.now()                 = {date}".format(date=datetime.datetime.now()),
+    )
+    logging.debug("datetime.now(JST)              = {date}".format(date=datetime.datetime.now(TIMEZONE)))
+    logging.debug(
+        "datetime.now().replace(...)    = {date}".format(
+            date=datetime.datetime.now().replace(hour=0, minute=0, second=0)
+        )
+    )
+    logging.debug(
+        "datetime.now(JST).replace(...) = {date}".format(
+            date=datetime.datetime.now(TIMEZONE).replace(hour=0, minute=0, second=0)
+        )
+    )
+
+    logging.debug("Freeze time at {time}".format(time=time_str(time_morning(0))))
+    move_to(freezer, time_morning(0))
+
+    logging.debug(
+        "datetime.now()                 = {date}".format(date=datetime.datetime.now()),
+    )
+    logging.debug("datetime.now(JST)              = {date}".format(date=datetime.datetime.now(TIMEZONE)))
+
+    schedule.clear()
+    job_time_str = time_str(time_morning(1))
+    logging.debug("set schedule at {time}".format(time=job_time_str))
+    job = schedule.every().day.at(job_time_str, TIMEZONE_PYTZ).do(lambda: True)
+
+    idle_sec = schedule.idle_seconds()
+    logging.error("Time to next jobs is {idle:.1f} sec".format(idle=idle_sec))
+    logging.debug("Next run is {time}".format(time=job.next_run))
+
+    assert idle_sec < 60
+
+
 def test_redirect(client):
     ctrl_log_check(client, [])
 
@@ -152,8 +204,6 @@ def test_redirect(client):
 
 
 def test_index(client):
-    ctrl_log_clear(client)
-
     response = client.get("/rasp-shutter/")
     assert response.status_code == 200
     assert "電動シャッター" in response.data.decode("utf-8")
@@ -176,8 +226,6 @@ def test_index_with_other_status(client, mocker):
 
 
 def test_shutter_ctrl_read(client):
-    ctrl_log_clear(client)
-
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
     )
@@ -190,8 +238,6 @@ def test_shutter_ctrl_read(client):
 def test_shutter_ctrl_inconsistent_read(client):
     import app_scheduler
     import rasp_shutter_control
-
-    ctrl_log_clear(client)
 
     # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (close が後)
     ctrl_stat_clear()
@@ -225,8 +271,6 @@ def test_shutter_ctrl_inconsistent_read(client):
 
 
 def test_valve_ctrl_manual_single_1(client, mocker):
-    ctrl_log_clear(client)
-
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
         query_string={
@@ -255,8 +299,6 @@ def test_valve_ctrl_manual_single_1(client, mocker):
 
 
 def test_valve_ctrl_manual_single_2(client):
-    ctrl_log_clear(client)
-
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
         query_string={
@@ -285,8 +327,6 @@ def test_valve_ctrl_manual_single_2(client):
 
 
 def test_valve_ctrl_manual_all(client):
-    ctrl_log_clear(client)
-
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
         query_string={
@@ -418,8 +458,6 @@ def test_valve_ctrl_manual_all(client):
 def test_valve_ctrl_manual_single_fail(client, mocker):
     import requests
 
-    ctrl_log_clear(client)
-
     # NOTE: このテストだけは，制御の止め方を変える
     def request_mock(url):
         request_mock.i += 1
@@ -481,8 +519,6 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
 
 
 def test_event(client):
-    ctrl_log_clear(client)
-
     response = client.get("/rasp-shutter/api/event", query_string={"count": "2"})
     assert response.status_code == 200
     assert response.data.decode()
@@ -490,8 +526,8 @@ def test_event(client):
     ctrl_log_check(client, [])
 
 
-def test_schedule_ctrl_inactive(client, freezer):
-    ctrl_log_clear(client)
+def test_schedule_ctrl_inactive(client, mocker, freezer):
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
@@ -503,22 +539,22 @@ def test_schedule_ctrl_inactive(client, freezer):
     assert response.status_code == 200
     time.sleep(1)
 
-    freezer.move_to(time_morning(1))
+    move_to(freezer, time_morning(1))
     time.sleep(1)
 
-    freezer.move_to(time_morning(2))
+    move_to(freezer, time_morning(2))
     time.sleep(1)
 
-    freezer.move_to(time_morning(3))
+    move_to(freezer, time_morning(3))
     time.sleep(1)
 
-    freezer.move_to(time_evening(1))
+    move_to(freezer, time_evening(1))
     time.sleep(1)
 
-    freezer.move_to(time_evening(2))
+    move_to(freezer, time_evening(2))
     time.sleep(1)
 
-    freezer.move_to(time_evening(3))
+    move_to(freezer, time_evening(3))
     time.sleep(1)
 
     schedule_data["open"]["is_active"] = True
@@ -532,30 +568,28 @@ def test_schedule_ctrl_inactive(client, freezer):
     assert response.status_code == 200
     time.sleep(1)
 
-    freezer.move_to(time_morning(1))
+    move_to(freezer, time_morning(1))
     time.sleep(1)
 
-    freezer.move_to(time_morning(2))
+    move_to(freezer, time_morning(2))
     time.sleep(1)
 
-    freezer.move_to(time_morning(3))
+    move_to(freezer, time_morning(3))
     time.sleep(1)
 
-    freezer.move_to(time_evening(1))
+    move_to(freezer, time_evening(1))
     time.sleep(1)
 
-    freezer.move_to(time_evening(2))
+    move_to(freezer, time_evening(2))
     time.sleep(1)
 
-    freezer.move_to(time_evening(3))
+    move_to(freezer, time_evening(3))
     time.sleep(1)
 
     ctrl_log_check(client, [])
 
 
 def test_schedule_ctrl_invalid(client, mocker):
-    ctrl_log_clear(client)
-
     schedule_data = gen_schedule_data()
     del schedule_data["open"]
     response = client.get(
@@ -627,8 +661,7 @@ def test_schedule_ctrl_invalid(client, mocker):
 
 
 def test_schedule_ctrl_execute(client, mocker, freezer):
-    ctrl_log_clear(client)
-
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
     mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
 
     response = client.get(
@@ -641,7 +674,7 @@ def test_schedule_ctrl_execute(client, mocker, freezer):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    freezer.move_to(time_evening(0))
+    move_to(freezer, time_evening(0))
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -664,10 +697,10 @@ def test_schedule_ctrl_execute(client, mocker, freezer):
 
     time.sleep(1)
 
-    freezer.move_to(time_evening(1))
+    move_to(freezer, time_evening(1))
     time.sleep(1)
 
-    freezer.move_to(time_evening(2))
+    move_to(freezer, time_evening(2))
     time.sleep(1)
 
     ctrl_log_check(
@@ -682,8 +715,7 @@ def test_schedule_ctrl_execute(client, mocker, freezer):
 
 
 def test_schedule_ctrl_auto_close(client, mocker, freezer):
-    ctrl_log_clear(client)
-
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
     response = client.get(
@@ -707,10 +739,10 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
     )
     assert response.status_code == 200
 
-    freezer.move_to(time_evening(1))
+    move_to(freezer, time_evening(1))
     time.sleep(1)
 
-    freezer.move_to(time_evening(2))
+    move_to(freezer, time_evening(2))
     time.sleep(1)
 
     ctrl_log_check(
@@ -723,10 +755,10 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
-    freezer.move_to(time_evening(3))
+    move_to(freezer, time_evening(3))
     time.sleep(1)
 
-    freezer.move_to(time_evening(4))
+    move_to(freezer, time_evening(4))
     time.sleep(1)
 
     ctrl_log_check(
@@ -739,10 +771,10 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
         ],
     )
 
-    freezer.move_to(time_evening(5))
+    move_to(freezer, time_evening(5))
     time.sleep(1)
 
-    freezer.move_to(time_evening(6))
+    move_to(freezer, time_evening(6))
     time.sleep(1)
     ctrl_log_check(
         client,
@@ -756,8 +788,7 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
 
 
 def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
-    ctrl_log_clear(client)
-
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
     response = client.get(
@@ -770,7 +801,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    freezer.move_to(time_evening(0))
+    move_to(freezer, time_evening(0))
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -803,10 +834,10 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
     )
     assert response.status_code == 200
 
-    freezer.move_to(time_evening(1))
+    move_to(freezer, time_evening(1))
     time.sleep(1)
 
-    freezer.move_to(time_evening(2))
+    move_to(freezer, time_evening(2))
     time.sleep(1)
 
     ctrl_log_check(
@@ -820,10 +851,10 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
-    freezer.move_to(time_evening(3))
+    move_to(freezer, time_evening(3))
     time.sleep(1)
 
-    freezer.move_to(time_evening(4))
+    move_to(freezer, time_evening(4))
     time.sleep(1)
 
     ctrl_log_check(
@@ -836,7 +867,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
         ],
     )
 
-    freezer.move_to(time_evening(5))
+    move_to(freezer, time_evening(5))
     time.sleep(1)
 
     ctrl_log_check(
@@ -851,7 +882,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
 
 
 def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
-    ctrl_log_clear(client)
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
@@ -883,63 +914,116 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
         ],
     )
 
-    freezer.move_to(time_morning(1))
+    move_to(freezer, time_morning(1))
     time.sleep(1)
 
-    freezer.move_to(time_morning(2))
+    move_to(freezer, time_morning(2))
     time.sleep(1)
 
-    freezer.move_to(time_morning(3))
+    ctrl_log_check(
+        client,
+        [
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+            {"cmd": "pending", "state": "open"},
+        ],
+    )
+
+    move_to(freezer, time_morning(3))
     time.sleep(1)
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
-    freezer.move_to(time_morning(4))
+    move_to(freezer, time_morning(4))
     time.sleep(1)
 
     # OPEN
+    ctrl_log_check(
+        client,
+        [
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+            {"cmd": "pending", "state": "open"},
+            {"index": 0, "state": "open"},
+            {"index": 1, "state": "open"},
+        ],
+    )
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
-    freezer.move_to(time_morning(5))
+    move_to(freezer, time_morning(5))
     time.sleep(1)
 
     # CLOSE
+    ctrl_log_check(
+        client,
+        [
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+            {"cmd": "pending", "state": "open"},
+            {"index": 0, "state": "open"},
+            {"index": 1, "state": "open"},
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+        ],
+    )
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
-    freezer.move_to(time_morning(6))
+    move_to(freezer, time_morning(6))
     time.sleep(1)
 
     # NOT OPEN (自動的に閉じてから時間が経過してない)
+    ctrl_log_check(
+        client,
+        [
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+            {"cmd": "pending", "state": "open"},
+            {"index": 0, "state": "open"},
+            {"index": 1, "state": "open"},
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+        ],
+    )
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
-    freezer.move_to(time_morning(7))
+    move_to(freezer, time_morning(7))
     time.sleep(1)
 
     # NOT CLOSE (開いていない)
+    ctrl_log_check(
+        client,
+        [
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+            {"cmd": "pending", "state": "open"},
+            {"index": 0, "state": "open"},
+            {"index": 1, "state": "open"},
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+        ],
+    )
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
-    freezer.move_to(time_morning(20))
+    move_to(freezer, time_morning(20))
     time.sleep(1)
 
     # OPEN
 
-    freezer.move_to(time_evening(1))
+    move_to(freezer, time_evening(1))
     time.sleep(1)
 
     # CLOSE
 
-    freezer.move_to(time_evening(2))
+    move_to(freezer, time_evening(2))
     time.sleep(1)
 
     response = client.get("/rasp-shutter/api/ctrl/log")
     assert response.status_code == 200
     assert response.json["result"] == "success"
-
-    print(response.json["log"])
 
     ctrl_log_check(
         client,
@@ -958,9 +1042,18 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
         ],
     )
 
+    # [
+    #     {'index': 0, 'state': 'close'},
+    #     {'index': 1, 'state': 'close'},
+    #     {'cmd': 'pending', 'state': 'open'},
+    #     {'index': 0, 'state': 'open'},
+    #     {'index': 1, 'state': 'open'},
+    #     {'index': 0, 'state': 'close'},
+    #     {'index': 1, 'state': 'close'}]
 
-def test_schedule_ctrl_auto_inactive(client, freezer):
-    ctrl_log_clear(client)
+
+def test_schedule_ctrl_auto_inactive(client, mocker, freezer):
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
@@ -971,23 +1064,23 @@ def test_schedule_ctrl_auto_inactive(client, freezer):
     )
     assert response.status_code == 200
 
-    freezer.move_to(time_morning(1))
+    move_to(freezer, time_morning(1))
     time.sleep(1)
 
-    freezer.move_to(time_morning(2))
+    move_to(freezer, time_morning(2))
     time.sleep(1)
 
-    freezer.move_to(time_evening(1))
+    move_to(freezer, time_evening(1))
     time.sleep(1)
 
-    freezer.move_to(time_evening(2))
+    move_to(freezer, time_evening(2))
     time.sleep(1)
 
     ctrl_log_check(client, [])
 
 
 def test_schedule_ctrl_pending_open(client, mocker, freezer):
-    ctrl_log_clear(client)
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
@@ -1020,18 +1113,18 @@ def test_schedule_ctrl_pending_open(client, mocker, freezer):
         ],
     )
 
-    freezer.move_to(time_morning(1))
+    move_to(freezer, time_morning(1))
     time.sleep(1)
 
-    freezer.move_to(time_morning(2))
+    move_to(freezer, time_morning(2))
     time.sleep(1)
 
-    freezer.move_to(time_morning(3))
+    move_to(freezer, time_morning(3))
     time.sleep(1)
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
-    freezer.move_to(time_morning(4))
+    move_to(freezer, time_morning(4))
     time.sleep(1)
 
     ctrl_log_check(
@@ -1047,7 +1140,7 @@ def test_schedule_ctrl_pending_open(client, mocker, freezer):
 
 
 def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
-    ctrl_log_clear(client)
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
@@ -1079,13 +1172,13 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
         ],
     )
 
-    freezer.move_to(time_morning(1))
+    move_to(freezer, time_morning(1))
     time.sleep(1)
 
-    freezer.move_to(time_morning(2))
+    move_to(freezer, time_morning(2))
     time.sleep(1)
 
-    freezer.move_to(time_morning(3))
+    move_to(freezer, time_morning(3))
     time.sleep(1)
 
     # NOTE: pending open になった後に，open が inactive
@@ -1099,10 +1192,10 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
-    freezer.move_to(time_morning(4))
+    move_to(freezer, time_morning(4))
     time.sleep(1)
 
-    freezer.move_to(time_morning(5))
+    move_to(freezer, time_morning(5))
     time.sleep(1)
 
     ctrl_log_check(
@@ -1116,7 +1209,7 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
 
 # NOTE: 開けるのを延期したあとでセンサーエラー
 def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
-    ctrl_log_clear(client)
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
@@ -1149,17 +1242,17 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
     )
     assert response.status_code == 200
 
-    freezer.move_to(time_morning(1))
+    move_to(freezer, time_morning(1))
     time.sleep(1)
 
     sensor_data = SENSOR_DATA_BRIGHT.copy()
     sensor_data["lux"] = {"valid": False, "value": 5000}
     sensor_data_mock.return_value = sensor_data
 
-    freezer.move_to(time_morning(2))
+    move_to(freezer, time_morning(2))
     time.sleep(1)
 
-    freezer.move_to(time_morning(3))
+    move_to(freezer, time_morning(3))
     time.sleep(1)
 
     ctrl_log_check(
@@ -1172,11 +1265,11 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
 
 
 def test_schedule_ctrl_open_dup(client, mocker, freezer):
-    ctrl_log_clear(client)
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
 
-    freezer.move_to(time_morning(0))
+    move_to(freezer, time_morning(0))
     time.sleep(1.6)
 
     response = client.get(
@@ -1206,10 +1299,10 @@ def test_schedule_ctrl_open_dup(client, mocker, freezer):
     )
     assert response.status_code == 200
 
-    freezer.move_to(time_morning(1))
+    move_to(freezer, time_morning(1))
     time.sleep(1)
 
-    freezer.move_to(time_morning(2))
+    move_to(freezer, time_morning(2))
     time.sleep(1)
 
     ctrl_log_check(
@@ -1222,7 +1315,7 @@ def test_schedule_ctrl_open_dup(client, mocker, freezer):
 
 
 def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
-    ctrl_log_clear(client)
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
@@ -1236,7 +1329,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    freezer.move_to(time_morning(0))
+    move_to(freezer, time_morning(0))
     time.sleep(1)
 
     response = client.get(
@@ -1269,10 +1362,12 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
     )
     assert response.status_code == 200
 
-    freezer.move_to(time_morning(1))
     time.sleep(1)
 
-    freezer.move_to(time_morning(2))
+    move_to(freezer, time_morning(1))
+    time.sleep(1)
+
+    move_to(freezer, time_morning(2))
     time.sleep(1)
 
     ctrl_log_check(
@@ -1287,10 +1382,10 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
-    freezer.move_to(time_morning(3))
+    move_to(freezer, time_morning(3))
     time.sleep(1)
 
-    freezer.move_to(time_morning(4))
+    move_to(freezer, time_morning(4))
     time.sleep(1)
 
     ctrl_log_check(
@@ -1306,7 +1401,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
 
 
 def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
-    ctrl_log_clear(client)
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     mocker.patch("app_scheduler.exec_shutter_control_impl", return_value=False)
     mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
@@ -1337,10 +1432,10 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
     )
     assert response.status_code == 200
 
-    freezer.move_to(time_evening(1))
+    move_to(freezer, time_evening(1))
     time.sleep(1)
 
-    freezer.move_to(time_evening(2))
+    move_to(freezer, time_evening(2))
     time.sleep(1)
 
     ctrl_log_check(
@@ -1353,7 +1448,7 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
 
 
 def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
-    ctrl_log_clear(client)
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
 
@@ -1389,13 +1484,13 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
     assert response.status_code == 200
     time.sleep(1)
 
-    freezer.move_to(time_evening(1))
+    move_to(freezer, time_evening(1))
     time.sleep(1)
 
-    freezer.move_to(time_evening(2))
+    move_to(freezer, time_evening(2))
     time.sleep(1)
 
-    freezer.move_to(time_evening(3))
+    move_to(freezer, time_evening(3))
     time.sleep(1)
 
     ctrl_log_check(
@@ -1408,12 +1503,12 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
 
 
 def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
-    ctrl_log_clear(client)
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
-    freezer.move_to(time_morning(0))
+    move_to(freezer, time_morning(0))
     time.sleep(1)
 
     sensor_data = SENSOR_DATA_BRIGHT.copy()
@@ -1428,10 +1523,10 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
     )
     assert response.status_code == 200
 
-    freezer.move_to(time_morning(1))
+    move_to(freezer, time_morning(1))
     time.sleep(1)
 
-    freezer.move_to(time_morning(2))
+    move_to(freezer, time_morning(2))
     time.sleep(1)
 
     ctrl_log_check(
@@ -1441,12 +1536,12 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
 
 
 def test_schedule_ctrl_invalid_sensor_2(client, mocker, freezer):
-    ctrl_log_clear(client)
+    mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
-    freezer.move_to(time_morning(0))
+    move_to(freezer, time_morning(0))
     time.sleep(1)
 
     sensor_data = SENSOR_DATA_BRIGHT.copy()
@@ -1462,10 +1557,10 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, freezer):
     assert response.status_code == 200
     time.sleep(1)
 
-    freezer.move_to(time_morning(1))
+    move_to(freezer, time_morning(1))
     time.sleep(1)
 
-    freezer.move_to(time_morning(2))
+    move_to(freezer, time_morning(2))
     time.sleep(1)
 
     ctrl_log_check(client, [])
