@@ -40,6 +40,16 @@ def slack_mock():
         yield fixture
 
 
+@pytest.fixture(scope="function", autouse=True)
+def clear():
+    import notify_slack
+
+    notify_slack.interval_clear()
+    notify_slack.hist_clear()
+
+    ctrl_stat_clear()
+
+
 @pytest.fixture(scope="session")
 def app():
     with mock.patch.dict("os.environ", {"WERKZEUG_RUN_MAIN": "true"}):
@@ -216,7 +226,6 @@ def test_shutter_ctrl_inconsistent_read(client):
 
 def test_valve_ctrl_manual_single_1(client, mocker):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -247,7 +256,6 @@ def test_valve_ctrl_manual_single_1(client, mocker):
 
 def test_valve_ctrl_manual_single_2(client):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -278,7 +286,6 @@ def test_valve_ctrl_manual_single_2(client):
 
 def test_valve_ctrl_manual_all(client):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -409,12 +416,9 @@ def test_valve_ctrl_manual_all(client):
 
 
 def test_valve_ctrl_manual_single_fail(client, mocker):
-    import notify_slack
     import requests
 
     ctrl_log_clear(client)
-    ctrl_stat_clear()
-    notify_slack.clear_interval()
 
     # NOTE: このテストだけは，制御の止め方を変える
     def request_mock(url):
@@ -488,7 +492,6 @@ def test_event(client):
 
 def test_schedule_ctrl_inactive(client, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
@@ -551,10 +554,7 @@ def test_schedule_ctrl_inactive(client, freezer):
 
 
 def test_schedule_ctrl_invalid(client, mocker):
-    import notify_slack
-
     ctrl_log_clear(client)
-    notify_slack.clear_interval()
 
     schedule_data = gen_schedule_data()
     del schedule_data["open"]
@@ -628,7 +628,6 @@ def test_schedule_ctrl_invalid(client, mocker):
 
 def test_schedule_ctrl_execute(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
 
@@ -684,7 +683,6 @@ def test_schedule_ctrl_execute(client, mocker, freezer):
 
 def test_schedule_ctrl_auto_close(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
@@ -759,7 +757,6 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
 
 def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
@@ -855,7 +852,6 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
 
 def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
@@ -965,7 +961,6 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
 
 def test_schedule_ctrl_auto_inactive(client, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
@@ -993,7 +988,6 @@ def test_schedule_ctrl_auto_inactive(client, freezer):
 
 def test_schedule_ctrl_pending_open(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
@@ -1054,7 +1048,6 @@ def test_schedule_ctrl_pending_open(client, mocker, freezer):
 
 def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
@@ -1124,7 +1117,6 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
 # NOTE: 開けるのを延期したあとでセンサーエラー
 def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
@@ -1181,7 +1173,6 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
 
 def test_schedule_ctrl_open_dup(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
 
@@ -1232,7 +1223,6 @@ def test_schedule_ctrl_open_dup(client, mocker, freezer):
 
 def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
 
@@ -1317,7 +1307,6 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
 
 def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     mocker.patch("app_scheduler.exec_shutter_control_impl", return_value=False)
     mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
@@ -1365,7 +1354,7 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
 
 def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
+
     mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
 
     response = client.get(
@@ -1420,7 +1409,6 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
 
 def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
@@ -1454,7 +1442,6 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
 
 def test_schedule_ctrl_invalid_sensor_2(client, mocker, freezer):
     ctrl_log_clear(client)
-    ctrl_stat_clear()
 
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
     sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
