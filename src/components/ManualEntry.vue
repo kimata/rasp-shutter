@@ -3,14 +3,22 @@
         <h3>{{ this.name }}</h3>
         <div class="row">
             <div class="col-6">
-                <button class="btn btn-success w-100" @click="control('open')" v-bind:data-testid="'open-' + index">
+                <button
+                    class="btn btn-success w-100"
+                    @click="control('open')"
+                    v-bind:data-testid="'open-' + index"
+                >
                     <i class="bi bi-arrow-up-circle" />
                     上げる
                 </button>
             </div>
 
             <div class="col-6">
-                <button class="btn btn-success w-100" @click="control('close')" v-bind:data-testid="'close-' + index">
+                <button
+                    class="btn btn-success w-100"
+                    @click="control('close')"
+                    v-bind:data-testid="'close-' + index"
+                >
                     <i class="bi bi-arrow-down-circle" />
                     下げる
                 </button>
