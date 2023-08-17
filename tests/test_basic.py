@@ -71,6 +71,9 @@ def app():
 def client(app, mocker):
     test_client = app.test_client()
 
+    time.sleep(1)
+    app_log_clear(test_client)
+    app_log_check(test_client, [])
     ctrl_log_clear(test_client)
 
     yield test_client
@@ -118,6 +121,54 @@ def gen_schedule_data():
     }
 
 
+def app_log_check(
+    client,
+    expect_list,
+    is_strict=True,
+):
+    import logging
+
+    response = client.get("/rasp-shutter/api/log_view")
+
+    log_list = response.json["data"]
+
+    logging.debug(log_list)
+
+    if is_strict:
+        # NOTE: クリアする直前のログが残っている可能性があるので，+1 でも OK とする
+        assert (len(log_list) == len(expect_list)) or (len(log_list) == (len(expect_list) + 1))
+
+    for (i, expect) in enumerate(reversed(expect_list)):
+        if expect == "START_AUTO":
+            assert "水やりを開始" in log_list[i]["message"]
+        elif expect == "STOP_AUTO":
+            assert "水やりを行いました" in log_list[i]["message"]
+        elif expect == "STOP_MANUAL":
+            assert "水やりを終了します" in log_list[i]["message"]
+        elif expect == "SCHEDULE":
+            assert "スケジュールを更新" in log_list[i]["message"]
+        elif expect == "INVALID":
+            assert "スケジュールの指定が不正" in log_list[i]["message"]
+        elif expect == "FAIL_AUTO":
+            assert "自動実行に失敗" in log_list[i]["message"]
+        elif expect == "FAIL_WRITE":
+            assert "保存に失敗" in log_list[i]["message"]
+        elif expect == "FAIL_READ":
+            assert "読み出しに失敗" in log_list[i]["message"]
+        elif expect == "PENDING":
+            assert "水やりを見合わせます" in log_list[i]["message"]
+        elif expect == "FAIL_OVER":
+            assert "水が流れすぎています" in log_list[i]["message"]
+        elif expect == "FAIL_CLOSE":
+            assert "水が流れ続けています" in log_list[i]["message"]
+        elif expect == "FAIL_OPEN":
+            assert "元栓が閉まっている可能性があります" in log_list[i]["message"]
+        elif expect == "CLEAR":
+            assert "クリアされました" in log_list[i]["message"]
+        else:
+            assert False, "テストコードのバグです．({expect})".format(expect=expect)
+
+
 def ctrl_log_clear(client):
     response = client.get(
         "/rasp-shutter/api/ctrl/log",
@@ -127,6 +178,11 @@ def ctrl_log_clear(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
+
+
+def app_log_clear(client):
+    response = client.get("/rasp-shutter/api/log_clear")
+    assert response.status_code == 200
 
 
 def ctrl_log_check(client, expect):
@@ -150,6 +206,20 @@ def ctrl_stat_clear():
     rasp_shutter_control.clean_stat_exec(load_config(CONFIG_FILE))
 
     STAT_AUTO_CLOSE.unlink(missing_ok=True)
+
+
+def check_notify_slack(message, index=-1):
+    import notify_slack
+
+    notify_hist = notify_slack.hist_get()
+
+    if message is None:
+        assert notify_hist == [], "正常なはずなのに，エラー通知がされています。"
+    else:
+        assert len(notify_hist) != 0, "異常が発生したはずなのに，エラー通知がされていません。"
+        assert notify_hist[index].find(message) != -1, "「{message}」が Slack で通知されていません。".format(
+            message=message
+        )
 
 
 ######################################################################
@@ -199,8 +269,11 @@ def test_redirect(client):
     response = client.get("/")
     assert response.status_code == 302
     assert re.search(r"/rasp-shutter/$", response.location)
+    time.sleep(1)
 
     ctrl_log_check(client, [])
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_index(client):
@@ -210,8 +283,11 @@ def test_index(client):
 
     response = client.get("/rasp-shutter/", headers={"Accept-Encoding": "gzip"})
     assert response.status_code == 200
+    time.sleep(1)
 
     ctrl_log_check(client, [])
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_index_with_other_status(client, mocker):
@@ -231,8 +307,11 @@ def test_shutter_ctrl_read(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
+    time.sleep(1)
 
     ctrl_log_check(client, [])
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_shutter_ctrl_inconsistent_read(client):
@@ -266,8 +345,11 @@ def test_shutter_ctrl_inconsistent_read(client):
     assert response.json["result"] == "success"
     assert response.json["state"][1]["state"] == rasp_shutter_control.SHUTTER_STATE.OPEN
     assert response.json["state"][0]["state"] == rasp_shutter_control.SHUTTER_STATE.UNKNOWN
+    time.sleep(1)
 
     ctrl_log_check(client, [])
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_valve_ctrl_manual_single_1(client, mocker):
@@ -296,6 +378,8 @@ def test_valve_ctrl_manual_single_1(client, mocker):
     assert response.json["result"] == "success"
 
     ctrl_log_check(client, [{"index": 0, "state": "open"}, {"index": 0, "state": "close"}])
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_valve_ctrl_manual_single_2(client):
@@ -324,6 +408,8 @@ def test_valve_ctrl_manual_single_2(client):
     assert response.json["result"] == "success"
 
     ctrl_log_check(client, [{"index": 1, "state": "open"}, {"index": 1, "state": "close"}])
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_valve_ctrl_manual_all(client):
@@ -453,6 +539,8 @@ def test_valve_ctrl_manual_all(client):
             {"index": 1, "state": "close"},
         ],
     )
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_valve_ctrl_manual_single_fail(client, mocker):
@@ -513,6 +601,8 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
             {"index": 1, "state": "close"},
         ],
     )
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
     # NOTE: ログを出し切らせる
     time.sleep(2)
@@ -523,7 +613,11 @@ def test_event(client):
     assert response.status_code == 200
     assert response.data.decode()
 
+    time.sleep(1)
+
     ctrl_log_check(client, [])
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_inactive(client, mocker, freezer):
@@ -587,6 +681,8 @@ def test_schedule_ctrl_inactive(client, mocker, freezer):
     time.sleep(1)
 
     ctrl_log_check(client, [])
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_invalid(client, mocker):
@@ -655,6 +751,8 @@ def test_schedule_ctrl_invalid(client, mocker):
     assert response.status_code == 200
 
     ctrl_log_check(client, [])
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
     # NOTE: ログを出し切らせる
     time.sleep(2)
@@ -712,6 +810,8 @@ def test_schedule_ctrl_execute(client, mocker, freezer):
             {"index": 0, "state": "close"},
         ],
     )
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_auto_close(client, mocker, freezer):
@@ -776,6 +876,7 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
 
     move_to(freezer, time_evening(6))
     time.sleep(1)
+
     ctrl_log_check(
         client,
         [
@@ -785,6 +886,8 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
             {"index": 1, "state": "close"},
         ],
     )
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
@@ -879,6 +982,8 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
             {"index": 0, "state": "close"},
         ],
     )
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
@@ -1041,15 +1146,8 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
             {"index": 1, "state": "close"},
         ],
     )
-
-    # [
-    #     {'index': 0, 'state': 'close'},
-    #     {'index': 1, 'state': 'close'},
-    #     {'cmd': 'pending', 'state': 'open'},
-    #     {'index': 0, 'state': 'open'},
-    #     {'index': 1, 'state': 'open'},
-    #     {'index': 0, 'state': 'close'},
-    #     {'index': 1, 'state': 'close'}]
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_auto_inactive(client, mocker, freezer):
@@ -1077,6 +1175,8 @@ def test_schedule_ctrl_auto_inactive(client, mocker, freezer):
     time.sleep(1)
 
     ctrl_log_check(client, [])
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_pending_open(client, mocker, freezer):
@@ -1137,6 +1237,8 @@ def test_schedule_ctrl_pending_open(client, mocker, freezer):
             {"index": 1, "state": "open"},
         ],
     )
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
@@ -1205,6 +1307,8 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
             {"index": 1, "state": "close"},
         ],
     )
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 # NOTE: 開けるのを延期したあとでセンサーエラー
@@ -1262,6 +1366,8 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
             {"index": 1, "state": "close"},
         ],
     )
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_open_dup(client, mocker, freezer):
@@ -1312,6 +1418,8 @@ def test_schedule_ctrl_open_dup(client, mocker, freezer):
             {"index": 1, "state": "open"},
         ],
     )
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
@@ -1398,6 +1506,8 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
             {"index": 0, "state": "open"},
         ],
     )
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
@@ -1445,6 +1555,8 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
             {"index": 1, "state": "open"},
         ],
     )
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
@@ -1500,6 +1612,8 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
             {"index": 1, "state": "open"},
         ],
     )
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
@@ -1529,10 +1643,9 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
     move_to(freezer, time_morning(2))
     time.sleep(1)
 
-    ctrl_log_check(
-        client,
-        [],
-    )
+    ctrl_log_check(client, [])
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_invalid_sensor_2(client, mocker, freezer):
@@ -1564,6 +1677,8 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, freezer):
     time.sleep(1)
 
     ctrl_log_check(client, [])
+    app_log_check(client, ["CLEAR"])
+    check_notify_slack(None)
 
 
 def test_schedule_ctrl_read(client):
