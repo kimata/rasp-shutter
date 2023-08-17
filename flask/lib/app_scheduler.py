@@ -160,7 +160,7 @@ def conv_schedule_time_to_datetime(schedule_time):
     return datetime.datetime.strptime(
         datetime.datetime.now(TIMEZONE).strftime("%Y/%m/%d ") + schedule_time,
         "%Y/%m/%d %H:%M",
-    )
+    ).replace(tzinfo=TIMEZONE)
 
 
 def shutter_auto_close(config):
