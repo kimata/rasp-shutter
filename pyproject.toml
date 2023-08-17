@@ -17,6 +17,7 @@ pytz = "^2023.3"
 schedule = "^1.2.0"
 slack-sdk = "^3.21.3"
 uptime = "^3.0.1"
+pytest-xdist = "^3.3.1"
 
 [tool.poetry.group.test.dependencies]
 flaky = "^3.7.0"
@@ -29,17 +30,15 @@ pytest-playwright = "^0.3.3"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = [
-    "--verbose",
-    "--cov=app",
-    "--cov=flask",
-    "--capture=sys",
-    "--cov-report=html",
-    "--html=tests/evidence/index.htm",
-    "--self-contained-html",
-]
+addopts = "--verbose --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys  --html=tests/evidence/index.htm --self-contained-html"
+
 testpaths = [
     "tests",
+]
+filterwarnings = [
+    "ignore:The hookimpl CovPlugin.pytest_configure_node uses",
+    "ignore:The hookimpl CovPlugin.pytest_testnodedown uses",
+    "ignore::DeprecationWarning:pytest_freezegun",
 ]
 
 [tool.coverage.run]
@@ -86,6 +85,7 @@ exclude_lines = [
   "def remote_host",
 ]
 
+
 [tool.coverage.html]
 directory = "tests/evidence/coverage"
 
@@ -93,13 +93,10 @@ directory = "tests/evidence/coverage"
 target-version = ['py310']
 line-length = 120
 
-
 [tool.isort]
 profile = "black"
-line_length = 120
-multi_line_output = 5
+line_length = 110
 include_trailing_comma = true
-
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

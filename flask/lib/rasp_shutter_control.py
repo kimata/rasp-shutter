@@ -305,12 +305,12 @@ def api_shutter_list():
 @blueprint.route("/api/dummy/open", methods=["GET"])
 @support_jsonp
 def api_dummy_open():
-    logging.info("ダミーのシャッターが開きました．")
+    logging.info("ダミーのシャッターが開きました。")
     return jsonify({"status": "OK"})
 
 
 @blueprint.route("/api/dummy/close", methods=["GET"])
 @support_jsonp
 def api_dummy_close():
-    logging.info("ダミーのシャッターが閉じました．")
+    logging.info("ダミーのシャッターが閉じました。")
     return jsonify({"status": "OK"})
