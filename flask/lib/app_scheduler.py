@@ -12,6 +12,7 @@ import time
 import traceback
 from enum import IntEnum
 
+import footprint
 import rasp_shutter_control
 import rasp_shutter_sensor
 import schedule
@@ -42,9 +43,6 @@ should_terminate = False
 def init():
     global schedule_lock
     schedule_lock = threading.Lock()
-
-    STAT_PENDING_OPEN.parent.mkdir(parents=True, exist_ok=True)
-    STAT_AUTO_CLOSE.parent.mkdir(parents=True, exist_ok=True)
 
 
 # NOTE: feeezer でテストしやすくするため，ファイルの mtime ではなく，
@@ -127,6 +125,7 @@ def exec_shutter_control(config, state, mode, sense_data, user):
     for i in range(RETRY_COUNT):
         if exec_shutter_control_impl(config, state, mode, sense_data, user):
             return True
+        logging.debug("Retry")
 
     app_log("😵 シャッターの制御に失敗しました。")
     return False
@@ -139,12 +138,15 @@ def shutter_auto_open(config):
         logging.debug("inactive")
         return
 
-    if exec_check_elapsed_time(STAT_PENDING_OPEN) > 6 * 60 * 60:
+    elapsed_pendiing_open = footprint.elapsed(STAT_PENDING_OPEN)
+    if elapsed_pendiing_open > 6 * 60 * 60:
         # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない．
         logging.debug("NOT pending")
         return
+    else:
+        logging.debug("Elapsed time since pending open: {elapsed}".format(elapsed=elapsed_pendiing_open))
 
-    if exec_check_elapsed_time(STAT_AUTO_CLOSE) < 10 * 60:
+    if footprint.elapsed(STAT_AUTO_CLOSE) < 10 * 60:
         # NOTE: 自動で閉めてから時間が経っていない場合は，処理を行わない．
         logging.debug("just closed")
         return
@@ -158,8 +160,8 @@ def shutter_auto_open(config):
         )
 
         exec_shutter_control(config, "open", rasp_shutter_control.CONTROL_MODE.AUTO, sense_data, "sensor")
-        STAT_PENDING_OPEN.unlink(missing_ok=True)
-        STAT_AUTO_CLOSE.unlink(missing_ok=True)
+        footprint.clear(STAT_PENDING_OPEN)
+        footprint.clear(STAT_AUTO_CLOSE)
     else:
         logging.debug(
             "Skip pendding open (solar_rad: {solar_rad:.1f} W/m^2, lux: {lux:.1f} LUX)".format(
@@ -189,7 +191,7 @@ def shutter_auto_close(config):
         return
     elif (
         datetime.datetime.now(TIMEZONE) < conv_schedule_time_to_datetime(schedule_data["open"]["time"])
-    ) or STAT_PENDING_OPEN.exists():
+    ) or footprint.exists(STAT_PENDING_OPEN):
         # NOTE: 開ける時刻よりも早い場合は処理しない
         logging.debug("before open time")
         return
@@ -197,7 +199,7 @@ def shutter_auto_close(config):
         # NOTE: スケジュールで閉めていた場合は処理しない
         logging.debug("after close time")
         return
-    elif STAT_AUTO_CLOSE.exists() and (exec_check_elapsed_time(STAT_AUTO_CLOSE) <= 12 * 60 * 60):
+    elif footprint.elapsed(STAT_AUTO_CLOSE) <= 12 * 60 * 60:
         # NOTE: 12時間以内に自動で閉めていた場合は処理しない
         logging.debug("already close")
         return
@@ -217,12 +219,12 @@ def shutter_auto_close(config):
             sense_data,
             "sensor",
         )
-        exec_check_update(STAT_AUTO_CLOSE)
+        footprint.update(STAT_AUTO_CLOSE)
 
         # NOTE: まだ明るくなる可能性がある時間帯の場合，再度自動的に開けるようにする
         hour = datetime.datetime.now(TIMEZONE).hour
         if (5 < hour) and (hour < 13):
-            exec_check_update(STAT_PENDING_OPEN)
+            footprint.update(STAT_PENDING_OPEN)
 
     else:  # pragma: no cover
         # NOTE: pending close の制御は無いのでここには来ない．
@@ -259,7 +261,7 @@ def shutter_schedule_control(config, state):
             error_sensor.append("照度センサ")
 
         app_log(
-            "😵 {error_sensor}の値が不明なので{state}るのを見合わせます。".format(
+            "😵 {error_sensor}の値が不明なので{state}るのを見合わせました。".format(
                 error_sensor="と".join(error_sensor),
                 state="開け" if state == "open" else "閉め",
             ),
@@ -270,7 +272,7 @@ def shutter_schedule_control(config, state):
     if state == "open":
         if check_brightness(sense_data, state) == BRIGHTNESS_STATE.DARK:
             app_log(
-                "📝 まだ暗いので開けるのを見合わせます．{sensor_text}".format(
+                "📝 まだ暗いので開けるのを見合わせました．{sensor_text}".format(
                     sensor_text=rasp_shutter_control.sensor_text(sense_data)
                 )
             )
@@ -283,7 +285,7 @@ def shutter_schedule_control(config, state):
             )
 
             # NOTE: 暗いので開けれなかったことを通知
-            exec_check_update(STAT_PENDING_OPEN)
+            footprint.update(STAT_PENDING_OPEN)
         else:
             # NOTE: ここにきたときのみ，スケジュールに従って開ける
             exec_shutter_control(
@@ -294,7 +296,7 @@ def shutter_schedule_control(config, state):
                 "scheduler",
             )
     else:
-        STAT_PENDING_OPEN.unlink(missing_ok=True)
+        footprint.clear(STAT_PENDING_OPEN)
         exec_shutter_control(
             config,
             state,
