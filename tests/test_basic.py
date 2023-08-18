@@ -44,7 +44,12 @@ def slack_mock():
 
 @pytest.fixture(scope="function", autouse=True)
 def clear():
+    import footprint
     import notify_slack
+    from webapp_config import STAT_AUTO_CLOSE, STAT_PENDING_OPEN
+
+    footprint.clear(STAT_AUTO_CLOSE)
+    footprint.clear(STAT_PENDING_OPEN)
 
     notify_slack.interval_clear()
     notify_slack.hist_clear()
@@ -139,30 +144,36 @@ def app_log_check(
         assert (len(log_list) == len(expect_list)) or (len(log_list) == (len(expect_list) + 1))
 
     for (i, expect) in enumerate(reversed(expect_list)):
-        if expect == "START_AUTO":
-            assert "水やりを開始" in log_list[i]["message"]
-        elif expect == "STOP_AUTO":
-            assert "水やりを行いました" in log_list[i]["message"]
-        elif expect == "STOP_MANUAL":
-            assert "水やりを終了します" in log_list[i]["message"]
+        if expect == "OPEN_MANUAL":
+            assert "手動で開けました" in log_list[i]["message"]
+        elif expect == "OPEN_AUTO":
+            assert "自動で開けました" in log_list[i]["message"]
+        elif expect == "OPEN_FAIL":
+            assert "開けるのに失敗しました" in log_list[i]["message"]
+
+        elif expect == "CLOSE_MANUAL":
+            assert "手動で閉めました" in log_list[i]["message"]
+        elif expect == "CLOSE_AUTO":
+            assert "自動で閉めました" in log_list[i]["message"]
+        elif expect == "CLOSE_SCHEDULE":
+            assert "スケジューラで閉めました" in log_list[i]["message"]
+        elif expect == "CLOSE_DARK":
+            assert "暗くなってきたので閉めます" in log_list[i]["message"]
+        elif expect == "CLOSE_PENDING":
+            assert "閉めるのを見合わせました" in log_list[i]["message"]
+        elif expect == "OPEN_PENDING":
+            assert "開けるのを見合わせました" in log_list[i]["message"]
+        elif expect == "OPEN_BRIGHT":
+            assert "明るくなってきたので開けます" in log_list[i]["message"]
+
         elif expect == "SCHEDULE":
             assert "スケジュールを更新" in log_list[i]["message"]
-        elif expect == "INVALID":
-            assert "スケジュールの指定が不正" in log_list[i]["message"]
-        elif expect == "FAIL_AUTO":
-            assert "自動実行に失敗" in log_list[i]["message"]
-        elif expect == "FAIL_WRITE":
-            assert "保存に失敗" in log_list[i]["message"]
-        elif expect == "FAIL_READ":
-            assert "読み出しに失敗" in log_list[i]["message"]
-        elif expect == "PENDING":
-            assert "水やりを見合わせます" in log_list[i]["message"]
-        elif expect == "FAIL_OVER":
-            assert "水が流れすぎています" in log_list[i]["message"]
-        elif expect == "FAIL_CLOSE":
-            assert "水が流れ続けています" in log_list[i]["message"]
-        elif expect == "FAIL_OPEN":
-            assert "元栓が閉まっている可能性があります" in log_list[i]["message"]
+
+        elif expect == "FAIL_SENSOR":
+            assert "センサの値が不明" in log_list[i]["message"]
+        elif expect == "FAIL_CONTROL":
+            assert "制御に失敗しました" in log_list[i]["message"]
+
         elif expect == "CLEAR":
             assert "クリアされました" in log_list[i]["message"]
         else:
@@ -209,9 +220,12 @@ def ctrl_stat_clear():
 
 
 def check_notify_slack(message, index=-1):
+    import logging
+
     import notify_slack
 
     notify_hist = notify_slack.hist_get()
+    logging.debug(notify_hist)
 
     if message is None:
         assert notify_hist == [], "正常なはずなのに，エラー通知がされています。"
@@ -376,9 +390,10 @@ def test_valve_ctrl_manual_single_1(client, mocker):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
+    time.sleep(1)
 
     ctrl_log_check(client, [{"index": 0, "state": "open"}, {"index": 0, "state": "close"}])
-    app_log_check(client, ["CLEAR"])
+    app_log_check(client, ["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
     check_notify_slack(None)
 
 
@@ -406,9 +421,10 @@ def test_valve_ctrl_manual_single_2(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
+    time.sleep(1)
 
     ctrl_log_check(client, [{"index": 1, "state": "open"}, {"index": 1, "state": "close"}])
-    app_log_check(client, ["CLEAR"])
+    app_log_check(client, ["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
     check_notify_slack(None)
 
 
@@ -529,6 +545,7 @@ def test_valve_ctrl_manual_all(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
+    time.sleep(3)
 
     ctrl_log_check(
         client,
@@ -539,7 +556,22 @@ def test_valve_ctrl_manual_all(client):
             {"index": 1, "state": "close"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
+    app_log_check(
+        client,
+        [
+            "CLEAR",
+            "OPEN_MANUAL",
+            "OPEN_MANUAL",
+            "CLOSE_MANUAL",
+            "CLOSE_MANUAL",
+            "OPEN_MANUAL",
+            "OPEN_MANUAL",
+            "CLOSE_MANUAL",
+            "CLOSE_MANUAL",
+            "CLOSE_PENDING",
+            "CLOSE_PENDING",
+        ],
+    )
     check_notify_slack(None)
 
 
@@ -601,8 +633,8 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
             {"index": 1, "state": "close"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
-    check_notify_slack(None)
+    app_log_check(client, ["CLEAR", "OPEN_FAIL", "CLOSE_MANUAL"])
+    check_notify_slack("手動で開けるのに失敗しました")
 
     # NOTE: ログを出し切らせる
     time.sleep(2)
@@ -681,7 +713,7 @@ def test_schedule_ctrl_inactive(client, mocker, freezer):
     time.sleep(1)
 
     ctrl_log_check(client, [])
-    app_log_check(client, ["CLEAR"])
+    app_log_check(client, ["CLEAR", "SCHEDULE", "SCHEDULE"])
     check_notify_slack(None)
 
 
@@ -810,7 +842,19 @@ def test_schedule_ctrl_execute(client, mocker, freezer):
             {"index": 0, "state": "close"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
+    app_log_check(
+        client,
+        [
+            "CLEAR",
+            "OPEN_MANUAL",
+            "OPEN_MANUAL",
+            "CLOSE_MANUAL",
+            "SCHEDULE",
+            "CLOSE_SCHEDULE",
+            "CLOSE_PENDING",
+        ],
+    )
+
     check_notify_slack(None)
 
 
@@ -886,7 +930,20 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
             {"index": 1, "state": "close"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
+    app_log_check(
+        client,
+        [
+            "CLEAR",
+            "OPEN_MANUAL",
+            "OPEN_MANUAL",
+            "SCHEDULE",
+            "CLOSE_DARK",
+            "CLOSE_AUTO",
+            "CLOSE_AUTO",
+            "CLOSE_PENDING",
+            "CLOSE_PENDING",
+        ],
+    )
     check_notify_slack(None)
 
 
@@ -982,7 +1039,22 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
             {"index": 0, "state": "close"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
+    app_log_check(
+        client,
+        [
+            "CLEAR",
+            "OPEN_MANUAL",
+            "OPEN_MANUAL",
+            "CLOSE_MANUAL",
+            "SCHEDULE",
+            "CLOSE_DARK",
+            "CLOSE_AUTO",
+            "CLOSE_PENDING",
+            "CLOSE_PENDING",
+            "CLOSE_PENDING",
+        ],
+    )
+
     check_notify_slack(None)
 
 
@@ -1146,12 +1218,34 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
             {"index": 1, "state": "close"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
+    app_log_check(
+        client,
+        [
+            "CLEAR",
+            "CLOSE_MANUAL",
+            "CLOSE_MANUAL",
+            "SCHEDULE",
+            "OPEN_PENDING",
+            "OPEN_BRIGHT",
+            "OPEN_AUTO",
+            "OPEN_AUTO",
+            "CLOSE_DARK",
+            "CLOSE_AUTO",
+            "CLOSE_AUTO",
+            "OPEN_BRIGHT",
+            "OPEN_AUTO",
+            "OPEN_AUTO",
+            "CLOSE_SCHEDULE",
+            "CLOSE_SCHEDULE",
+        ],
+    )
     check_notify_slack(None)
 
 
 def test_schedule_ctrl_auto_inactive(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
+
+    move_to(freezer, time_morning(0))
 
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
@@ -1161,6 +1255,7 @@ def test_schedule_ctrl_auto_inactive(client, mocker, freezer):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
+    time.sleep(1)
 
     move_to(freezer, time_morning(1))
     time.sleep(1)
@@ -1175,7 +1270,7 @@ def test_schedule_ctrl_auto_inactive(client, mocker, freezer):
     time.sleep(1)
 
     ctrl_log_check(client, [])
-    app_log_check(client, ["CLEAR"])
+    app_log_check(client, ["CLEAR", "SCHEDULE"])
     check_notify_slack(None)
 
 
@@ -1237,7 +1332,20 @@ def test_schedule_ctrl_pending_open(client, mocker, freezer):
             {"index": 1, "state": "open"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
+    app_log_check(
+        client,
+        [
+            "CLEAR",
+            "CLOSE_MANUAL",
+            "CLOSE_MANUAL",
+            "SCHEDULE",
+            "OPEN_PENDING",
+            "OPEN_BRIGHT",
+            "OPEN_AUTO",
+            "OPEN_AUTO",
+        ],
+    )
+
     check_notify_slack(None)
 
 
@@ -1265,6 +1373,7 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
+    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1291,6 +1400,8 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
         "/rasp-shutter/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
+    assert response.status_code == 200
+    time.sleep(1)
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
@@ -1300,6 +1411,9 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
     move_to(freezer, time_morning(5))
     time.sleep(1)
 
+    move_to(freezer, time_morning(6))
+    time.sleep(1)
+
     ctrl_log_check(
         client,
         [
@@ -1307,7 +1421,7 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
             {"index": 1, "state": "close"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
+    app_log_check(client, ["CLEAR", "CLOSE_MANUAL", "CLOSE_MANUAL", "SCHEDULE", "SCHEDULE"])
     check_notify_slack(None)
 
 
@@ -1336,6 +1450,8 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
         ],
     )
 
+    move_to(freezer, time_morning(0))
+
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     schedule_data = gen_schedule_data()
@@ -1345,6 +1461,7 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
+    time.sleep(1)
 
     move_to(freezer, time_morning(1))
     time.sleep(1)
@@ -1359,14 +1476,22 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
     move_to(freezer, time_morning(3))
     time.sleep(1)
 
+    move_to(freezer, time_morning(4))
+    time.sleep(1)
+
     ctrl_log_check(
         client,
         [
             {"index": 0, "state": "close"},
             {"index": 1, "state": "close"},
+            {"cmd": "pending", "state": "open"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
+    app_log_check(
+        client,
+        ["CLEAR", "CLOSE_MANUAL", "CLOSE_MANUAL", "SCHEDULE", "OPEN_PENDING"],
+    )
+
     check_notify_slack(None)
 
 
@@ -1404,11 +1529,15 @@ def test_schedule_ctrl_open_dup(client, mocker, freezer):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
+    time.sleep(1)
 
     move_to(freezer, time_morning(1))
     time.sleep(1)
 
     move_to(freezer, time_morning(2))
+    time.sleep(1)
+
+    move_to(freezer, time_morning(3))
     time.sleep(1)
 
     ctrl_log_check(
@@ -1418,7 +1547,17 @@ def test_schedule_ctrl_open_dup(client, mocker, freezer):
             {"index": 1, "state": "open"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
+    app_log_check(
+        client,
+        [
+            "CLEAR",
+            "OPEN_MANUAL",
+            "OPEN_MANUAL",
+            "SCHEDULE",
+            "OPEN_PENDING",
+            "OPEN_PENDING",
+        ],
+    )
     check_notify_slack(None)
 
 
@@ -1506,7 +1645,20 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
             {"index": 0, "state": "open"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
+    app_log_check(
+        client,
+        [
+            "CLEAR",
+            "CLOSE_MANUAL",
+            "CLOSE_MANUAL",
+            "OPEN_MANUAL",
+            "SCHEDULE",
+            "OPEN_PENDING",
+            "OPEN_BRIGHT",
+            "OPEN_AUTO",
+            "OPEN_PENDING",
+        ],
+    )
     check_notify_slack(None)
 
 
@@ -1534,6 +1686,8 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
         ],
     )
 
+    move_to(freezer, time_evening(0))
+
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
     response = client.get(
@@ -1541,12 +1695,16 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
+    time.sleep(1)
 
     move_to(freezer, time_evening(1))
     time.sleep(1)
 
     move_to(freezer, time_evening(2))
     time.sleep(1)
+
+    move_to(freezer, time_evening(3))
+    time.sleep(3)
 
     ctrl_log_check(
         client,
@@ -1555,7 +1713,16 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
             {"index": 1, "state": "open"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
+    app_log_check(
+        client,
+        [
+            "CLEAR",
+            "OPEN_MANUAL",
+            "OPEN_MANUAL",
+            "SCHEDULE",
+            "FAIL_CONTROL",
+        ],
+    )
     check_notify_slack(None)
 
 
@@ -1587,6 +1754,8 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
         side_effect=RuntimeError(),
     )
 
+    move_to(freezer, time_evening(0))
+
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
     response = client.get(
@@ -1603,7 +1772,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
     time.sleep(1)
 
     move_to(freezer, time_evening(3))
-    time.sleep(1)
+    time.sleep(3)
 
     ctrl_log_check(
         client,
@@ -1612,7 +1781,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
             {"index": 1, "state": "open"},
         ],
     )
-    app_log_check(client, ["CLEAR"])
+    app_log_check(client, ["CLEAR", "OPEN_MANUAL", "OPEN_MANUAL", "SCHEDULE", "FAIL_CONTROL"])
     check_notify_slack(None)
 
 
@@ -1644,8 +1813,8 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
     time.sleep(1)
 
     ctrl_log_check(client, [])
-    app_log_check(client, ["CLEAR"])
-    check_notify_slack(None)
+    app_log_check(client, ["CLEAR", "SCHEDULE", "FAIL_SENSOR"])
+    check_notify_slack("センサの値が不明なので開けるのを見合わせました。")
 
 
 def test_schedule_ctrl_invalid_sensor_2(client, mocker, freezer):
@@ -1677,8 +1846,8 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, freezer):
     time.sleep(1)
 
     ctrl_log_check(client, [])
-    app_log_check(client, ["CLEAR"])
-    check_notify_slack(None)
+    app_log_check(client, ["CLEAR", "SCHEDULE", "FAIL_SENSOR"])
+    check_notify_slack("センサの値が不明なので開けるのを見合わせました。")
 
 
 def test_schedule_ctrl_read(client):
