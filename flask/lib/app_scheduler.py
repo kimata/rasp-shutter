@@ -248,7 +248,7 @@ def shutter_auto_control(config):
 
 
 def shutter_schedule_control(config, state):
-    logging.info("Execute shcedule control")
+    logging.info("Execute schedule control")
 
     sense_data = rasp_shutter_sensor.get_sensor_data(config)
 
@@ -429,7 +429,7 @@ def schedule_worker(config, queue):
     global should_terminate
     global schedule_data
 
-    sleep_sec = 0.4
+    sleep_sec = 1
 
     liveness_file = pathlib.Path(config["liveness"]["file"]["scheduler"])
     liveness_file.parent.mkdir(parents=True, exist_ok=True)
