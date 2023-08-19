@@ -874,6 +874,8 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
+    move_to(freezer, time_evening(0))
+
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     schedule_data = gen_schedule_data()
@@ -884,6 +886,8 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
+
+    time.sleep(1)
 
     move_to(freezer, time_evening(1))
     time.sleep(1)
@@ -1097,7 +1101,10 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
     time.sleep(1)
 
     move_to(freezer, time_morning(2))
-    time.sleep(2)
+    time.sleep(1)
+
+    move_to(freezer, time_morning(3))
+    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1107,9 +1114,6 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
             {"cmd": "pending", "state": "open"},
         ],
     )
-
-    move_to(freezer, time_morning(3))
-    time.sleep(1)
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
