@@ -27,9 +27,13 @@
 
 <script>
 import axios from "axios";
+import "dayjs/locale/ja";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+dayjs.locale("ja");
+dayjs.extend(relativeTime);
+
 import AppConfig from "../mixins/AppConfig.js";
-import moment from "moment";
-import "moment/locale/ja";
 
 export default {
     name: "app-footer",
@@ -37,8 +41,8 @@ export default {
     data() {
         return {
             build: {
-                date: moment(document.documentElement.dataset.buildDate).format("lll"),
-                dateFrom: moment(document.documentElement.dataset.buildDate).fromNow(),
+                date: dayjs(document.documentElement.dataset.buildDate).format("lll"),
+                dateFrom: dayjs(document.documentElement.dataset.buildDate).fromNow(),
             },
             sysinfo: {
                 date: "",
@@ -57,15 +61,16 @@ export default {
             axios
                 .get(this.AppConfig["apiEndpoint"] + "sysinfo")
                 .then((response) => {
-                    const date = moment(response.data["date"]);
-                    const uptime = moment(response.data["uptime"]);
+                    const date = dayjs(response.data["date"]);
+                    const uptime = dayjs(response.data["uptime"]);
 
                     if (response.data["image_build_date"] !== "") {
-                        const imageBuildDate = moment(response.data["image_build_date"]);
+                        const imageBuildDate = dayjs(response.data["image_build_date"]);
                         this.sysinfo.imageBuildDate = imageBuildDate.format("llll");
                         this.sysinfo.imageBuildDateFrom = imageBuildDate.fromNow();
                     } else {
-                        this.sysinfo.image_build_date = "";
+                        this.sysinfo.imageBuildDate = "?";
+                        this.sysinfo.imageBuildDateFrom = "?";
                     }
 
                     this.sysinfo.date = date.format("llll");
