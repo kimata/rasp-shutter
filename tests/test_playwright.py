@@ -2,13 +2,21 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+import pathlib
 import random
+import sys
 import time
 
 from flaky import flaky
 from playwright.sync_api import expect
 
+sys.path.append(str(pathlib.Path(__file__).parent.parent / "flask" / "lib"))
+
+from webapp_config import TIMEZONE, TIMEZONE_PYTZ
+
 APP_URL_TMPL = "http://{host}:{port}/rasp-shutter/"
+
+SCHEDULE_AFTER_MIN = 1
 
 
 def check_log(page, message, timeout_sec=2):
@@ -80,6 +88,38 @@ def init(page):
 
 
 ######################################################################
+def test_time(freezer):
+    import logging
+
+    import schedule
+
+    logging.error(
+        "datetime.now()                 = {date}".format(date=datetime.datetime.now()),
+    )
+    logging.error("datetime.now(JST)              = {date}".format(date=datetime.datetime.now(TIMEZONE)))
+    logging.error(
+        "datetime.now().replace(...)    = {date}".format(
+            date=datetime.datetime.now().replace(hour=0, minute=0, second=0)
+        )
+    )
+    logging.error(
+        "datetime.now(JST).replace(...) = {date}".format(
+            date=datetime.datetime.now(TIMEZONE).replace(hour=0, minute=0, second=0)
+        )
+    )
+
+    schedule.clear()
+    job_time_str = time_str_after(SCHEDULE_AFTER_MIN)
+    logging.error("set schedule at {time}".format(time=job_time_str))
+    job = schedule.every().day.at(job_time_str, TIMEZONE_PYTZ).do(lambda: True)
+
+    idle_sec = schedule.idle_seconds()
+    logging.error("Time to next jobs is {idle:.1f} sec".format(idle=idle_sec))
+    logging.error("Next run is {time}".format(time=job.next_run))
+
+    assert idle_sec < 60
+
+
 @flaky(max_runs=3, min_passes=1)
 def test_manual(page, host, port):
     init(page)
@@ -181,14 +221,15 @@ def test_schedule(page, host, port):
 
 @flaky(max_runs=3, min_passes=1)
 def test_schedule_run(page, host, port):
-    SCHEDULE_AFTER_MIN = 2
-
     init(page)
     page.goto(app_url(host, port))
 
     page.get_by_test_id("clear").click()
     time.sleep(1)
     check_log(page, "ログがクリアされました")
+
+    # NOTE: 次の「分」で実行させるにあたって，秒数を調整する
+    time.sleep((90 - datetime.datetime.now(TIMEZONE).second) % 60)
 
     # NOTE: スケジュールに従って閉める評価をしたいので，一旦あけておく
     page.get_by_test_id("open-0").click()
