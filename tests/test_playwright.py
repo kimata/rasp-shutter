@@ -2,17 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import datetime
-import pathlib
 import random
-import sys
 import time
 
 from flaky import flaky
 from playwright.sync_api import expect
-
-sys.path.append(str(pathlib.Path(__file__).parent.parent / "flask" / "lib"))
-
-from webapp_config import TIMEZONE, TIMEZONE_OFFSET, TIMEZONE_PYTZ
 
 APP_URL_TMPL = "http://{host}:{port}/rasp-shutter/"
 
@@ -86,42 +80,6 @@ def init(page):
 
 
 ######################################################################
-def test_time(freezer):
-    import logging
-
-    import schedule
-
-    logging.error(
-        "datetime.now()                 = {date}".format(date=datetime.datetime.now()),
-    )
-    logging.error("datetime.now(JST)              = {date}".format(date=datetime.datetime.now(TIMEZONE)))
-    logging.error(
-        "datetime.now().replace(...)    = {date}".format(
-            date=datetime.datetime.now().replace(hour=0, minute=0, second=0)
-        )
-    )
-    logging.error(
-        "datetime.now(JST).replace(...) = {date}".format(
-            date=datetime.datetime.now(TIMEZONE).replace(hour=0, minute=0, second=0)
-        )
-    )
-
-    schedule.clear()
-    job_time_str = time_str_after(1)
-    logging.error("set schedule at {time}".format(time=job_time_str))
-    job = schedule.every().day.at(job_time_str, TIMEZONE_PYTZ).do(lambda: True)
-
-    idle_sec = schedule.idle_seconds()
-    logging.error(
-        "Time to next jobs is {idle:.1f} sec ({idle_corrected:.1f} sec)".format(
-            idle=idle_sec, idle_corrected=idle_sec - int(TIMEZONE_OFFSET) * 60 * 60
-        )
-    )
-    logging.error("Next run is {time}".format(time=job.next_run))
-
-    assert abs(idle_sec - int(TIMEZONE_OFFSET) * 60 * 60) < 60
-
-
 @flaky(max_runs=3, min_passes=1)
 def test_manual(page, host, port):
     init(page)
