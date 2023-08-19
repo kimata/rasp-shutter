@@ -545,7 +545,7 @@ def test_valve_ctrl_manual_all(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(1)
+    time.sleep(2)
 
     ctrl_log_check(
         client,
