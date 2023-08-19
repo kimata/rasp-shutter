@@ -429,7 +429,7 @@ def schedule_worker(config, queue):
     global should_terminate
     global schedule_data
 
-    sleep_sec = 1
+    sleep_sec = 0.5
 
     liveness_file = pathlib.Path(config["liveness"]["file"]["scheduler"])
     liveness_file.parent.mkdir(parents=True, exist_ok=True)
