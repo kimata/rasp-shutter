@@ -1398,6 +1398,15 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
     move_to(freezer, time_morning(3))
     time.sleep(1)
 
+    ctrl_log_check(
+        client,
+        [
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+            {"cmd": "pending", "state": "open"},
+        ],
+    )
+
     # NOTE: pending open になった後に，open が inactive
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
@@ -1425,9 +1434,10 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
         [
             {"index": 0, "state": "close"},
             {"index": 1, "state": "close"},
+            {"cmd": "pending", "state": "open"},
         ],
     )
-    app_log_check(client, ["CLEAR", "CLOSE_MANUAL", "CLOSE_MANUAL", "SCHEDULE", "SCHEDULE"])
+    app_log_check(client, ["CLEAR", "CLOSE_MANUAL", "CLOSE_MANUAL", "SCHEDULE", "OPEN_PENDING", "SCHEDULE"])
     check_notify_slack(None)
 
 
