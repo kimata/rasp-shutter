@@ -781,13 +781,11 @@ def test_schedule_ctrl_invalid(client, mocker):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
+    time.sleep(2)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR"])
     check_notify_slack(None)
-
-    # NOTE: ログを出し切らせる
-    time.sleep(1)
 
 
 def test_schedule_ctrl_execute(client, mocker, freezer):
@@ -854,7 +852,6 @@ def test_schedule_ctrl_execute(client, mocker, freezer):
             "CLOSE_PENDING",
         ],
     )
-
     check_notify_slack(None)
 
 
