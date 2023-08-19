@@ -2,10 +2,10 @@
     <div class="p-1 float-end text-end">
         <small>
             <p class="text-muted m-0">
-                <small>イメージビルド日時: {{ sysinfo.image_build_date }}</small>
+                <small>イメージ: {{ sysinfo.imageBuildDate }} [{{ build.imageBuildDateFrom }}]</small>
             </p>
             <p class="text-muted m-0">
-                <small>Vue ビルド日時: {{ build.date }} [{{ build.dateFrom }}]</small>
+                <small>Vue: {{ build.date }} [{{ build.dateFrom }}]</small>
             </p>
             <p class="text-muted m-0">
                 <small>起動日時: {{ sysinfo.uptime }} [{{ sysinfo.uptimeFrom }}]</small>
@@ -61,9 +61,9 @@ export default {
                     const uptime = moment(response.data["uptime"]);
 
                     if (response.data["image_build_date"] !== "") {
-                        this.sysinfo.image_build_date = moment(response.data["image_build_date"]).format(
-                            "llll"
-                        );
+                        const imageBuildDate = moment(response.data["image_build_date"]);
+                        this.sysinfo.imageBuildDate = imageBuildDate.format("llll");
+                        this.sysinfo.imageBuildDateFrom = imageBuildDate.fromNow();
                     } else {
                         this.sysinfo.image_build_date = "";
                     }
