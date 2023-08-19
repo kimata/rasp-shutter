@@ -11,7 +11,7 @@
                 <small>起動日時: {{ sysinfo.uptime }} [{{ sysinfo.uptimeFrom }}]</small>
             </p>
             <p class="text-muted m-0">
-                <small>サーバ時刻: {{ sysinfo.date }}</small>
+                <small>サーバ時刻: {{ sysinfo.date }} [{{ sysinfo.timezone }}]</small>
             </p>
             <p class="text-muted m-0">
                 <small>load average: {{ sysinfo.loadAverage }}</small>
@@ -69,6 +69,7 @@ export default {
                     }
 
                     this.sysinfo.date = date.format("llll");
+                    this.sysinfo.timezone = response.data["timezone"];
                     this.sysinfo.uptime = uptime.format("llll");
                     this.sysinfo.uptimeFrom = uptime.fromNow();
                     this.sysinfo.loadAverage = response.data["loadAverage"];
