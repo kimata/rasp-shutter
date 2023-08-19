@@ -30,8 +30,10 @@ import axios from "axios";
 import "dayjs/locale/ja";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import localizedFormat from "dayjs/plugin/localizedFormat";
 dayjs.locale("ja");
 dayjs.extend(relativeTime);
+dayjs.extend(localizedFormat);
 
 import AppConfig from "../mixins/AppConfig.js";
 
@@ -41,7 +43,7 @@ export default {
     data() {
         return {
             build: {
-                date: dayjs(document.documentElement.dataset.buildDate).format("lll"),
+                date: dayjs(document.documentElement.dataset.buildDate).format("llll"),
                 dateFrom: dayjs(document.documentElement.dataset.buildDate).fromNow(),
             },
             sysinfo: {
