@@ -45,6 +45,8 @@ export default {
                 dateFrom: dayjs(document.documentElement.dataset.buildDate).fromNow(),
             },
             sysinfo: {
+                imageBuildDate: "?",
+                imageBuildDateFrom: "?",
                 date: "",
                 uptime: "",
                 uptimeFrom: "",

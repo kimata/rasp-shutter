@@ -168,6 +168,8 @@ def app_log_check(
 
         elif expect == "SCHEDULE":
             assert "スケジュールを更新" in log_list[i]["message"]
+        elif expect == "INVALID":
+            assert "スケジュールの指定が不正" in log_list[i]["message"]
 
         elif expect == "FAIL_SENSOR":
             assert "センサの値が不明" in log_list[i]["message"]
@@ -784,8 +786,11 @@ def test_schedule_ctrl_invalid(client, mocker):
     time.sleep(2)
 
     ctrl_log_check(client, [])
-    app_log_check(client, ["CLEAR"])
-    check_notify_slack(None)
+    app_log_check(
+        client,
+        ["CLEAR", "INVALID", "INVALID", "INVALID", "INVALID", "INVALID", "INVALID", "INVALID", "INVALID"],
+    )
+    check_notify_slack("スケジュールの指定が不正です。")
 
 
 def test_schedule_ctrl_execute(client, mocker, freezer):
@@ -1092,7 +1097,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
     time.sleep(1)
 
     move_to(freezer, time_morning(2))
-    time.sleep(1)
+    time.sleep(2)
 
     ctrl_log_check(
         client,
@@ -1474,7 +1479,7 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
     time.sleep(1)
 
     move_to(freezer, time_morning(4))
-    time.sleep(1)
+    time.sleep(2)
 
     ctrl_log_check(
         client,
@@ -1612,7 +1617,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
     time.sleep(1)
 
     move_to(freezer, time_morning(2))
-    time.sleep(1)
+    time.sleep(2)
 
     ctrl_log_check(
         client,
