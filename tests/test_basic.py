@@ -1451,7 +1451,6 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
             {"index": 1, "state": "close"},
         ],
     )
-
     move_to(freezer, time_morning(0))
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
@@ -1468,18 +1467,18 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
     move_to(freezer, time_morning(1))
     time.sleep(1)
 
+    move_to(freezer, time_morning(2))
+    time.sleep(1)
+
     sensor_data = SENSOR_DATA_BRIGHT.copy()
     sensor_data["lux"] = {"valid": False, "value": 5000}
     sensor_data_mock.return_value = sensor_data
-
-    move_to(freezer, time_morning(2))
-    time.sleep(1)
 
     move_to(freezer, time_morning(3))
     time.sleep(1)
 
     move_to(freezer, time_morning(4))
-    time.sleep(2)
+    time.sleep(1)
 
     ctrl_log_check(
         client,
