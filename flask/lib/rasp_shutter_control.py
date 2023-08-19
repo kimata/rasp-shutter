@@ -222,7 +222,7 @@ def set_shutter_state(config, index_list, state, mode, sense_data=None, user="")
 
     with control_lock:
         for index in index_list:
-            set_shutter_state_impl(config, index, state, mode)
+            set_shutter_state_impl(config, index, state, mode, sense_data, user)
 
     return get_shutter_state(config)
 
