@@ -57,6 +57,14 @@ export default {
                     const date = moment(response.data["date"]);
                     const uptime = moment(response.data["uptime"]);
 
+                    if (response.data["image_build_date"] !== "") {
+                        this.sysinfo.image_build_date = moment(response.data["image_build_date"]).format(
+                            "llll"
+                        );
+                    } else {
+                        this.sysinfo.image_build_date = "";
+                    }
+
                     this.sysinfo.date = date.format("llll");
                     this.sysinfo.uptime = uptime.format("llll");
                     this.sysinfo.uptimeFrom = uptime.fromNow();
