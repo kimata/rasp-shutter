@@ -1095,7 +1095,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
     time.sleep(2)
 
     move_to(freezer, time_morning(2))
-    time.sleep(2)
+    time.sleep(3)
 
     ctrl_log_check(
         client,
