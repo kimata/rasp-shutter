@@ -43,8 +43,11 @@
 
 <script>
 import axios from "axios";
-import moment from "moment";
-import "moment/locale/ja";
+
+import "dayjs/locale/ja";
+import dayjs from "dayjs";
+dayjs.locale("ja");
+
 import AppConfig from "../mixins/AppConfig.js";
 
 const SENSOR_DEF = {
@@ -92,7 +95,7 @@ export default {
                     this.sensor = response.data;
 
                     ["solar_rad", "lux"].forEach((name) => {
-                        this.sensor[name].time = moment(this.sensor[name].time);
+                        this.sensor[name].time = dayjs(this.sensor[name].time);
                     });
                 })
                 .catch(() => {
