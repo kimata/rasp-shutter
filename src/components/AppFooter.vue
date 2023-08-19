@@ -2,10 +2,10 @@
     <div class="p-1 float-end text-end">
         <small>
             <p class="text-muted m-0">
-                <small>イメージ: {{ sysinfo.imageBuildDate }} [{{ build.imageBuildDateFrom }}]</small>
+                <small>イメージビルド: {{ sysinfo.imageBuildDate }} [{{ sysinfo.imageBuildDateFrom }}]</small>
             </p>
             <p class="text-muted m-0">
-                <small>Vue: {{ build.date }} [{{ build.dateFrom }}]</small>
+                <small>Vueビルド: {{ build.date }} [{{ build.dateFrom }}]</small>
             </p>
             <p class="text-muted m-0">
                 <small>起動日時: {{ sysinfo.uptime }} [{{ sysinfo.uptimeFrom }}]</small>
