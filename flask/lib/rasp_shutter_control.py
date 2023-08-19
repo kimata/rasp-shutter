@@ -18,7 +18,7 @@ from flask import Blueprint, current_app, jsonify, request
 # この時間内に同じ制御がスケジューラで再度リクエストされた場合，
 # 実行をやめる．
 EXEC_INTERVAL_SCHEDULE_HOUR = 12
-# この時間内に同じ制御がスケジューラで再度リクエストされた場合，
+# この時間内に同じ制御が手動で再度リクエストされた場合，
 # 実行をやめる．
 EXEC_INTERVAL_MANUAL_MINUTES = 1
 
