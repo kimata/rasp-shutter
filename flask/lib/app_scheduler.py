@@ -429,7 +429,7 @@ def schedule_worker(config, queue):
     global should_terminate
     global schedule_data
 
-    sleep_sec = 0.5
+    sleep_sec = 0.2
 
     liveness_file = pathlib.Path(config["liveness"]["file"]["scheduler"])
     liveness_file.parent.mkdir(parents=True, exist_ok=True)
@@ -441,6 +441,7 @@ def schedule_worker(config, queue):
 
     logging.info("Start schedule worker")
 
+    i = 0
     while True:
         if should_terminate:
             break
@@ -453,14 +454,16 @@ def schedule_worker(config, queue):
 
             schedule.run_pending()
 
-            liveness_file.touch()
-
             logging.debug("Sleep {sleep_sec} sec...".format(sleep_sec=sleep_sec))
+            time.sleep(sleep_sec)
         except OverflowError:  # pragma: no cover
             # NOTE: テストする際，freezer 使って日付をいじるとこの例外が発生する
             logging.debug(traceback.format_exc())
             pass
-        time.sleep(sleep_sec)
+
+        if i % (10 / sleep_sec) == 0:
+            liveness_file.touch()
+        i += 1
 
     logging.info("Terminate schedule worker")
 
