@@ -45,24 +45,6 @@ def init():
     schedule_lock = threading.Lock()
 
 
-# NOTE: feeezer でテストしやすくするため，ファイルの mtime ではなく，
-# epoch time を書き込んでそれを使う．
-def exec_check_update(check_file):
-    with open(check_file, mode="w") as f:
-        f.write(str(time.time()))
-
-
-def exec_check_elapsed_time(check_file):
-    diff_sec = time.time()
-    if not check_file.exists():
-        return diff_sec
-
-    with open(check_file) as f:
-        diff_sec -= float(f.read())
-
-    return diff_sec
-
-
 def brightness_text(sense_data, cur_schedule_data):
     text = []
     for sensor in ["solar_rad", "lux"]:
