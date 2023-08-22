@@ -1833,6 +1833,9 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
     move_to(freezer, time_morning(2))
     time.sleep(1)
 
+    move_to(freezer, time_morning(3))
+    time.sleep(1)
+
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR", "SCHEDULE", "FAIL_SENSOR"])
     check_notify_slack("センサの値が不明なので開けるのを見合わせました。")
@@ -1864,6 +1867,9 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, freezer):
     time.sleep(1)
 
     move_to(freezer, time_morning(2))
+    time.sleep(1)
+
+    move_to(freezer, time_morning(3))
     time.sleep(1)
 
     ctrl_log_check(client, [])
