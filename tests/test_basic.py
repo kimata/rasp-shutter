@@ -1204,6 +1204,9 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
     move_to(freezer, time_evening(2))
     time.sleep(1)
 
+    move_to(freezer, time_evening(3))
+    time.sleep(1)
+
     response = client.get("/rasp-shutter/api/ctrl/log")
     assert response.status_code == 200
     assert response.json["result"] == "success"
@@ -1224,6 +1227,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
             {"index": 1, "state": "close"},
         ],
     )
+
     app_log_check(
         client,
         [
@@ -1369,6 +1373,8 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
+
+    move_to(freezer, time_morning(0))
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
