@@ -195,7 +195,7 @@ def shutter_auto_close(config):
             footprint.elapsed(rasp_shutter_control.exec_stat_file("open", index))
             < EXEC_INTERVAL_AUTO_MIN * 60
         ):
-            # NOTE: 自動で閉めてから時間が経っていない場合は，処理を行わない．
+            # NOTE: 自動で開けてから時間が経っていない場合は，処理を行わない．
             logging.debug("just opened ({index})".format(index=index))
             return
 
