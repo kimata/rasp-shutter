@@ -1134,7 +1134,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
-    move_to(freezer, time_morning(5))
+    move_to(freezer, time_morning(10))
     time.sleep(1)
 
     # CLOSE
@@ -1153,7 +1153,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
-    move_to(freezer, time_morning(6))
+    move_to(freezer, time_morning(11))
     time.sleep(1)
 
     # NOT OPEN (自動的に閉じてから時間が経過してない)
@@ -1172,7 +1172,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
-    move_to(freezer, time_morning(7))
+    move_to(freezer, time_morning(12))
     time.sleep(1)
 
     # NOT CLOSE (開いていない)
