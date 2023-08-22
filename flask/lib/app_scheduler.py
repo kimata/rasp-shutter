@@ -190,6 +190,15 @@ def shutter_auto_close(config):
         logging.debug("already close")
         return
 
+    for index in range(len(config["shutter"])):
+        if (
+            footprint.elapsed(rasp_shutter_control.exec_stat_file("open", index))
+            < EXEC_INTERVAL_AUTO_MIN * 60
+        ):
+            # NOTE: 自動で閉めてから時間が経っていない場合は，処理を行わない．
+            logging.debug("just opened ({index})".format(index=index))
+            return
+
     sense_data = rasp_shutter_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.DARK:
         app_log(
