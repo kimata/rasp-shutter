@@ -7,8 +7,8 @@ import pathlib
 import threading
 from enum import Enum, IntEnum
 
+import footprint
 import requests
-from app_scheduler import exec_check_elapsed_time, exec_check_update
 from flask_util import auth_user, support_jsonp
 from webapp_config import APP_URL_PREFIX, STAT_AUTO_CLOSE, STAT_EXEC_TMPL, STAT_PENDING_OPEN
 from webapp_log import APP_LOG_LEVEL, app_log
@@ -99,8 +99,8 @@ def exec_stat_file(state, index):
 
 def clean_stat_exec(config):
     for index in range(len(config["shutter"])):
-        exec_stat_file("open", index).unlink(missing_ok=True)
-        exec_stat_file("close", index).unlink(missing_ok=True)
+        footprint.clear(exec_stat_file("open", index))
+        footprint.clear(exec_stat_file("close", index))
 
 
 def get_shutter_state(config):
@@ -137,9 +137,10 @@ def get_shutter_state(config):
 def set_shutter_state_impl(config, index, state, mode, sense_data=None, user=""):
     # NOTE: 閉じている場合に再度閉じるボタンをおしたり，逆に開いている場合に再度
     # 開くボタンを押すことが続くと，スイッチがエラーになるので exec_hist を使って
-    # 防止する．exec_hist はこれ以外の目的で使わない．
+    # 防止する．また，明るさに基づく自動の開閉が連続するのを防止する．
+    # exec_hist はこれ以外の目的で使わない．
     exec_hist = exec_stat_file(state, index)
-    diff_sec = exec_check_elapsed_time(exec_hist)
+    diff_sec = footprint.elapsed(exec_hist)
 
     # NOTE: 制御間隔が短く，実際には御できなかった場合，ログを残す．
     if mode == CONTROL_MODE.MANUAL:
@@ -182,7 +183,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
 
     result = call_shutter_api(config, index, state)
 
-    exec_check_update(exec_hist)
+    footprint.update(exec_hist)
     exec_inv_hist = exec_stat_file("close" if state == "open" else "open", index)
     exec_inv_hist.unlink(missing_ok=True)
 
