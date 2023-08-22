@@ -35,6 +35,10 @@ class BRIGHTNESS_STATE(IntEnum):
 
 RETRY_COUNT = 3
 
+# この時間内では自動制御で開閉しない．
+EXEC_INTERVAL_AUTO_MIN = 2
+
+
 schedule_lock = None
 schedule_data = None
 should_terminate = False
@@ -128,7 +132,7 @@ def shutter_auto_open(config):
     else:
         logging.debug("Elapsed time since pending open: {elapsed}".format(elapsed=elapsed_pendiing_open))
 
-    if footprint.elapsed(STAT_AUTO_CLOSE) < 10 * 60:
+    if footprint.elapsed(STAT_AUTO_CLOSE) < EXEC_INTERVAL_AUTO_MIN * 60:
         # NOTE: 自動で閉めてから時間が経っていない場合は，処理を行わない．
         logging.debug("just closed")
         return

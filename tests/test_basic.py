@@ -331,14 +331,14 @@ def test_shutter_ctrl_read(client):
 
 
 def test_shutter_ctrl_inconsistent_read(client):
-    import app_scheduler
+    import footprint
     import rasp_shutter_control
 
     # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (close が後)
     ctrl_stat_clear()
-    app_scheduler.exec_check_update(rasp_shutter_control.exec_stat_file("open", 0))
+    footprint.update(rasp_shutter_control.exec_stat_file("open", 0))
     time.sleep(0.1)
-    app_scheduler.exec_check_update(rasp_shutter_control.exec_stat_file("close", 0))
+    footprint.update(rasp_shutter_control.exec_stat_file("close", 0))
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -350,9 +350,9 @@ def test_shutter_ctrl_inconsistent_read(client):
 
     # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (open が後)
     ctrl_stat_clear()
-    app_scheduler.exec_check_update(rasp_shutter_control.exec_stat_file("close", 1))
+    footprint.update(rasp_shutter_control.exec_stat_file("close", 1))
     time.sleep(0.1)
-    app_scheduler.exec_check_update(rasp_shutter_control.exec_stat_file("open", 1))
+    footprint.update(rasp_shutter_control.exec_stat_file("open", 1))
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
