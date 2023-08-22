@@ -1134,6 +1134,22 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
+    move_to(freezer, time_morning(5))
+    time.sleep(1)
+
+    # NOT CLOSE (自動的に開いてから時間が経過してない)
+
+    ctrl_log_check(
+        client,
+        [
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+            {"cmd": "pending", "state": "open"},
+            {"index": 0, "state": "open"},
+            {"index": 1, "state": "open"},
+        ],
+    )
+
     move_to(freezer, time_morning(10))
     time.sleep(1)
 
