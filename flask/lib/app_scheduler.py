@@ -17,6 +17,7 @@ import rasp_shutter_control
 import rasp_shutter_sensor
 import schedule
 from webapp_config import (
+    EXEC_INTERVAL_AUTO_MIN,
     SCHEDULE_DATA_PATH,
     STAT_AUTO_CLOSE,
     STAT_PENDING_OPEN,
@@ -34,10 +35,6 @@ class BRIGHTNESS_STATE(IntEnum):
 
 
 RETRY_COUNT = 3
-
-# この時間内では自動制御で開閉しない．
-EXEC_INTERVAL_AUTO_MIN = 2
-
 
 schedule_lock = None
 schedule_data = None
