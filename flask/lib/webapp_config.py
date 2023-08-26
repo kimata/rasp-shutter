@@ -30,4 +30,4 @@ STAT_PENDING_OPEN = STAT_DIR_PATH / "pending" / "open"
 STAT_AUTO_CLOSE = STAT_DIR_PATH / "auto" / "close"
 
 # この時間内では自動制御で開閉しない．
-EXEC_INTERVAL_AUTO_MIN = 10
+EXEC_INTERVAL_AUTO_MIN = 2
