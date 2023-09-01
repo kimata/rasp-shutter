@@ -10,7 +10,7 @@ stages:
 build-vue:
     stage: build-webapp
 
-    image: node:18.17
+    image: node:20.5
     script:
         - npm ci --cache .npm --prefer-offline
         - npm run build
