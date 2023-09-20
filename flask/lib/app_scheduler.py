@@ -222,8 +222,8 @@ def shutter_auto_close(config):
         # NOTE: pending close の制御は無いのでここには来ない．
         logging.debug(
             "Skip pendding close (solar_rad: {solar_rad:.1f} W/m^2, lux: {lux:.1f} LUX)".format(
-                solar_rad=sense_data["solar_rad"]["value"],
-                lux=sense_data["lux"]["value"],
+                solar_rad=sense_data["solar_rad"]["value"] if sense_data["solar_rad"]["valid"] else -1,
+                lux=sense_data["lux"]["value"] if sense_data["solar_rad"]["valid"] else -1,
             )
         )
 
