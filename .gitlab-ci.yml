@@ -91,7 +91,7 @@ test-playwright:
         - git clone https://gitlab.green-rabbit.net/kimata/hems_config.git
         - mv hems_config/rasp-shutter.yaml config.yaml
 
-        - rye run python ./flask/src/app.py -D 2>&1 > flask_log.txt &
+        - rye run python ./flask/app/app.py -D 2>&1 > flask_log.txt &
         - rye run pytest --tracing on --output tests/evidence/playwright tests/test_playwright.py
 
     cache:
@@ -107,7 +107,7 @@ test-playwright:
 
 test-playwright-docker:
     stage: test
-    needs: ["build-image"]
+    needs: ["build-image", "test-prepare"]
 
     script:
         # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
