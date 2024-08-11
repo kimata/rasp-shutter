@@ -5,12 +5,12 @@ import threading
 import urllib.parse
 from multiprocessing import Queue
 
-import app_scheduler
 import flask_cors
 import my_lib.flask_util
 import my_lib.webapp.config
 import my_lib.webapp.event
 import my_lib.webapp.log
+import rasp_shutter.scheduler
 
 import flask
 
@@ -33,9 +33,9 @@ def init(config):
     assert worker is None
 
     schedule_queue = Queue()
-    app_scheduler.init()
+    rasp_shutter.scheduler.init()
     worker = threading.Thread(
-        target=app_scheduler.schedule_worker,
+        target=rasp_shutter.scheduler.schedule_worker,
         args=(
             config,
             schedule_queue,
@@ -50,7 +50,7 @@ def term():
     if worker is None:
         return
 
-    app_scheduler.should_terminate = True
+    rasp_shutter.scheduler.should_terminate = True
     worker.join()
     worker = None
 
@@ -95,12 +95,12 @@ def api_schedule_ctrl():
     if cmd == "set":
         schedule_data = json.loads(data)
 
-        if not app_scheduler.schedule_validate(schedule_data):
+        if not rasp_shutter.scheduler.schedule_validate(schedule_data):
             my_lib.webapp.log.log(
                 "😵 スケジュールの指定が不正です。",
                 my_lib.webapp.log.LOG_LEVEL.ERROR,
             )
-            return flask.jsonify(app_scheduler.schedule_load())
+            return flask.jsonify(rasp_shutter.scheduler.schedule_load())
 
         with schedule_lock:
             schedule_data = json.loads(data)
@@ -116,7 +116,7 @@ def api_schedule_ctrl():
 
             # NOTE: 本来は schedule_worker の中だけで呼んでるので不要だけど，
             # レスポンスを schedule_load() で返したいので，ここでも呼ぶ．
-            app_scheduler.schedule_store(schedule_data)
+            rasp_shutter.scheduler.schedule_store(schedule_data)
 
             my_lib.webapp.event.notify_event(my_lib.webapp.event.EVENT_TYPE.SCHEDULE)
 
@@ -128,4 +128,4 @@ def api_schedule_ctrl():
                 )
             )
 
-    return flask.jsonify(app_scheduler.schedule_load())
+    return flask.jsonify(rasp_shutter.scheduler.schedule_load())

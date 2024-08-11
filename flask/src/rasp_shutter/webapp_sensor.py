@@ -5,7 +5,7 @@ import flask_cors
 import my_lib.flask_util
 import my_lib.webapp.config
 import pytz
-import sensor_data
+import rasp_shutter.sensor_data
 
 import flask
 
@@ -20,7 +20,7 @@ def get_sensor_data(config):
     sense_data = {}
     for field in ["lux", "solar_rad"]:
         sensor = config["sensor"][field]
-        data = sensor_data.fetch_data(
+        data = rasp_shutter.sensor_data.fetch_data(
             config["sensor"]["influxdb"],
             sensor["measure"],
             sensor["hostname"],

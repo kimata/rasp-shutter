@@ -16,8 +16,8 @@ import my_lib.footprint
 import my_lib.webapp.config
 import my_lib.webapp.log
 import rasp_shutter.config
-import rasp_shutter_control
-import rasp_shutter_sensor
+import rasp_shutter.webapp_control
+import rasp_shutter.webapp_sensor
 import schedule
 
 
@@ -87,7 +87,7 @@ def check_brightness(sense_data, state):
 def exec_shutter_control_impl(config, state, mode, sense_data, user):
     try:
         # NOTE: Web 経由だと認証つけた場合に困るので，直接関数を呼ぶ
-        rasp_shutter_control.set_shutter_state(
+        rasp_shutter.webapp_control.set_shutter_state(
             config, list(range(len(config["shutter"]))), state, mode, sense_data, user
         )
         return True
@@ -140,16 +140,20 @@ def shutter_auto_open(config):
         logging.debug("just closed")
         return
 
-    sense_data = rasp_shutter_sensor.get_sensor_data(config)
+    sense_data = rasp_shutter.webapp_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "open") == BRIGHTNESS_STATE.BRIGHT:
         my_lib.webapp.log.log(
             ("📝 暗くて延期されていましたが，明るくなってきたので開けます．{sensor_text}").format(
-                sensor_text=rasp_shutter_control.sensor_text(sense_data),
+                sensor_text=rasp_shutter.webapp_control.sensor_text(sense_data),
             )
         )
 
         exec_shutter_control(
-            config, "open", rasp_shutter_control.CONTROL_MODE.AUTO, sense_data, "sensor"
+            config,
+            "open",
+            rasp_shutter.webapp_control.CONTROL_MODE.AUTO,
+            sense_data,
+            "sensor",
         )
         my_lib.footprint.clear(rasp_shutter.config.STAT_PENDING_OPEN)
         my_lib.footprint.clear(rasp_shutter.config.STAT_AUTO_CLOSE)
@@ -208,25 +212,27 @@ def shutter_auto_close(config):
 
     for index in range(len(config["shutter"])):
         if (
-            my_lib.footprint.elapsed(rasp_shutter_control.exec_stat_file("open", index))
+            my_lib.footprint.elapsed(
+                rasp_shutter.webapp_control.exec_stat_file("open", index)
+            )
             < config.EXEC_INTERVAL_AUTO_MIN * 60
         ):
             # NOTE: 自動で開けてから時間が経っていない場合は，処理を行わない．
             logging.debug("just opened ({index})".format(index=index))
             return
 
-    sense_data = rasp_shutter_sensor.get_sensor_data(config)
+    sense_data = rasp_shutter.webapp_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.DARK:
         my_lib.webapp.log.log(
             ("📝 予定より早いですが，暗くなってきたので閉めます．{sensor_text}").format(
-                sensor_text=rasp_shutter_control.sensor_text(sense_data),
+                sensor_text=rasp_shutter.webapp_control.sensor_text(sense_data),
             )
         )
 
         exec_shutter_control(
             config,
             "close",
-            rasp_shutter_control.CONTROL_MODE.AUTO,
+            rasp_shutter.webapp_control.CONTROL_MODE.AUTO,
             sense_data,
             "sensor",
         )
@@ -265,7 +271,7 @@ def shutter_auto_control(config):
 def shutter_schedule_control(config, state):
     logging.info("Execute schedule control")
 
-    sense_data = rasp_shutter_sensor.get_sensor_data(config)
+    sense_data = rasp_shutter.webapp_sensor.get_sensor_data(config)
 
     if check_brightness(sense_data, state) == BRIGHTNESS_STATE.UNKNOWN:
         error_sensor = []
@@ -288,11 +294,11 @@ def shutter_schedule_control(config, state):
         if check_brightness(sense_data, state) == BRIGHTNESS_STATE.DARK:
             my_lib.webapp.log.log(
                 "📝 まだ暗いので開けるのを見合わせました．{sensor_text}".format(
-                    sensor_text=rasp_shutter_control.sensor_text(sense_data)
+                    sensor_text=rasp_shutter.webapp_control.sensor_text(sense_data)
                 )
             )
 
-            rasp_shutter_control.cmd_hist_push(
+            rasp_shutter.webapp_control.cmd_hist_push(
                 {
                     "cmd": "pending",
                     "state": state,
@@ -306,7 +312,7 @@ def shutter_schedule_control(config, state):
             exec_shutter_control(
                 config,
                 state,
-                rasp_shutter_control.CONTROL_MODE.SCHEDULE,
+                rasp_shutter.webapp_control.CONTROL_MODE.SCHEDULE,
                 sense_data,
                 "scheduler",
             )
@@ -315,7 +321,7 @@ def shutter_schedule_control(config, state):
         exec_shutter_control(
             config,
             state,
-            rasp_shutter_control.CONTROL_MODE.SCHEDULE,
+            rasp_shutter.webapp_control.CONTROL_MODE.SCHEDULE,
             sense_data,
             "scheduler",
         )
@@ -511,11 +517,10 @@ if __name__ == "__main__":
     from multiprocessing import Queue
     from multiprocessing.pool import ThreadPool
 
-    import logger
+    import my_lib.config
+    import my_lib.logger
 
-    from config import load_config
-
-    logger.init("test", level=logging.DEBUG)
+    my_lib.logger.init("test", level=logging.DEBUG)
 
     def test_func():
         global should_terminate
@@ -523,7 +528,7 @@ if __name__ == "__main__":
 
         should_terminate = True
 
-    config = load_config()
+    config = my_lib.config.load()
     queue = Queue()
 
     init()

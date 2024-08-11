@@ -44,9 +44,9 @@ def create_app(config, dummy_mode=False):
     import my_lib.webapp.event
     import my_lib.webapp.log
     import my_lib.webapp.util
-    import rasp_shutter_control
-    import rasp_shutter_schedule
-    import rasp_shutter_sensor
+    import rasp_shutter.webapp_control
+    import rasp_shutter.webapp_schedule
+    import rasp_shutter.webapp_sensor
 
     app = Flask("rasp-shutter")
 
@@ -59,8 +59,8 @@ def create_app(config, dummy_mode=False):
         else:  # pragma: no cover
             pass
 
-        rasp_shutter_control.init()
-        rasp_shutter_schedule.init(config)
+        rasp_shutter.webapp_control.init()
+        rasp_shutter.webapp_schedule.init(config)
         my_lib.webapp.log.init(config)
 
         def notify_terminate():  # pragma: no cover
@@ -78,9 +78,9 @@ def create_app(config, dummy_mode=False):
 
     app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 
-    app.register_blueprint(rasp_shutter_control.blueprint)
-    app.register_blueprint(rasp_shutter_schedule.blueprint)
-    app.register_blueprint(rasp_shutter_sensor.blueprint)
+    app.register_blueprint(rasp_shutter.webapp_control.blueprint)
+    app.register_blueprint(rasp_shutter.webapp_schedule.blueprint)
+    app.register_blueprint(rasp_shutter.webapp_sensor.blueprint)
 
     app.register_blueprint(my_lib.webapp.base.blueprint_default)
     app.register_blueprint(my_lib.webapp.base.blueprint)
