@@ -235,7 +235,7 @@ def shutter_auto_close(config):
         # NOTE: まだ明るくなる可能性がある時間帯の場合，再度自動的に開けるようにする
         hour = datetime.datetime.now(my_lib.webapp.config.TIMEZONE).hour
         if (5 < hour) and (hour < 13):
-            my_lib.footprint.update(config.STAT_PENDING_OPEN)
+            my_lib.footprint.update(rasp_shutter.config.STAT_PENDING_OPEN)
 
     else:  # pragma: no cover
         # NOTE: pending close の制御は無いのでここには来ない．
@@ -300,7 +300,7 @@ def shutter_schedule_control(config, state):
             )
 
             # NOTE: 暗いので開けれなかったことを通知
-            my_lib.footprint.update(config.STAT_PENDING_OPEN)
+            my_lib.footprint.update(rasp_shutter.config.STAT_PENDING_OPEN)
         else:
             # NOTE: ここにきたときのみ，スケジュールに従って開ける
             exec_shutter_control(
@@ -311,7 +311,7 @@ def shutter_schedule_control(config, state):
                 "scheduler",
             )
     else:
-        my_lib.footprint.clear(config.STAT_PENDING_OPEN)
+        my_lib.footprint.clear(rasp_shutter.config.STAT_PENDING_OPEN)
         exec_shutter_control(
             config,
             state,
