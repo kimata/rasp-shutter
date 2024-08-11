@@ -25,6 +25,7 @@ dependencies = [
     "docopt-ng>=0.9.0",
     "psutil>=6.0.0",
     "my-lib @ git+https://github.com/kimata/my-py-lib@ebaaee64211cf6ee826e8577a217d22992c275ec",
+    "requests>=2.32.3",
 ]
 
 [build-system]
