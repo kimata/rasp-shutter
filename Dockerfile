@@ -39,4 +39,4 @@ COPY . .
 
 EXPOSE 5000
 
-CMD ["./flask/app/app.py", "-d"]
+CMD ["./flask/src/app.py", "-d"]
