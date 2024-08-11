@@ -25,34 +25,28 @@ from flask_cors import CORS
 from flask import Flask
 
 sys.path.append(str(pathlib.Path(__file__).parent.parent / "lib"))
-import logger
-
-from config import load_config
 
 
-def create_app(config_file, port=5000, dummy_mode=False, debug_mode=False):
-    if debug_mode:  # pragma: no cover
-        log_level = logging.DEBUG
-    else:
-        log_level = logging.INFO
-
-    logger.init("hems.rasp-shutter", level=log_level)
-
-    config = load_config(config_file)
-
+def create_app(config, dummy_mode=False):
     # NOTE: オプションでダミーモードが指定された場合，環境変数もそれに揃えておく
     if dummy_mode:
         os.environ["DUMMY_MODE"] = "true"
     else:  # pragma: no cover
         os.environ["DUMMY_MODE"] = "false"
 
+    # NOTE: テストのため，環境変数 DUMMY_MODE をセットしてからロードしたいのでこの位置
+    import my_lib.webapp.config
+
+    my_lib.webapp.config.URL_PREFIX = "/rasp-shutter"
+    my_lib.webapp.config.init(config)
+
+    import my_lib.webapp.base
+    import my_lib.webapp.event
+    import my_lib.webapp.log
+    import my_lib.webapp.util
     import rasp_shutter_control
     import rasp_shutter_schedule
     import rasp_shutter_sensor
-    import webapp_base
-    import webapp_event
-    import webapp_log
-    import webapp_util
 
     app = Flask("rasp-shutter")
 
@@ -67,11 +61,11 @@ def create_app(config_file, port=5000, dummy_mode=False, debug_mode=False):
 
         rasp_shutter_control.init()
         rasp_shutter_schedule.init(config)
-        webapp_log.init(config)
+        my_lib.webapp.log.init(config)
 
         def notify_terminate():  # pragma: no cover
-            webapp_log.app_log("🏃 アプリを再起動します．")
-            webapp_log.term()
+            my_lib.webapp.log.app_log("🏃 アプリを再起動します．")
+            my_lib.webapp.log.term()
 
         atexit.register(notify_terminate)
     else:  # pragma: no cover
@@ -88,11 +82,11 @@ def create_app(config_file, port=5000, dummy_mode=False, debug_mode=False):
     app.register_blueprint(rasp_shutter_schedule.blueprint)
     app.register_blueprint(rasp_shutter_sensor.blueprint)
 
-    app.register_blueprint(webapp_base.blueprint_default)
-    app.register_blueprint(webapp_base.blueprint)
-    app.register_blueprint(webapp_event.blueprint)
-    app.register_blueprint(webapp_log.blueprint)
-    app.register_blueprint(webapp_util.blueprint)
+    app.register_blueprint(my_lib.webapp.base.blueprint_default)
+    app.register_blueprint(my_lib.webapp.base.blueprint)
+    app.register_blueprint(my_lib.webapp.event.blueprint)
+    app.register_blueprint(my_lib.webapp.log.blueprint)
+    app.register_blueprint(my_lib.webapp.util.blueprint)
 
     # app.debug = True
 
@@ -100,6 +94,9 @@ def create_app(config_file, port=5000, dummy_mode=False, debug_mode=False):
 
 
 if __name__ == "__main__":
+    import my_lib.config
+    import my_lib.logger
+
     args = docopt(__doc__)
 
     config_file = args["-c"]
@@ -107,7 +104,13 @@ if __name__ == "__main__":
     dummy_mode = args["-D"]
     debug_mode = args["-d"]
 
-    app = create_app(config_file, port, dummy_mode, debug_mode)
+    my_lib.logger.init(
+        "hems.rasp-shutter", level=logging.DEBUG if debug_mode else logging.INFO
+    )
+
+    config = my_lib.config.load(config_file)
+
+    app = create_app(config, dummy_mode)
 
     # NOTE: スクリプトの自動リロード停止したい場合は use_reloader=False にする
-    app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=True)
+    app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=True)  # noqa: S104
