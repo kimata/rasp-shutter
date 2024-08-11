@@ -80,8 +80,6 @@ test-walk-through:
 test-playwright:
     stage: test
     needs: ["build-vue", "test-prepare"]
-    dependencies:
-        - build-vue
 
     script:
         # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
