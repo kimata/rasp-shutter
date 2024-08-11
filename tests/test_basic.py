@@ -693,7 +693,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
 
 
 def test_event(client):
-    response = client.get("/rasp-shutter/api/event", query_string={"count": "2"})
+    response = client.get("/rasp-shutter/api/event", query_string={"count": "1"})
     assert response.status_code == 200
     assert response.data.decode()
 
