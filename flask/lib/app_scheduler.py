@@ -201,7 +201,7 @@ def shutter_auto_close(config):
         # NOTE: スケジュールで閉めていた場合は処理しない
         logging.debug("after close time")
         return
-    elif my_lib.footprint.elapsed(config.STAT_AUTO_CLOSE) <= 12 * 60 * 60:
+    elif my_lib.footprint.elapsed(rasp_shutter.config.STAT_AUTO_CLOSE) <= 12 * 60 * 60:
         # NOTE: 12時間以内に自動で閉めていた場合は処理しない
         logging.debug("already close")
         return
@@ -230,7 +230,7 @@ def shutter_auto_close(config):
             sense_data,
             "sensor",
         )
-        my_lib.footprint.update(config.STAT_AUTO_CLOSE)
+        my_lib.footprint.update(rasp_shutter.config.STAT_AUTO_CLOSE)
 
         # NOTE: まだ明るくなる可能性がある時間帯の場合，再度自動的に開けるようにする
         hour = datetime.datetime.now(my_lib.webapp.config.TIMEZONE).hour
