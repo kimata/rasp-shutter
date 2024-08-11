@@ -107,7 +107,7 @@ def exec_shutter_control(config, state, mode, sense_data, user):
             return True
         logging.debug("Retry")
 
-    my_lib.webapp.log.app_log("😵 シャッターの制御に失敗しました。")
+    my_lib.webapp.log.log("😵 シャッターの制御に失敗しました。")
     return False
 
 
@@ -142,7 +142,7 @@ def shutter_auto_open(config):
 
     sense_data = rasp_shutter_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "open") == BRIGHTNESS_STATE.BRIGHT:
-        my_lib.webapp.log.app_log(
+        my_lib.webapp.log.log(
             ("📝 暗くて延期されていましたが，明るくなってきたので開けます．{sensor_text}").format(
                 sensor_text=rasp_shutter_control.sensor_text(sense_data),
             )
@@ -217,7 +217,7 @@ def shutter_auto_close(config):
 
     sense_data = rasp_shutter_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.DARK:
-        my_lib.webapp.log.app_log(
+        my_lib.webapp.log.log(
             ("📝 予定より早いですが，暗くなってきたので閉めます．{sensor_text}").format(
                 sensor_text=rasp_shutter_control.sensor_text(sense_data),
             )
@@ -275,18 +275,18 @@ def shutter_schedule_control(config, state):
         if not sense_data["lux"]["valid"]:
             error_sensor.append("照度センサ")
 
-        my_lib.webapp.log.app_log(
+        my_lib.webapp.log.log(
             "😵 {error_sensor}の値が不明なので{state}るのを見合わせました。".format(
                 error_sensor="と".join(error_sensor),
                 state="開け" if state == "open" else "閉め",
             ),
-            my_lib.webapp.log.APP_LOG_LEVEL.ERROR,
+            my_lib.webapp.log.LOG_LEVEL.ERROR,
         )
         return
 
     if state == "open":
         if check_brightness(sense_data, state) == BRIGHTNESS_STATE.DARK:
-            my_lib.webapp.log.app_log(
+            my_lib.webapp.log.log(
                 "📝 まだ暗いので開けるのを見合わせました．{sensor_text}".format(
                     sensor_text=rasp_shutter_control.sensor_text(sense_data)
                 )
@@ -384,8 +384,8 @@ def schedule_store(schedule_data):
                 pickle.dump(schedule_data, f)
     except:
         logging.error(traceback.format_exc())
-        my_lib.webapp.log.app_log(
-            "😵 スケジュール設定の保存に失敗しました。", my_lib.webapp.log.APP_LOG_LEVEL.ERROR
+        my_lib.webapp.log.log(
+            "😵 スケジュール設定の保存に失敗しました。", my_lib.webapp.log.LOG_LEVEL.ERROR
         )
         pass
 
@@ -401,8 +401,8 @@ def schedule_load():
                         return schedule_data
         except:
             logging.error(traceback.format_exc())
-            my_lib.webapp.log.app_log(
-                "😵 スケジュール設定の読み出しに失敗しました。", my_lib.webapp.log.APP_LOG_LEVEL.ERROR
+            my_lib.webapp.log.log(
+                "😵 スケジュール設定の読み出しに失敗しました。", my_lib.webapp.log.LOG_LEVEL.ERROR
             )
             pass
 

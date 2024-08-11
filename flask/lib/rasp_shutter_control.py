@@ -152,7 +152,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
     # NOTE: 制御間隔が短く，実際には御できなかった場合，ログを残す．
     if mode == CONTROL_MODE.MANUAL:
         if (diff_sec / 60) < EXEC_INTERVAL_MANUAL_MINUTES:
-            my_lib.webapp.log.app_log(
+            my_lib.webapp.log.log(
                 (
                     "🔔 {name}のシャッターを{state}るのを見合わせました。"
                     + "{time_diff_str}前に{state}ています。{by}"
@@ -167,7 +167,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
 
     elif mode == CONTROL_MODE.SCHEDULE:
         if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:
-            my_lib.webapp.log.app_log(
+            my_lib.webapp.log.log(
                 (
                     "🔔 スケジュールに従って{name}のシャッターを{state}るのを見合わせました。"
                     + "{time_diff_str}前に{state}ています。{by}"
@@ -182,7 +182,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
     elif mode == CONTROL_MODE.AUTO:
         if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:  # pragma: no cover
             # NOTE: shutter_auto_close の段階で撥ねられているので，ここには来ない．
-            my_lib.webapp.log.app_log(
+            my_lib.webapp.log.log(
                 (
                     "🔔 自動で{name}のシャッターを{state}るのを見合わせました。"
                     + "{time_diff_str}前に{state}ています。{by}"
@@ -204,7 +204,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
     exec_inv_hist.unlink(missing_ok=True)
 
     if result:
-        my_lib.webapp.log.app_log(
+        my_lib.webapp.log.log(
             "{name}のシャッターを{mode}で{state}ました。{sensor_text}{by}".format(
                 name=config["shutter"][index]["name"],
                 mode=mode.value,
@@ -214,7 +214,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
             )
         )
     else:
-        my_lib.webapp.log.app_log(
+        my_lib.webapp.log.log(
             "{name}のシャッターを{mode}で{state}るのに失敗しました。{sensor_text}{by}".format(
                 name=config["shutter"][index]["name"],
                 mode=mode.value,
@@ -222,7 +222,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
                 sensor_text=sensor_text(sense_data),
                 by="\n(by {})".format(user) if user != "" else "",
             ),
-            my_lib.webapp.log.APP_LOG_LEVEL.ERROR,
+            my_lib.webapp.log.LOG_LEVEL.ERROR,
         )
 
 

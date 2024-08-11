@@ -96,9 +96,9 @@ def api_schedule_ctrl():
         schedule_data = json.loads(data)
 
         if not app_scheduler.schedule_validate(schedule_data):
-            my_lib.webapp.log.app_log(
+            my_lib.webapp.log.log(
                 "😵 スケジュールの指定が不正です。",
-                my_lib.webapp.log.APP_LOG_LEVEL.ERROR,
+                my_lib.webapp.log.LOG_LEVEL.ERROR,
             )
             return flask.jsonify(app_scheduler.schedule_load())
 
@@ -121,7 +121,7 @@ def api_schedule_ctrl():
             my_lib.webapp.event.notify_event(my_lib.webapp.event.EVENT_TYPE.SCHEDULE)
 
             user = my_lib.flask_util.auth_user(flask.request)
-            my_lib.webapp.log.app_log(
+            my_lib.webapp.log.log(
                 "📅 スケジュールを更新しました。\n{schedule}\n{by}".format(
                     schedule=schedule_str(schedule_data),
                     by="by {}".format(user) if user != "" else "",
