@@ -64,7 +64,7 @@ def create_app(config, dummy_mode=False):
         my_lib.webapp.log.init(config)
 
         def notify_terminate():  # pragma: no cover
-            my_lib.webapp.log.app_log("🏃 アプリを再起動します．")
+            my_lib.webapp.log.log("🏃 アプリを再起動します．")
             my_lib.webapp.log.term()
 
         atexit.register(notify_terminate)
