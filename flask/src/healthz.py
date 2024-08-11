@@ -15,90 +15,49 @@ Options:
 import logging
 import pathlib
 import sys
-import time
 
-import requests
+import my_lib.healthz
 from docopt import docopt
-
-sys.path.append(str(pathlib.Path(__file__).parent.parent / "lib"))
-
-import logger
-
-from config import load_config
-
-
-def check_liveness_impl(name, liveness_file, interval):
-    if not liveness_file.exists():
-        logging.warning("{name} is not executed.".format(name=name))
-        return False
-
-    elapsed = time.time() - liveness_file.stat().st_mtime
-    # NOTE: 少なくとも1分は様子を見る
-    if elapsed > max(interval * 2, 60):
-        logging.warning(
-            "Execution interval of {name} is too long. ({elapsed:,} sec)".format(
-                name=name, elapsed=elapsed.seconds
-            )
-        )
-        return False
-
-    return True
-
-
-def check_port(port):
-    try:
-        if requests.get("http://{address}:{port}/".format(address="127.0.0.1", port=port)).status_code == 200:
-            return True
-    except:
-        pass
-
-    logging.warning("Failed to access Flask web server")
-
-    return False
 
 
 def check_liveness(target_list, port):
     for target in target_list:
-        if not check_liveness_impl(target["name"], target["liveness_file"], target["interval"]):
+        if not my_lib.healthz.check_liveness(
+            target["name"], target["liveness_file"], target["interval"]
+        ):
             return False
-    if not check_port(port):
-        return False
 
-    return True
+    return my_lib.healthz.check_port(port)
 
 
 ######################################################################
-args = docopt(__doc__)
+if __name__ == "__main__":
+    import my_lib.config
+    import my_lib.logger
 
-config_file = args["-c"]
-port = args["-p"]
-debug_mode = args["-d"]
+    args = docopt(__doc__)
 
-if debug_mode:
-    log_level = logging.DEBUG
-else:
-    log_level = logging.INFO
+    config_file = args["-c"]
+    port = args["-p"]
+    debug_mode = args["-d"]
 
-logger.init(
-    "hems.rasp-water",
-    level=log_level,
-)
+    my_lib.logger.init(
+        "hems.rasp-water", level=logging.DEBUG if debug_mode else logging.INFO
+    )
 
-logging.info("Using config config: {config_file}".format(config_file=config_file))
-config = load_config(config_file)
+    config = my_lib.config.load(config_file)
 
-target_list = []
-for name in ["scheduler"]:
-    target_list.append(
+    target_list = [
         {
             "name": name,
             "liveness_file": pathlib.Path(config["liveness"]["file"][name]),
             "interval": 10,
         }
-    )
+        for name in ["scheduler"]
+    ]
 
-if check_liveness(target_list, port):
-    logging.info("OK.")
-    sys.exit(0)
-else:
-    sys.exit(-1)
+    if check_liveness(target_list, port):
+        logging.info("OK.")
+        sys.exit(0)
+    else:
+        sys.exit(-1)
