@@ -232,9 +232,9 @@ def ctrl_stat_clear():
 
     import my_lib.webapp.config
     import rasp_shutter.config
-    import rasp_shutter_control
+    import rasp_shutter.webapp_control
 
-    rasp_shutter_control.clean_stat_exec(my_lib.config.load(CONFIG_FILE))
+    rasp_shutter.webapp_control.clean_stat_exec(my_lib.config.load(CONFIG_FILE))
 
     rasp_shutter.config.STAT_AUTO_CLOSE.unlink(missing_ok=True)
 
@@ -364,13 +364,13 @@ def test_shutter_ctrl_read(client):
 
 def test_shutter_ctrl_inconsistent_read(client):
     import my_lib.footprint
-    import rasp_shutter_control
+    import rasp_shutter.webapp_control
 
     # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (close が後)
     ctrl_stat_clear()
-    my_lib.footprint.update(rasp_shutter_control.exec_stat_file("open", 0))
+    my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("open", 0))
     time.sleep(0.1)
-    my_lib.footprint.update(rasp_shutter_control.exec_stat_file("close", 0))
+    my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("close", 0))
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -378,26 +378,32 @@ def test_shutter_ctrl_inconsistent_read(client):
     assert response.status_code == 200
     assert response.json["result"] == "success"
     assert (
-        response.json["state"][0]["state"] == rasp_shutter_control.SHUTTER_STATE.CLOSE
+        response.json["state"][0]["state"]
+        == rasp_shutter.webapp_control.SHUTTER_STATE.CLOSE
     )
     assert (
-        response.json["state"][1]["state"] == rasp_shutter_control.SHUTTER_STATE.UNKNOWN
+        response.json["state"][1]["state"]
+        == rasp_shutter.webapp_control.SHUTTER_STATE.UNKNOWN
     )
 
     # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (open が後)
     ctrl_stat_clear()
-    my_lib.footprint.update(rasp_shutter_control.exec_stat_file("close", 1))
+    my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("close", 1))
     time.sleep(0.1)
-    my_lib.footprint.update(rasp_shutter_control.exec_stat_file("open", 1))
+    my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("open", 1))
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    assert response.json["state"][1]["state"] == rasp_shutter_control.SHUTTER_STATE.OPEN
     assert (
-        response.json["state"][0]["state"] == rasp_shutter_control.SHUTTER_STATE.UNKNOWN
+        response.json["state"][1]["state"]
+        == rasp_shutter.webapp_control.SHUTTER_STATE.OPEN
+    )
+    assert (
+        response.json["state"][0]["state"]
+        == rasp_shutter.webapp_control.SHUTTER_STATE.UNKNOWN
     )
     time.sleep(1)
 
@@ -637,7 +643,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     request_mock.i = 0
 
     mocker.patch.dict(os.environ, {"DUMMY_MODE": "false"}, clear=True)
-    mocker.patch("rasp_shutter_control.requests.get", side_effect=request_mock)
+    mocker.patch("rasp_shutter.webapp_control.requests.get", side_effect=request_mock)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -849,7 +855,9 @@ def test_schedule_ctrl_invalid(client, mocker):
 
 def test_schedule_ctrl_execute(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
-    mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
+    mocker.patch(
+        "rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT
+    )
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -916,7 +924,7 @@ def test_schedule_ctrl_execute(client, mocker, freezer):
 
 def test_schedule_ctrl_auto_close(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
-    sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
+    sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1009,7 +1017,7 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
 
 def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
-    sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
+    sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1121,7 +1129,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
 def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
-    sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
+    sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1357,7 +1365,7 @@ def test_schedule_ctrl_auto_inactive(client, mocker, freezer):
 def test_schedule_ctrl_pending_open(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
-    sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
+    sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1432,7 +1440,7 @@ def test_schedule_ctrl_pending_open(client, mocker, freezer):
 def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
-    sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
+    sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1532,7 +1540,7 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
-    sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
+    sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1599,7 +1607,9 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
 def test_schedule_ctrl_open_dup(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
-    mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
+    mocker.patch(
+        "rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT
+    )
 
     move_to(freezer, time_morning(0))
     time.sleep(1.6)
@@ -1665,7 +1675,7 @@ def test_schedule_ctrl_open_dup(client, mocker, freezer):
 def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
-    sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
+    sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1767,7 +1777,9 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     mocker.patch("app_scheduler.exec_shutter_control_impl", return_value=False)
-    mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
+    mocker.patch(
+        "rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK
+    )
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1830,7 +1842,9 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
 def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
-    mocker.patch("rasp_shutter_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
+    mocker.patch(
+        "rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK
+    )
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1851,7 +1865,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
     )
 
     mocker.patch(
-        "app_scheduler.rasp_shutter_control.set_shutter_state",
+        "app_scheduler.rasp_shutter.webapp_control.set_shutter_state",
         side_effect=RuntimeError(),
     )
 
@@ -1892,7 +1906,7 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
-    sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
+    sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(freezer, time_morning(0))
     time.sleep(1)
@@ -1927,7 +1941,7 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
-    sensor_data_mock = mocker.patch("rasp_shutter_sensor.get_sensor_data")
+    sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(freezer, time_morning(0))
     time.sleep(1)
@@ -2155,19 +2169,19 @@ def test_memory(client):
 
 
 def test_second_str():
-    import rasp_shutter_control
+    import rasp_shutter.webapp_control
 
-    assert rasp_shutter_control.time_str(3600) == "1時間"
-    assert rasp_shutter_control.time_str(3660) == "1時間1分"
-    assert rasp_shutter_control.time_str(50) == "50秒"
+    assert rasp_shutter.webapp_control.time_str(3600) == "1時間"
+    assert rasp_shutter.webapp_control.time_str(3660) == "1時間1分"
+    assert rasp_shutter.webapp_control.time_str(50) == "50秒"
 
 
 def test_terminate():
     import my_lib.webapp.log
-    import rasp_shutter_schedule
+    import rasp_shutter.webapp_schedule
 
     my_lib.webapp.log.term()
-    rasp_shutter_schedule.term()
+    rasp_shutter.webapp_schedule.term()
     # NOTE: 二重に呼んでもエラーにならないことを確認
     my_lib.webapp.log.term()
-    rasp_shutter_schedule.term()
+    rasp_shutter.webapp_schedule.term()
