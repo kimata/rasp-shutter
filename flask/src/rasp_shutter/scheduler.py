@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import datetime
 import logging
 import os
@@ -21,7 +19,7 @@ import rasp_shutter.webapp_sensor
 import schedule
 
 
-class BRIGHTNESS_STATE(IntEnum):
+class BRIGHTNESS_STATE(IntEnum):  # noqa: N801
     DARK = 0
     BRIGHT = 1
     UNKNOWN = 2
@@ -35,27 +33,22 @@ should_terminate = False
 
 
 def init():
-    global schedule_lock
+    global schedule_lock  # noqa: PLW0603
     schedule_lock = threading.Lock()
 
 
 def brightness_text(sense_data, cur_schedule_data):
-    text = []
-    for sensor in ["solar_rad", "lux"]:
-        text.append(
-            "{sensor}: current {current:.1f} {cmp} threshold {threshold:.1f}".format(
-                sensor=sensor,
-                current=sense_data[sensor]["value"],
-                threshold=cur_schedule_data[sensor],
-                cmp=">"
-                if sense_data[sensor]["value"] > cur_schedule_data[sensor]
-                else (
-                    "<"
-                    if sense_data[sensor]["value"] < cur_schedule_data[sensor]
-                    else "="
-                ),
-            )
+    text = [
+        "{sensor}: current {current:.1f} {cmp} threshold {threshold:.1f}".format(
+            sensor=sensor,
+            current=sense_data[sensor]["value"],
+            threshold=cur_schedule_data[sensor],
+            cmp=">"
+            if sense_data[sensor]["value"] > cur_schedule_data[sensor]
+            else ("<" if sense_data[sensor]["value"] < cur_schedule_data[sensor] else "="),
         )
+        for sensor in ["solar_rad", "lux"]
+    ]
 
     return ", ".join(text)
 
@@ -68,19 +61,11 @@ def check_brightness(sense_data, state):
         sense_data["solar_rad"]["value"] < schedule_data[state]["solar_rad"]
     ):
         if state == "close":
-            logging.info(
-                "Getting darker {brightness_text}.".format(
-                    brightness_text=brightness_text(sense_data, schedule_data[state])
-                ),
-            )
+            logging.info("Getting darker %s", brightness_text(sense_data, schedule_data[state]))
         return BRIGHTNESS_STATE.DARK
     else:
         if state == "open":
-            logging.info(
-                "Getting brighter {brightness_text}.".format(
-                    brightness_text=brightness_text(sense_data, schedule_data[state])
-                ),
-            )
+            logging.info("Getting brighter %s", brightness_text(sense_data, schedule_data[state]))
         return BRIGHTNESS_STATE.BRIGHT
 
 
@@ -94,7 +79,6 @@ def exec_shutter_control_impl(config, state, mode, sense_data, user):
     except Exception as e:
         logging.warning(e)
         logging.warning(traceback.format_exc())
-        pass
 
     return False
 
@@ -102,7 +86,7 @@ def exec_shutter_control_impl(config, state, mode, sense_data, user):
 def exec_shutter_control(config, state, mode, sense_data, user):
     logging.debug("Execute shutter control")
 
-    for i in range(RETRY_COUNT):
+    for _ in range(RETRY_COUNT):
         if exec_shutter_control_impl(config, state, mode, sense_data, user):
             return True
         logging.debug("Retry")
@@ -118,19 +102,13 @@ def shutter_auto_open(config):
         logging.debug("inactive")
         return
 
-    elapsed_pendiing_open = my_lib.footprint.elapsed(
-        rasp_shutter.config.STAT_PENDING_OPEN
-    )
+    elapsed_pendiing_open = my_lib.footprint.elapsed(rasp_shutter.config.STAT_PENDING_OPEN)
     if elapsed_pendiing_open > 6 * 60 * 60:
         # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない．
         logging.debug("NOT pending")
         return
     else:
-        logging.debug(
-            "Elapsed time since pending open: {elapsed}".format(
-                elapsed=elapsed_pendiing_open
-            )
-        )
+        logging.debug("Elapsed time since pending open: %s", elapsed_pendiing_open)
 
     if (
         my_lib.footprint.elapsed(rasp_shutter.config.STAT_AUTO_CLOSE)
@@ -142,11 +120,8 @@ def shutter_auto_open(config):
 
     sense_data = rasp_shutter.webapp_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "open") == BRIGHTNESS_STATE.BRIGHT:
-        my_lib.webapp.log.log(
-            ("📝 暗くて延期されていましたが，明るくなってきたので開けます．{sensor_text}").format(
-                sensor_text=rasp_shutter.webapp_control.sensor_text(sense_data),
-            )
-        )
+        sensor_text = rasp_shutter.webapp_control.sensor_text(sense_data)
+        my_lib.webapp.log.log(f"📝 暗くて延期されていましたが，明るくなってきたので開けます．{sensor_text}")
 
         exec_shutter_control(
             config,
@@ -159,18 +134,16 @@ def shutter_auto_open(config):
         my_lib.footprint.clear(rasp_shutter.config.STAT_AUTO_CLOSE)
     else:
         logging.debug(
-            "Skip pendding open (solar_rad: {solar_rad:.1f} W/m^2, lux: {lux:.1f} LUX)".format(
-                solar_rad=sense_data["solar_rad"]["value"],
-                lux=sense_data["lux"]["value"],
-            )
+            "Skip pendding open (solar_rad: %.1f W/m^2, lux: %.1f LUX)",
+            sense_data["solar_rad"]["value"],
+            sense_data["lux"]["value"],
         )
 
 
 def conv_schedule_time_to_datetime(schedule_time):
     return (
-        datetime.datetime.strptime(
-            datetime.datetime.now(my_lib.webapp.config.TIMEZONE).strftime("%Y/%m/%d ")
-            + schedule_time,
+        datetime.datetime.strptime(  # noqa: DTZ007
+            datetime.datetime.now(my_lib.webapp.config.TIMEZONE).strftime("%Y/%m/%d ") + schedule_time,
             "%Y/%m/%d %H:%M",
         )
         # NOTE: freezegun と scheduler を組み合わせて使うと，
@@ -199,9 +172,9 @@ def shutter_auto_close(config):
         # NOTE: 開ける時刻よりも早い場合は処理しない
         logging.debug("before open time")
         return
-    elif conv_schedule_time_to_datetime(
-        schedule_data["close"]["time"]
-    ) < datetime.datetime.now(my_lib.webapp.config.TIMEZONE):
+    elif conv_schedule_time_to_datetime(schedule_data["close"]["time"]) < datetime.datetime.now(
+        my_lib.webapp.config.TIMEZONE
+    ):
         # NOTE: スケジュールで閉めていた場合は処理しない
         logging.debug("after close time")
         return
@@ -212,21 +185,18 @@ def shutter_auto_close(config):
 
     for index in range(len(config["shutter"])):
         if (
-            my_lib.footprint.elapsed(
-                rasp_shutter.webapp_control.exec_stat_file("open", index)
-            )
-            < config.EXEC_INTERVAL_AUTO_MIN * 60
+            my_lib.footprint.elapsed(rasp_shutter.webapp_control.exec_stat_file("open", index))
+            < rasp_shutter.config.EXEC_INTERVAL_AUTO_MIN * 60
         ):
             # NOTE: 自動で開けてから時間が経っていない場合は，処理を行わない．
-            logging.debug("just opened ({index})".format(index=index))
+            logging.debug("just opened (%d)", index)
             return
 
     sense_data = rasp_shutter.webapp_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.DARK:
         my_lib.webapp.log.log(
-            ("📝 予定より早いですが，暗くなってきたので閉めます．{sensor_text}").format(
-                sensor_text=rasp_shutter.webapp_control.sensor_text(sense_data),
-            )
+            "📝 予定より早いですが，暗くなってきたので閉めます．{sensor_text}",
+            rasp_shutter.webapp_control.sensor_text(sense_data),
         )
 
         exec_shutter_control(
@@ -240,20 +210,15 @@ def shutter_auto_close(config):
 
         # NOTE: まだ明るくなる可能性がある時間帯の場合，再度自動的に開けるようにする
         hour = datetime.datetime.now(my_lib.webapp.config.TIMEZONE).hour
-        if (5 < hour) and (hour < 13):
+        if (hour > 5) and (hour < 13):
             my_lib.footprint.update(rasp_shutter.config.STAT_PENDING_OPEN)
 
     else:  # pragma: no cover
         # NOTE: pending close の制御は無いのでここには来ない．
         logging.debug(
-            "Skip pendding close (solar_rad: {solar_rad:.1f} W/m^2, lux: {lux:.1f} LUX)".format(
-                solar_rad=sense_data["solar_rad"]["value"]
-                if sense_data["solar_rad"]["valid"]
-                else -1,
-                lux=sense_data["lux"]["value"]
-                if sense_data["solar_rad"]["valid"]
-                else -1,
-            )
+            "Skip pendding close (solar_rad: %.1f W/m^2, lux: %.1f LUX)",
+            solar_rad=sense_data["solar_rad"]["value"] if sense_data["solar_rad"]["valid"] else -1,
+            lux=sense_data["lux"]["value"] if sense_data["solar_rad"]["valid"] else -1,
         )
 
 
@@ -261,10 +226,10 @@ def shutter_auto_control(config):
     hour = datetime.datetime.now(my_lib.webapp.config.TIMEZONE).hour
 
     # NOTE: 時間帯によって自動制御の内容を分ける
-    if (5 < hour) and (hour < 12):
+    if (hour > 5) and (hour < 12):
         shutter_auto_open(config)
 
-    if (5 < hour) and (hour < 20):
+    if (hour > 5) and (hour < 20):
         shutter_auto_close(config)
 
 
@@ -292,11 +257,8 @@ def shutter_schedule_control(config, state):
 
     if state == "open":
         if check_brightness(sense_data, state) == BRIGHTNESS_STATE.DARK:
-            my_lib.webapp.log.log(
-                "📝 まだ暗いので開けるのを見合わせました．{sensor_text}".format(
-                    sensor_text=rasp_shutter.webapp_control.sensor_text(sense_data)
-                )
-            )
+            sensor_text = rasp_shutter.webapp_control.sensor_text(sense_data)
+            my_lib.webapp.log.log(f"📝 まだ暗いので開けるのを見合わせました．{sensor_text}")
 
             rasp_shutter.webapp_control.cmd_hist_push(
                 {
@@ -327,54 +289,34 @@ def shutter_schedule_control(config, state):
         )
 
 
-def schedule_validate(schedule_data):
+def schedule_validate(schedule_data):  # noqa: C901, PLR0911
     if len(schedule_data) != 2:
-        logging.warning(
-            "Count of entry is Invalid: {count}".format(count=len(schedule_data))
-        )
+        logging.warning("Count of entry is Invalid: %d", len(schedule_data))
         return False
 
-    for name, entry in schedule_data.items():
+    for entry in schedule_data:
         for key in ["is_active", "time", "wday", "solar_rad", "lux"]:
             if key not in entry:
-                logging.warning("Does not contain {key}".format(key=key))
+                logging.warning("Does not contain %s", key)
                 return False
-        if type(entry["is_active"]) != bool:
-            logging.warning(
-                "Type of is_active is invalid: {type}".format(
-                    type=type(entry["is_active"])
-                )
-            )
+        if type(entry["is_active"]) is not bool:
+            logging.warning("Type of is_active is invalid: %s", type(entry["is_active"]))
             return False
-        if type(entry["lux"]) != int:
-            logging.warning(
-                "Type of lux is invalid: {type}".format(type=type(entry["is_active"]))
-            )
+        if type(entry["lux"]) is not int:
+            logging.warning("Type of lux is invalid: %s", type(entry["is_active"]))
             return False
-        if type(entry["solar_rad"]) != int:
-            logging.warning(
-                "Type of solar_rad is invalid: {type}".format(
-                    type=type(entry["is_active"])
-                )
-            )
+        if type(entry["solar_rad"]) is not int:
+            logging.warning("Type of solar_rad is invalid: %s", type(entry["is_active"]))
             return False
         if not re.compile(r"\d{2}:\d{2}").search(entry["time"]):
-            logging.warning(
-                "Format of time is invalid: {time}".format(time=entry["time"])
-            )
+            logging.warning("Format of time is invalid: %s", entry["time"])
             return False
         if len(entry["wday"]) != 7:
-            logging.warning(
-                "Count of wday is Invalid: {count}".format(count=len(entry["wday"]))
-            )
+            logging.warning("Count of wday is Invalid: %d", len(entry["wday"]))
             return False
         for i, wday_flag in enumerate(entry["wday"]):
-            if type(wday_flag) != bool:
-                logging.warning(
-                    "Type of wday[{i}] is Invalid: {type}".format(
-                        i=i, type=type(entry["wday"][i])
-                    )
-                )
+            if type(wday_flag) is not bool:
+                logging.warning("Type of wday[%d] is Invalid: %d", i, type(entry["wday"][i]))
                 return False
     return True
 
@@ -383,34 +325,27 @@ def schedule_store(schedule_data):
     global schedule_lock
     try:
         with schedule_lock:
-            my_lib.webapp.config.SCHEDULE_FILE_PATH.parent.mkdir(
-                parents=True, exist_ok=True
-            )
-            with open(my_lib.webapp.config.SCHEDULE_FILE_PATH, "wb") as f:
+            my_lib.webapp.config.SCHEDULE_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with pathlib.Path(my_lib.webapp.config.SCHEDULE_FILE_PATH).open(mode="wb") as f:
                 pickle.dump(schedule_data, f)
-    except:
-        logging.error(traceback.format_exc())
-        my_lib.webapp.log.log(
-            "😵 スケジュール設定の保存に失敗しました。", my_lib.webapp.log.LOG_LEVEL.ERROR
-        )
-        pass
+    except Exception:
+        logging.exception("Failed to save schedule settings.")
+        my_lib.webapp.log.log("😵 スケジュール設定の保存に失敗しました。", my_lib.webapp.log.LOG_LEVEL.ERROR)
 
 
 def schedule_load():
     global schedule_lock
     if my_lib.webapp.config.SCHEDULE_FILE_PATH.exists():
         try:
-            with schedule_lock:
-                with open(my_lib.webapp.config.SCHEDULE_FILE_PATH, "rb") as f:
-                    schedule_data = pickle.load(f)
-                    if schedule_validate(schedule_data):
-                        return schedule_data
-        except:
-            logging.error(traceback.format_exc())
+            with schedule_lock, pathlib.Path(my_lib.webapp.config.SCHEDULE_FILE_PATH).open(mode="rb") as f:
+                schedule_data = pickle.load(f)  # noqa: S301
+                if schedule_validate(schedule_data):
+                    return schedule_data
+        except Exception:
+            logging.exception("Failed to load schedule settings.")
             my_lib.webapp.log.log(
                 "😵 スケジュール設定の読み出しに失敗しました。", my_lib.webapp.log.LOG_LEVEL.ERROR
             )
-            pass
 
     schedule_data = {
         "is_active": False,
@@ -426,7 +361,7 @@ def schedule_load():
     }
 
 
-def set_schedule(config, schedule_data):
+def set_schedule(config, schedule_data):  # noqa: C901
     schedule.clear()
 
     for state, entry in schedule_data.items():
@@ -434,45 +369,47 @@ def set_schedule(config, schedule_data):
             continue
 
         if entry["wday"][0]:
-            schedule.every().sunday.at(
-                entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ
-            ).do(shutter_schedule_control, config, state)
+            schedule.every().sunday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
         if entry["wday"][1]:
-            schedule.every().monday.at(
-                entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ
-            ).do(shutter_schedule_control, config, state)
+            schedule.every().monday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
         if entry["wday"][2]:
-            schedule.every().tuesday.at(
-                entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ
-            ).do(shutter_schedule_control, config, state)
+            schedule.every().tuesday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
         if entry["wday"][3]:
-            schedule.every().wednesday.at(
-                entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ
-            ).do(shutter_schedule_control, config, state)
+            schedule.every().wednesday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
         if entry["wday"][4]:
-            schedule.every().thursday.at(
-                entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ
-            ).do(shutter_schedule_control, config, state)
+            schedule.every().thursday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
         if entry["wday"][5]:
-            schedule.every().friday.at(
-                entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ
-            ).do(shutter_schedule_control, config, state)
+            schedule.every().friday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
         if entry["wday"][6]:
-            schedule.every().saturday.at(
-                entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ
-            ).do(shutter_schedule_control, config, state)
+            schedule.every().saturday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+                shutter_schedule_control, config, state
+            )
 
     for job in schedule.get_jobs():
-        logging.info("Next run: {next_run}".format(next_run=job.next_run))
+        logging.info("Next run: %s", job.next_run)
 
-    logging.info("Time to next jobs is {idle} sec".format(idle=schedule.idle_seconds()))
+    idle_sec = schedule.idle_seconds()
+    if idle_sec is not None:
+        logging.info("Time to next jobs is %d sec", idle_sec)
 
     schedule.every().minutes.do(shutter_auto_control, config)
 
 
 def schedule_worker(config, queue):
     global should_terminate
-    global schedule_data
+    global schedule_data  # noqa: PLW0603
 
     sleep_sec = 0.5
 
@@ -499,12 +436,11 @@ def schedule_worker(config, queue):
 
             schedule.run_pending()
 
-            logging.debug("Sleep {sleep_sec} sec...".format(sleep_sec=sleep_sec))
+            logging.debug("Sleep %.1f sec...", sleep_sec)
             time.sleep(sleep_sec)
         except OverflowError:  # pragma: no cover
             # NOTE: テストする際，freezer 使って日付をいじるとこの例外が発生する
             logging.debug(traceback.format_exc())
-            pass
 
         if i % (10 / sleep_sec) == 0:
             liveness_file.touch()
@@ -523,7 +459,7 @@ if __name__ == "__main__":
     my_lib.logger.init("test", level=logging.DEBUG)
 
     def test_func():
-        global should_terminate
+        global should_terminate  # noqa: PLW0603
         logging.info("TEST")
 
         should_terminate = True
@@ -536,9 +472,7 @@ if __name__ == "__main__":
     pool = ThreadPool(processes=1)
     result = pool.apply_async(schedule_worker, (config, queue))
 
-    exec_time = datetime.datetime.now(
-        my_lib.webapp.config.TIMEZONE
-    ) + datetime.timedelta(seconds=5)
+    exec_time = datetime.datetime.now(my_lib.webapp.config.TIMEZONE) + datetime.timedelta(seconds=5)
     queue.put(
         {
             "open": {
