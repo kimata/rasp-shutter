@@ -15,8 +15,9 @@ import pytest
 sys.path.append(str(pathlib.Path(__file__).parent.parent / "flask" / "app"))
 sys.path.append(str(pathlib.Path(__file__).parent.parent / "flask" / "lib"))
 
+import my_lib.config
+import my_lib.webapp.config
 from app import create_app
-from webapp_config import TIMEZONE, TIMEZONE_OFFSET, TIMEZONE_PYTZ
 
 CONFIG_FILE = "config.example.yaml"
 
@@ -36,7 +37,7 @@ def env_mock():
 @pytest.fixture(scope="session", autouse=True)
 def slack_mock():
     with mock.patch(
-        "notify_slack.slack_sdk.web.client.WebClient.chat_postMessage",
+        "my_lib.notify_slack.slack_sdk.web.client.WebClient.chat_postMessage",
         retunr_value=True,
     ) as fixture:
         yield fixture
@@ -44,27 +45,31 @@ def slack_mock():
 
 @pytest.fixture(scope="function", autouse=True)
 def clear():
-    import footprint
-    import notify_slack
-    from webapp_config import STAT_AUTO_CLOSE, STAT_PENDING_OPEN
+    import my_lib.webapp.config
 
-    footprint.clear(STAT_AUTO_CLOSE)
-    footprint.clear(STAT_PENDING_OPEN)
+    my_lib.webapp.config.init(my_lib.config.load(CONFIG_FILE))
 
-    notify_slack.interval_clear()
-    notify_slack.hist_clear()
+    import my_lib.footprint
+    import my_lib.notify_slack
+    import rasp_shutter.config
+
+    my_lib.footprint.clear(rasp_shutter.config.STAT_AUTO_CLOSE)
+    my_lib.footprint.clear(rasp_shutter.config.STAT_PENDING_OPEN)
+
+    my_lib.notify_slack.interval_clear()
+    my_lib.notify_slack.hist_clear()
 
     ctrl_stat_clear()
 
 
 @pytest.fixture(scope="session")
 def app():
+    my_lib.webapp.config.init(my_lib.config.load(CONFIG_FILE))
+
     with mock.patch.dict("os.environ", {"WERKZEUG_RUN_MAIN": "true"}):
-        import webapp_config
+        my_lib.webapp.config.SCHEDULE_FILE_PATH.unlink(missing_ok=True)
 
-        webapp_config.SCHEDULE_DATA_PATH.unlink(missing_ok=True)
-
-        app = create_app(CONFIG_FILE, dummy_mode=True)
+        app = create_app(my_lib.config.load(CONFIG_FILE), dummy_mode=True)
 
         yield app
 
@@ -87,15 +92,21 @@ def client(app, mocker):
 
 
 def time_morning(offset_min=0):
-    return datetime.datetime.now(TIMEZONE).replace(hour=7, minute=0 + offset_min, second=0)
+    return datetime.datetime.now(my_lib.webapp.config.TIMEZONE).replace(
+        hour=7, minute=0 + offset_min, second=0
+    )
 
 
 def time_evening(offset_min=0):
-    return datetime.datetime.now(TIMEZONE).replace(hour=17, minute=0 + offset_min, second=0)
+    return datetime.datetime.now(my_lib.webapp.config.TIMEZONE).replace(
+        hour=17, minute=0 + offset_min, second=0
+    )
 
 
 def time_str(time):
-    return (time - datetime.timedelta(hours=int(TIMEZONE_OFFSET))).strftime("%H:%M")
+    return (
+        time - datetime.timedelta(hours=int(my_lib.webapp.config.TIMEZONE_OFFSET))
+    ).strftime("%H:%M")
 
 
 def move_to(freezer, target_time):
@@ -121,8 +132,10 @@ def gen_schedule_data():
     }
 
     return {
-        "open": schedule_data | {"time": time_str(time_morning(1)), "solar_rad": 150, "lux": 1000},
-        "close": schedule_data | {"time": time_str(time_evening(1)), "solar_rad": 80, "lux": 1200},
+        "open": schedule_data
+        | {"time": time_str(time_morning(1)), "solar_rad": 150, "lux": 1000},
+        "close": schedule_data
+        | {"time": time_str(time_evening(1)), "solar_rad": 80, "lux": 1200},
     }
 
 
@@ -141,9 +154,11 @@ def app_log_check(
 
     if is_strict:
         # NOTE: クリアする直前のログが残っている可能性があるので，+1 でも OK とする
-        assert (len(log_list) == len(expect_list)) or (len(log_list) == (len(expect_list) + 1))
+        assert (len(log_list) == len(expect_list)) or (
+            len(log_list) == (len(expect_list) + 1)
+        )
 
-    for (i, expect) in enumerate(reversed(expect_list)):
+    for i, expect in enumerate(reversed(expect_list)):
         if expect == "OPEN_MANUAL":
             assert "手動で開けました" in log_list[i]["message"]
         elif expect == "OPEN_AUTO":
@@ -211,35 +226,38 @@ def ctrl_log_check(client, expect):
 
 
 def ctrl_stat_clear():
+    import my_lib.config
+
+    my_lib.webapp.config.init(my_lib.config.load(CONFIG_FILE))
+
+    import my_lib.webapp.config
+    import rasp_shutter.config
     import rasp_shutter_control
-    from webapp_config import STAT_AUTO_CLOSE
 
-    from config import load_config
+    rasp_shutter_control.clean_stat_exec(my_lib.config.load(CONFIG_FILE))
 
-    rasp_shutter_control.clean_stat_exec(load_config(CONFIG_FILE))
-
-    STAT_AUTO_CLOSE.unlink(missing_ok=True)
+    rasp_shutter.config.STAT_AUTO_CLOSE.unlink(missing_ok=True)
 
 
 def check_notify_slack(message, index=-1):
     import logging
 
-    import notify_slack
+    import my_lib.notify_slack
 
-    notify_hist = notify_slack.hist_get()
+    notify_hist = my_lib.notify_slack.hist_get()
     logging.debug(notify_hist)
 
     if message is None:
         assert notify_hist == [], "正常なはずなのに，エラー通知がされています。"
     else:
         assert len(notify_hist) != 0, "異常が発生したはずなのに，エラー通知がされていません。"
-        assert notify_hist[index].find(message) != -1, "「{message}」が Slack で通知されていません。".format(
-            message=message
-        )
+        assert (
+            notify_hist[index].find(message) != -1
+        ), "「{message}」が Slack で通知されていません。".format(message=message)
 
 
 ######################################################################
-def test_time(freezer):
+def test_time(client, freezer):
     import logging
 
     import schedule
@@ -247,7 +265,11 @@ def test_time(freezer):
     logging.debug(
         "datetime.now()                 = {date}".format(date=datetime.datetime.now()),
     )
-    logging.debug("datetime.now(JST)              = {date}".format(date=datetime.datetime.now(TIMEZONE)))
+    logging.debug(
+        "datetime.now(JST)              = {date}".format(
+            date=datetime.datetime.now(my_lib.webapp.config.TIMEZONE)
+        )
+    )
     logging.debug(
         "datetime.now().replace(...)    = {date}".format(
             date=datetime.datetime.now().replace(hour=0, minute=0, second=0)
@@ -255,7 +277,9 @@ def test_time(freezer):
     )
     logging.debug(
         "datetime.now(JST).replace(...) = {date}".format(
-            date=datetime.datetime.now(TIMEZONE).replace(hour=0, minute=0, second=0)
+            date=datetime.datetime.now(my_lib.webapp.config.TIMEZONE).replace(
+                hour=0, minute=0, second=0
+            )
         )
     )
 
@@ -265,12 +289,20 @@ def test_time(freezer):
     logging.debug(
         "datetime.now()                 = {date}".format(date=datetime.datetime.now()),
     )
-    logging.debug("datetime.now(JST)              = {date}".format(date=datetime.datetime.now(TIMEZONE)))
+    logging.debug(
+        "datetime.now(JST)              = {date}".format(
+            date=datetime.datetime.now(my_lib.webapp.config.TIMEZONE)
+        )
+    )
 
     schedule.clear()
     job_time_str = time_str(time_morning(1))
     logging.debug("set schedule at {time}".format(time=job_time_str))
-    job = schedule.every().day.at(job_time_str, TIMEZONE_PYTZ).do(lambda: True)
+    job = (
+        schedule.every()
+        .day.at(job_time_str, my_lib.webapp.config.TIMEZONE_PYTZ)
+        .do(lambda: True)
+    )
 
     idle_sec = schedule.idle_seconds()
     logging.error("Time to next jobs is {idle:.1f} sec".format(idle=idle_sec))
@@ -331,28 +363,32 @@ def test_shutter_ctrl_read(client):
 
 
 def test_shutter_ctrl_inconsistent_read(client):
-    import footprint
+    import my_lib.footprint
     import rasp_shutter_control
 
     # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (close が後)
     ctrl_stat_clear()
-    footprint.update(rasp_shutter_control.exec_stat_file("open", 0))
+    my_lib.footprint.update(rasp_shutter_control.exec_stat_file("open", 0))
     time.sleep(0.1)
-    footprint.update(rasp_shutter_control.exec_stat_file("close", 0))
+    my_lib.footprint.update(rasp_shutter_control.exec_stat_file("close", 0))
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    assert response.json["state"][0]["state"] == rasp_shutter_control.SHUTTER_STATE.CLOSE
-    assert response.json["state"][1]["state"] == rasp_shutter_control.SHUTTER_STATE.UNKNOWN
+    assert (
+        response.json["state"][0]["state"] == rasp_shutter_control.SHUTTER_STATE.CLOSE
+    )
+    assert (
+        response.json["state"][1]["state"] == rasp_shutter_control.SHUTTER_STATE.UNKNOWN
+    )
 
     # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (open が後)
     ctrl_stat_clear()
-    footprint.update(rasp_shutter_control.exec_stat_file("close", 1))
+    my_lib.footprint.update(rasp_shutter_control.exec_stat_file("close", 1))
     time.sleep(0.1)
-    footprint.update(rasp_shutter_control.exec_stat_file("open", 1))
+    my_lib.footprint.update(rasp_shutter_control.exec_stat_file("open", 1))
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -360,7 +396,9 @@ def test_shutter_ctrl_inconsistent_read(client):
     assert response.status_code == 200
     assert response.json["result"] == "success"
     assert response.json["state"][1]["state"] == rasp_shutter_control.SHUTTER_STATE.OPEN
-    assert response.json["state"][0]["state"] == rasp_shutter_control.SHUTTER_STATE.UNKNOWN
+    assert (
+        response.json["state"][0]["state"] == rasp_shutter_control.SHUTTER_STATE.UNKNOWN
+    )
     time.sleep(1)
 
     ctrl_log_check(client, [])
@@ -394,7 +432,9 @@ def test_valve_ctrl_manual_single_1(client, mocker):
     assert response.json["result"] == "success"
     time.sleep(1)
 
-    ctrl_log_check(client, [{"index": 0, "state": "open"}, {"index": 0, "state": "close"}])
+    ctrl_log_check(
+        client, [{"index": 0, "state": "open"}, {"index": 0, "state": "close"}]
+    )
     app_log_check(client, ["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
     check_notify_slack(None)
 
@@ -425,7 +465,9 @@ def test_valve_ctrl_manual_single_2(client):
     assert response.json["result"] == "success"
     time.sleep(1)
 
-    ctrl_log_check(client, [{"index": 1, "state": "open"}, {"index": 1, "state": "close"}])
+    ctrl_log_check(
+        client, [{"index": 1, "state": "open"}, {"index": 1, "state": "close"}]
+    )
     app_log_check(client, ["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
     check_notify_slack(None)
 
@@ -455,7 +497,9 @@ def test_valve_ctrl_manual_all(client):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    ctrl_log_check(client, [{"index": 0, "state": "open"}, {"index": 1, "state": "open"}])
+    ctrl_log_check(
+        client, [{"index": 0, "state": "open"}, {"index": 1, "state": "open"}]
+    )
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -788,7 +832,17 @@ def test_schedule_ctrl_invalid(client, mocker):
     ctrl_log_check(client, [])
     app_log_check(
         client,
-        ["CLEAR", "INVALID", "INVALID", "INVALID", "INVALID", "INVALID", "INVALID", "INVALID", "INVALID"],
+        [
+            "CLEAR",
+            "INVALID",
+            "INVALID",
+            "INVALID",
+            "INVALID",
+            "INVALID",
+            "INVALID",
+            "INVALID",
+            "INVALID",
+        ],
     )
     check_notify_slack("スケジュールの指定が不正です。")
 
@@ -1459,7 +1513,17 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
             {"cmd": "pending", "state": "open"},
         ],
     )
-    app_log_check(client, ["CLEAR", "CLOSE_MANUAL", "CLOSE_MANUAL", "SCHEDULE", "OPEN_PENDING", "SCHEDULE"])
+    app_log_check(
+        client,
+        [
+            "CLEAR",
+            "CLOSE_MANUAL",
+            "CLOSE_MANUAL",
+            "SCHEDULE",
+            "OPEN_PENDING",
+            "SCHEDULE",
+        ],
+    )
     check_notify_slack(None)
 
 
@@ -1818,7 +1882,9 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
             {"index": 1, "state": "open"},
         ],
     )
-    app_log_check(client, ["CLEAR", "OPEN_MANUAL", "OPEN_MANUAL", "SCHEDULE", "FAIL_CONTROL"])
+    app_log_check(
+        client, ["CLEAR", "OPEN_MANUAL", "OPEN_MANUAL", "SCHEDULE", "FAIL_CONTROL"]
+    )
     check_notify_slack(None)
 
 
@@ -1913,7 +1979,7 @@ def test_schedule_ctrl_read_fail_1(client, mocker):
 def test_schedule_ctrl_read_fail_2(client):
     import webapp_config
 
-    with open(webapp_config.SCHEDULE_DATA_PATH, "wb") as f:
+    with open(webapp_config.SCHEDULE_FILE_PATH, "wb") as f:
         f.write(b"TEST")
 
     response = client.get("/rasp-shutter/api/schedule_ctrl")
@@ -2097,11 +2163,11 @@ def test_second_str():
 
 
 def test_terminate():
+    import my_lib.webapp.log
     import rasp_shutter_schedule
-    import webapp_log
 
-    webapp_log.term()
+    my_lib.webapp.log.term()
     rasp_shutter_schedule.term()
     # NOTE: 二重に呼んでもエラーにならないことを確認
-    webapp_log.term()
+    my_lib.webapp.log.term()
     rasp_shutter_schedule.term()
