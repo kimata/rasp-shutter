@@ -8,9 +8,9 @@ from multiprocessing import Queue
 import app_scheduler
 import flask_cors
 import my_lib.flask_util
+import my_lib.webapp.config
 import my_lib.webapp.event
 import my_lib.webapp.log
-from webapp_config import APP_URL_PREFIX
 
 import flask
 
@@ -18,7 +18,7 @@ WDAY_STR = ["日", "月", "火", "水", "木", "金", "土"]
 
 
 blueprint = flask.Blueprint(
-    "rasp-shutter-schedule", __name__, url_prefix=APP_URL_PREFIX
+    "rasp-shutter-schedule", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX
 )
 
 schedule_lock = threading.Lock()
