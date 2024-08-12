@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-# #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 import logging
 import os
 import pathlib
@@ -24,32 +22,28 @@ EXEC_INTERVAL_SCHEDULE_HOUR = 12
 EXEC_INTERVAL_MANUAL_MINUTES = 1
 
 
-class SHUTTER_STATE(IntEnum):
+class SHUTTER_STATE(IntEnum):  # noqa: N801
     OPEN = 0
     CLOSE = 1
     UNKNOWN = 2
 
 
-class CONTROL_MODE(Enum):
+class CONTROL_MODE(Enum):  # noqa: N801
     MANUAL = "🔧手動"
     SCHEDULE = "⏰スケジューラ"
     AUTO = "🤖自動"
 
 
-blueprint = flask.Blueprint(
-    "rasp-shutter-control", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX
-)
+blueprint = flask.Blueprint("rasp-shutter-control", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
 control_lock = threading.Lock()
 cmd_hist = []
 
 
 def init():
-    global cmd_hist
+    global cmd_hist  # noqa: PLW0603
     rasp_shutter.config.STAT_EXEC_TMPL["open"].parent.mkdir(parents=True, exist_ok=True)
-    rasp_shutter.config.STAT_EXEC_TMPL["close"].parent.mkdir(
-        parents=True, exist_ok=True
-    )
+    rasp_shutter.config.STAT_EXEC_TMPL["close"].parent.mkdir(parents=True, exist_ok=True)
     cmd_hist = []
 
 
@@ -68,13 +62,11 @@ def time_str(time_val):
 
     if upper != 0:
         if time_val == 0:
-            return "{upper}{unit_1}".format(upper=upper, unit_1=unit[1])
+            return f"{upper}{unit[1]}"
         else:
-            return "{upper}{unit_1}{time_val}{unit_0}".format(
-                upper=upper, time_val=time_val, unit_0=unit[0], unit_1=unit[1]
-            )
+            return f"{upper}{unit[1]}{time_val}{unit[0]}"
     else:
-        return "{time_val}{unit_0}".format(time_val=time_val, unit_0=unit[0])
+        return f"{time_val}{unit[0]}"
 
 
 def call_shutter_api(config, index, state):
@@ -91,17 +83,15 @@ def call_shutter_api(config, index, state):
     result = True
     shutter = config["shutter"][index]
 
-    logging.debug("Request {url}".format(url=shutter["endpoint"][state]))
-    if requests.get(shutter["endpoint"][state]).status_code != 200:
+    logging.debug("Request %s", shutter["endpoint"][state])
+    if requests.get(shutter["endpoint"][state], timeout=5).status_code != 200:
         result = False
 
     return result
 
 
 def exec_stat_file(state, index):
-    return pathlib.Path(
-        str(rasp_shutter.config.STAT_EXEC_TMPL[state]).format(index=index)
-    )
+    return pathlib.Path(str(rasp_shutter.config.STAT_EXEC_TMPL[state]).format(index=index))
 
 
 def clean_stat_exec(config):
@@ -128,7 +118,7 @@ def get_shutter_state(config):
                     shutter_state["state"] = SHUTTER_STATE.CLOSE
             else:
                 shutter_state["state"] = SHUTTER_STATE.OPEN
-        else:
+        else:  # noqa: PLR5501
             if exec_stat_close.exists():
                 shutter_state["state"] = SHUTTER_STATE.CLOSE
             else:
@@ -141,7 +131,7 @@ def get_shutter_state(config):
     }
 
 
-def set_shutter_state_impl(config, index, state, mode, sense_data=None, user=""):
+def set_shutter_state_impl(config, index, state, mode, sense_data=None, user=""):  # noqa: PLR0913
     # NOTE: 閉じている場合に再度閉じるボタンをおしたり，逆に開いている場合に再度
     # 開くボタンを押すことが続くと，スイッチがエラーになるので exec_hist を使って
     # 防止する．また，明るさに基づく自動の開閉が連続するのを防止する．
@@ -155,45 +145,45 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
             my_lib.webapp.log.log(
                 (
                     "🔔 {name}のシャッターを{state}るのを見合わせました。"
-                    + "{time_diff_str}前に{state}ています。{by}"
+                    "{time_diff_str}前に{state}ています。{by}"
                 ).format(
                     name=config["shutter"][index]["name"],
                     state="開け" if state == "open" else "閉め",
                     time_diff_str=time_str(diff_sec),
-                    by="(by {})".format(user) if user != "" else "",
+                    by=f"(by {user})" if user != "" else "",
                 )
             )
-            return get_shutter_state(config)
+            return
 
     elif mode == CONTROL_MODE.SCHEDULE:
         if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:
             my_lib.webapp.log.log(
                 (
                     "🔔 スケジュールに従って{name}のシャッターを{state}るのを見合わせました。"
-                    + "{time_diff_str}前に{state}ています。{by}"
+                    "{time_diff_str}前に{state}ています。{by}"
                 ).format(
                     name=config["shutter"][index]["name"],
                     state="開け" if state == "open" else "閉め",
                     time_diff_str=time_str(diff_sec),
-                    by="(by {})".format(user) if user != "" else "",
+                    by=f"(by {user})" if user != "" else "",
                 )
             )
-            return get_shutter_state(config)
+            return
     elif mode == CONTROL_MODE.AUTO:
         if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:  # pragma: no cover
             # NOTE: shutter_auto_close の段階で撥ねられているので，ここには来ない．
             my_lib.webapp.log.log(
                 (
                     "🔔 自動で{name}のシャッターを{state}るのを見合わせました。"
-                    + "{time_diff_str}前に{state}ています。{by}"
+                    "{time_diff_str}前に{state}ています。{by}"
                 ).format(
                     name=config["shutter"][index]["name"],
                     state="開け" if state == "open" else "閉め",
                     time_diff_str=time_str(diff_sec),
-                    by="(by {})".format(user) if user != "" else "",
+                    by=f"(by {user})" if user != "" else "",
                 )
             )
-            return get_shutter_state(config)
+            return
     else:  # pragma: no cover
         pass
 
@@ -210,7 +200,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
                 mode=mode.value,
                 state="開け" if state == "open" else "閉め",
                 sensor_text=sensor_text(sense_data),
-                by="\n(by {})".format(user) if user != "" else "",
+                by=f"\n(by {user})" if user != "" else "",
             )
         )
     else:
@@ -220,13 +210,13 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
                 mode=mode.value,
                 state="開け" if state == "open" else "閉め",
                 sensor_text=sensor_text(sense_data),
-                by="\n(by {})".format(user) if user != "" else "",
+                by=f"\n(by {user})" if user != "" else "",
             ),
             my_lib.webapp.log.LOG_LEVEL.ERROR,
         )
 
 
-def set_shutter_state(config, index_list, state, mode, sense_data=None, user=""):
+def set_shutter_state(config, index_list, state, mode, sense_data=None, user=""):  # noqa: PLR0913
     if state == "open":
         if mode != CONTROL_MODE.MANUAL:
             # NOTE: 手動以外でシャッターを開けた場合は，
@@ -271,10 +261,7 @@ def api_shutter_ctrl():
     config = flask.current_app.config["CONFIG"]
 
     # NOTE: シャッターが指定されていない場合は，全てを制御対象にする
-    if index == -1:
-        index_list = list(range(len(config["shutter"])))
-    else:
-        index_list = [index]
+    index_list = list(range(len(config["shutter"]))) if index == -1 else [index]
 
     if cmd == 1:
         return flask.jsonify(
@@ -297,7 +284,7 @@ def api_shutter_ctrl():
 @blueprint.route("/api/ctrl/log", methods=["GET"])
 @my_lib.flask_util.support_jsonp
 def api_shutter_ctrl_log():
-    global cmd_hist
+    global cmd_hist  # noqa: PLW0603
 
     cmd = flask.request.args.get("cmd", "get")
     if cmd == "clear":
@@ -316,7 +303,7 @@ def api_shutter_ctrl_log():
 def api_shutter_list():
     config = flask.current_app.config["CONFIG"]
 
-    return flask.jsonify(list(map(lambda shutter: shutter["name"], config["shutter"])))
+    return flask.jsonify([shutter["name"] for shutter in config["shutter"]])
 
 
 @blueprint.route("/api/dummy/open", methods=["GET"])

@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-# #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 import flask_cors
 import my_lib.flask_util
 import my_lib.webapp.config
@@ -9,9 +7,7 @@ import rasp_shutter.sensor_data
 
 import flask
 
-blueprint = flask.Blueprint(
-    "rasp-shutter-sensor", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX
-)
+blueprint = flask.Blueprint("rasp-shutter-sensor", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
 
 def get_sensor_data(config):
@@ -32,7 +28,7 @@ def get_sensor_data(config):
             sense_data[field] = {
                 "value": data["value"][0],
                 # NOTE: タイムゾーン情報を削除しておく．
-                "time": timezone.localize((data["time"][0].replace(tzinfo=None))),
+                "time": timezone.localize(data["time"][0].replace(tzinfo=None)),
                 "valid": True,
             }
         else:

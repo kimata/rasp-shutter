@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Liveness のチェックを行います
 
@@ -22,9 +21,7 @@ from docopt import docopt
 
 def check_liveness(target_list, port):
     for target in target_list:
-        if not my_lib.healthz.check_liveness(
-            target["name"], target["liveness_file"], target["interval"]
-        ):
+        if not my_lib.healthz.check_liveness(target["name"], target["liveness_file"], target["interval"]):
             return False
 
     return my_lib.healthz.check_port(port)
@@ -41,9 +38,7 @@ if __name__ == "__main__":
     port = args["-p"]
     debug_mode = args["-d"]
 
-    my_lib.logger.init(
-        "hems.rasp-water", level=logging.DEBUG if debug_mode else logging.INFO
-    )
+    my_lib.logger.init("hems.rasp-water", level=logging.DEBUG if debug_mode else logging.INFO)
 
     config = my_lib.config.load(config_file)
 
