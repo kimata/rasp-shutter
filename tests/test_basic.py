@@ -40,7 +40,7 @@ def slack_mock():
 
 
 @pytest.fixture(autouse=True)
-def clear():  # noqa: PT004
+def _clear():
     import my_lib.webapp.config
 
     my_lib.webapp.config.init(my_lib.config.load(CONFIG_FILE))
