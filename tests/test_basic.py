@@ -1494,6 +1494,8 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
+    move_to(freezer, time_morning(0))
+
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
         query_string={
@@ -1503,6 +1505,7 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
+    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1511,7 +1514,6 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
             {"index": 1, "state": "close"},
         ],
     )
-    move_to(freezer, time_morning(0))
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
@@ -1562,7 +1564,7 @@ def test_schedule_ctrl_open_dup(client, mocker, freezer):
     mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
 
     move_to(freezer, time_morning(0))
-    time.sleep(1.6)
+    time.sleep(1)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
