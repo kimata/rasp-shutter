@@ -1628,6 +1628,8 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
 
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
+    move_to(freezer, time_morning(0))
+
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
         query_string={
@@ -1637,8 +1639,6 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-
-    move_to(freezer, time_morning(0))
     time.sleep(1)
 
     response = client.get(
@@ -1730,6 +1730,8 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
     mocker.patch("rasp_shutter.scheduler.exec_shutter_control_impl", return_value=False)
     mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
 
+    move_to(freezer, time_evening(0))
+
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
         query_string={
@@ -1739,6 +1741,7 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
+    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1747,8 +1750,6 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
             {"index": 1, "state": "open"},
         ],
     )
-
-    move_to(freezer, time_evening(0))
 
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
