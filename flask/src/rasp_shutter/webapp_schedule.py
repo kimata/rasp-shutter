@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 import json
 import threading
 import urllib.parse
@@ -17,9 +16,7 @@ import flask
 WDAY_STR = ["日", "月", "火", "水", "木", "金", "土"]
 
 
-blueprint = flask.Blueprint(
-    "rasp-shutter-schedule", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX
-)
+blueprint = flask.Blueprint("rasp-shutter-schedule", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
 schedule_lock = threading.Lock()
 schedule_queue = None
@@ -27,10 +24,11 @@ worker = None
 
 
 def init(config):
-    global worker
-    global schedule_queue
+    global worker  # noqa: PLW0603
+    global schedule_queue  # noqa: PLW0603
 
-    assert worker is None
+    if worker is not None:
+        raise ValueError("worker should be None")  # noqa: TRY003, EM101
 
     schedule_queue = Queue()
     rasp_shutter.scheduler.init()
@@ -45,7 +43,7 @@ def init(config):
 
 
 def term():
-    global worker
+    global worker  # noqa: PLW0603
 
     if worker is None:
         return
@@ -55,11 +53,10 @@ def term():
     worker = None
 
 
-def wday_str_list(wday_list, lang="en"):
+def wday_str_list(wday_list):
     wday_str = WDAY_STR
-    return map(
-        lambda i: wday_str[i], (i for i in range(len(wday_list)) if wday_list[i])
-    )
+
+    return [wday_str[i] for i in range(len(wday_list)) if wday_list[i]]
 
 
 def schedule_entry_str(name, entry):
@@ -73,17 +70,17 @@ def schedule_entry_str(name, entry):
 
 
 def schedule_str(schedule_data):
-    str = []
+    str_buf = []
     for name in ["open", "close"]:
         entry = schedule_data[name]
         if not entry["is_active"]:
             continue
-        str.append(schedule_entry_str(name, entry))
+        str_buf.append(schedule_entry_str(name, entry))
 
-    if len(str) == 0:
+    if len(str_buf) == 0:
         return "∅ 全て無効"
 
-    return "、\n".join(str)
+    return "、\n".join(str_buf)
 
 
 @blueprint.route("/api/schedule_ctrl", methods=["GET", "POST"])
@@ -110,7 +107,7 @@ def api_schedule_ctrl():
                 flask.url_for("rasp-shutter-control.api_shutter_ctrl"),
             )
 
-            for name, entry in schedule_data.items():
+            for entry in schedule_data.values():
                 entry["endpoint"] = endpoint
             schedule_queue.put(schedule_data)
 
@@ -124,7 +121,7 @@ def api_schedule_ctrl():
             my_lib.webapp.log.log(
                 "📅 スケジュールを更新しました。\n{schedule}\n{by}".format(
                     schedule=schedule_str(schedule_data),
-                    by="by {}".format(user) if user != "" else "",
+                    by=f"by {user}" if user != "" else "",
                 )
             )
 
