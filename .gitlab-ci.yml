@@ -49,7 +49,8 @@ test-prepare:
 
     script:
         - CC=gcc rye sync
-        - playwright install
+        - pip3 install playwright --break-system-packages
+        - python3 -m playwright install --with-deps chromium
 
     artifacts:
         paths:
@@ -59,7 +60,7 @@ test-prepare:
     cache:
         key: "${CI_JOB_NAME}"
         paths:
-            - .venv/
+            - .venv
             - /root/.cache
 
 test-walk-through:
