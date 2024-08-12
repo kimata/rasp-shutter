@@ -10,7 +10,7 @@ webapp:
     data:
         schedule_file_path: flask/data/schedule.dat
         log_file_path: flask/data/log.db
-        stat_dir_path: /dev/shm
+        stat_dir_path: /dev/shm/rasp-shutter
 
 sensor:
     influxdb:

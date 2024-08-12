@@ -878,6 +878,8 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
+    move_to(freezer, time_evening(0))
+
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
         query_string={
@@ -887,8 +889,6 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-
-    move_to(freezer, time_evening(0))
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
@@ -971,6 +971,8 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
+    move_to(freezer, time_evening(0))
+
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
         query_string={
@@ -980,8 +982,6 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-
-    move_to(freezer, time_evening(0))
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1866,6 +1866,7 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
+    time.sleep(1)
 
     move_to(freezer, time_morning(1))
     time.sleep(1)
