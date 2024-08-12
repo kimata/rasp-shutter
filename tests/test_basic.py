@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# ruff: noqa: S101
 
 import datetime
 import json
@@ -43,8 +43,8 @@ def slack_mock():
         yield fixture
 
 
-@pytest.fixture(scope="function", autouse=True)
-def clear():
+@pytest.fixture(autouse=True)
+def _clear():
     import my_lib.webapp.config
 
     my_lib.webapp.config.init(my_lib.config.load(CONFIG_FILE))
@@ -78,7 +78,7 @@ def app():
 
 
 @pytest.fixture()
-def client(app, mocker):
+def client(app):
     test_client = app.test_client()
 
     time.sleep(1)
@@ -104,9 +104,7 @@ def time_evening(offset_min=0):
 
 
 def time_str(time):
-    return (
-        time - datetime.timedelta(hours=int(my_lib.webapp.config.TIMEZONE_OFFSET))
-    ).strftime("%H:%M")
+    return (time - datetime.timedelta(hours=int(my_lib.webapp.config.TIMEZONE_OFFSET))).strftime("%H:%M")
 
 
 def move_to(freezer, target_time):
@@ -132,14 +130,12 @@ def gen_schedule_data():
     }
 
     return {
-        "open": schedule_data
-        | {"time": time_str(time_morning(1)), "solar_rad": 150, "lux": 1000},
-        "close": schedule_data
-        | {"time": time_str(time_evening(1)), "solar_rad": 80, "lux": 1200},
+        "open": schedule_data | {"time": time_str(time_morning(1)), "solar_rad": 150, "lux": 1000},
+        "close": schedule_data | {"time": time_str(time_evening(1)), "solar_rad": 80, "lux": 1200},
     }
 
 
-def app_log_check(
+def app_log_check(  # noqa: C901, PLR0912
     client,
     expect_list,
     is_strict=True,
@@ -154,9 +150,7 @@ def app_log_check(
 
     if is_strict:
         # NOTE: クリアする直前のログが残っている可能性があるので，+1 でも OK とする
-        assert (len(log_list) == len(expect_list)) or (
-            len(log_list) == (len(expect_list) + 1)
-        )
+        assert (len(log_list) == len(expect_list)) or (len(log_list) == (len(expect_list) + 1))
 
     for i, expect in enumerate(reversed(expect_list)):
         if expect == "OPEN_MANUAL":
@@ -194,7 +188,7 @@ def app_log_check(
         elif expect == "CLEAR":
             assert "クリアされました" in log_list[i]["message"]
         else:
-            assert False, "テストコードのバグです．({expect})".format(expect=expect)
+            raise AssertionError(f"テストコードのバグです．({expect})")  # noqa: EM102
 
 
 def ctrl_log_clear(client):
@@ -251,62 +245,44 @@ def check_notify_slack(message, index=-1):
         assert notify_hist == [], "正常なはずなのに，エラー通知がされています。"
     else:
         assert len(notify_hist) != 0, "異常が発生したはずなのに，エラー通知がされていません。"
-        assert (
-            notify_hist[index].find(message) != -1
-        ), "「{message}」が Slack で通知されていません。".format(message=message)
+        assert notify_hist[index].find(message) != -1, f"「{message}」が Slack で通知されていません。"
 
 
 ######################################################################
-def test_time(client, freezer):
+def test_time(freezer):
     import logging
 
     import schedule
 
+    logging.debug("datetime.now()                 = %s", datetime.datetime.now())  # noqa: DTZ005
+    logging.debug("datetime.now(JST)              = %s", datetime.datetime.now(my_lib.webapp.config.TIMEZONE))
     logging.debug(
-        "datetime.now()                 = {date}".format(date=datetime.datetime.now()),
+        "datetime.now().replace(...)    = %s",
+        datetime.datetime.now().replace(hour=0, minute=0, second=0),  # noqa: DTZ005
     )
     logging.debug(
-        "datetime.now(JST)              = {date}".format(
-            date=datetime.datetime.now(my_lib.webapp.config.TIMEZONE)
-        )
-    )
-    logging.debug(
-        "datetime.now().replace(...)    = {date}".format(
-            date=datetime.datetime.now().replace(hour=0, minute=0, second=0)
-        )
-    )
-    logging.debug(
-        "datetime.now(JST).replace(...) = {date}".format(
-            date=datetime.datetime.now(my_lib.webapp.config.TIMEZONE).replace(
-                hour=0, minute=0, second=0
-            )
-        )
+        "datetime.now(JST).replace(...) = %s",
+        datetime.datetime.now(my_lib.webapp.config.TIMEZONE).replace(hour=0, minute=0, second=0),
     )
 
-    logging.debug("Freeze time at {time}".format(time=time_str(time_morning(0))))
+    logging.debug("Freeze time at %s", time_str(time_morning(0)))
+
     move_to(freezer, time_morning(0))
 
     logging.debug(
-        "datetime.now()                 = {date}".format(date=datetime.datetime.now()),
+        "datetime.now()                 = %s",
+        datetime.datetime.now(),  # noqa: DTZ005
     )
-    logging.debug(
-        "datetime.now(JST)              = {date}".format(
-            date=datetime.datetime.now(my_lib.webapp.config.TIMEZONE)
-        )
-    )
+    logging.debug("datetime.now(JST)              = %s", datetime.datetime.now(my_lib.webapp.config.TIMEZONE))
 
     schedule.clear()
     job_time_str = time_str(time_morning(1))
-    logging.debug("set schedule at {time}".format(time=job_time_str))
-    job = (
-        schedule.every()
-        .day.at(job_time_str, my_lib.webapp.config.TIMEZONE_PYTZ)
-        .do(lambda: True)
-    )
+    logging.debug("set schedule at %s", job_time_str)
+    job = schedule.every().day.at(job_time_str, my_lib.webapp.config.TIMEZONE_PYTZ).do(lambda: True)
 
     idle_sec = schedule.idle_seconds()
-    logging.error("Time to next jobs is {idle:.1f} sec".format(idle=idle_sec))
-    logging.debug("Next run is {time}".format(time=job.next_run))
+    logging.error("Time to next jobs is %.1f sec", idle_sec)
+    logging.debug("Next run is %s", job.next_run)
 
     assert idle_sec < 60
 
@@ -377,14 +353,8 @@ def test_shutter_ctrl_inconsistent_read(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    assert (
-        response.json["state"][0]["state"]
-        == rasp_shutter.webapp_control.SHUTTER_STATE.CLOSE
-    )
-    assert (
-        response.json["state"][1]["state"]
-        == rasp_shutter.webapp_control.SHUTTER_STATE.UNKNOWN
-    )
+    assert response.json["state"][0]["state"] == rasp_shutter.webapp_control.SHUTTER_STATE.CLOSE
+    assert response.json["state"][1]["state"] == rasp_shutter.webapp_control.SHUTTER_STATE.UNKNOWN
 
     # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (open が後)
     ctrl_stat_clear()
@@ -397,14 +367,8 @@ def test_shutter_ctrl_inconsistent_read(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    assert (
-        response.json["state"][1]["state"]
-        == rasp_shutter.webapp_control.SHUTTER_STATE.OPEN
-    )
-    assert (
-        response.json["state"][0]["state"]
-        == rasp_shutter.webapp_control.SHUTTER_STATE.UNKNOWN
-    )
+    assert response.json["state"][1]["state"] == rasp_shutter.webapp_control.SHUTTER_STATE.OPEN
+    assert response.json["state"][0]["state"] == rasp_shutter.webapp_control.SHUTTER_STATE.UNKNOWN
     time.sleep(1)
 
     ctrl_log_check(client, [])
@@ -412,7 +376,7 @@ def test_shutter_ctrl_inconsistent_read(client):
     check_notify_slack(None)
 
 
-def test_valve_ctrl_manual_single_1(client, mocker):
+def test_valve_ctrl_manual_single_1(client):
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
         query_string={
@@ -438,9 +402,7 @@ def test_valve_ctrl_manual_single_1(client, mocker):
     assert response.json["result"] == "success"
     time.sleep(1)
 
-    ctrl_log_check(
-        client, [{"index": 0, "state": "open"}, {"index": 0, "state": "close"}]
-    )
+    ctrl_log_check(client, [{"index": 0, "state": "open"}, {"index": 0, "state": "close"}])
     app_log_check(client, ["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
     check_notify_slack(None)
 
@@ -471,9 +433,7 @@ def test_valve_ctrl_manual_single_2(client):
     assert response.json["result"] == "success"
     time.sleep(1)
 
-    ctrl_log_check(
-        client, [{"index": 1, "state": "open"}, {"index": 1, "state": "close"}]
-    )
+    ctrl_log_check(client, [{"index": 1, "state": "open"}, {"index": 1, "state": "close"}])
     app_log_check(client, ["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
     check_notify_slack(None)
 
@@ -503,9 +463,7 @@ def test_valve_ctrl_manual_all(client):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    ctrl_log_check(
-        client, [{"index": 0, "state": "open"}, {"index": 1, "state": "open"}]
-    )
+    ctrl_log_check(client, [{"index": 0, "state": "open"}, {"index": 1, "state": "open"}])
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -631,7 +589,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     import requests
 
     # NOTE: このテストだけは，制御の止め方を変える
-    def request_mock(url):
+    def request_mock(url):  # noqa: ARG001
         request_mock.i += 1
         response = requests.models.Response()
         if request_mock.i == 1:
@@ -769,7 +727,7 @@ def test_schedule_ctrl_inactive(client, mocker, freezer):
     check_notify_slack(None)
 
 
-def test_schedule_ctrl_invalid(client, mocker):
+def test_schedule_ctrl_invalid(client):
     schedule_data = gen_schedule_data()
     del schedule_data["open"]
     response = client.get(
@@ -855,9 +813,7 @@ def test_schedule_ctrl_invalid(client, mocker):
 
 def test_schedule_ctrl_execute(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
-    mocker.patch(
-        "rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT
-    )
+    mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1126,7 +1082,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
     check_notify_slack(None)
 
 
-def test_schedule_ctrl_auto_reopen(client, mocker, freezer):
+def test_schedule_ctrl_auto_reopen(client, mocker, freezer):  # noqa: PLR0915
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
@@ -1607,9 +1563,7 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
 def test_schedule_ctrl_open_dup(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
-    mocker.patch(
-        "rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT
-    )
+    mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
 
     move_to(freezer, time_morning(0))
     time.sleep(1.6)
@@ -1776,10 +1730,8 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
 def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
-    mocker.patch("app_scheduler.exec_shutter_control_impl", return_value=False)
-    mocker.patch(
-        "rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK
-    )
+    mocker.patch("rasp_shutter.scheduler.exec_shutter_control_impl", return_value=False)
+    mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1842,9 +1794,7 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
 def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
-    mocker.patch(
-        "rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK
-    )
+    mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1865,7 +1815,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
     )
 
     mocker.patch(
-        "app_scheduler.rasp_shutter.webapp_control.set_shutter_state",
+        "rasp_shutter.scheduler.rasp_shutter.webapp_control.set_shutter_state",
         side_effect=RuntimeError(),
     )
 
@@ -1896,9 +1846,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
             {"index": 1, "state": "open"},
         ],
     )
-    app_log_check(
-        client, ["CLEAR", "OPEN_MANUAL", "OPEN_MANUAL", "SCHEDULE", "FAIL_CONTROL"]
-    )
+    app_log_check(client, ["CLEAR", "OPEN_MANUAL", "OPEN_MANUAL", "SCHEDULE", "FAIL_CONTROL"])
     check_notify_slack(None)
 
 
@@ -1991,9 +1939,7 @@ def test_schedule_ctrl_read_fail_1(client, mocker):
 
 
 def test_schedule_ctrl_read_fail_2(client):
-    import webapp_config
-
-    with open(webapp_config.SCHEDULE_FILE_PATH, "wb") as f:
+    with pathlib.Path(my_lib.webapp.config.SCHEDULE_FILE_PATH).open(mode="wb") as f:
         f.write(b"TEST")
 
     response = client.get("/rasp-shutter/api/schedule_ctrl")
@@ -2021,7 +1967,7 @@ def test_schedule_ctrl_write_fail(client, mocker):
 
 
 def test_schedule_ctrl_validate_fail(client, mocker):
-    mocker.patch("app_scheduler.schedule_validate", return_value=False)
+    mocker.patch("rasp_shutter.scheduler.schedule_validate", return_value=False)
 
     response = client.get("/rasp-shutter/api/schedule_ctrl")
     assert response.status_code == 200
@@ -2049,13 +1995,13 @@ def test_sensor_1(client):
 
 
 def test_sensor_2(client, mocker):
-    mocker.patch("sensor_data.fetch_data", return_value={"valid": False})
+    mocker.patch("rasp_shutter.sensor_data.fetch_data", return_value={"valid": False})
 
     response = client.get("/rasp-shutter/api/sensor")
     assert response.status_code == 200
 
     mocker.patch(
-        "sensor_data.fetch_data",
+        "rasp_shutter.sensor_data.fetch_data",
         return_value={
             "valid": True,
             "value": [0],
