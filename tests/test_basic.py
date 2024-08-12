@@ -1597,9 +1597,6 @@ def test_schedule_ctrl_open_dup(client, mocker, freezer):
     move_to(freezer, time_morning(1))
     time.sleep(1)
 
-    move_to(freezer, time_morning(2))
-    time.sleep(1)
-
     ctrl_log_check(
         client,
         [
