@@ -89,8 +89,6 @@ test-playwright:
         # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
         - docker ps  --filter "label=job=${CI_JOB_NAME}" | grep hours | cut -d " " -f1 | while read id; do docker stop -t 5 $id; done || true
 
-        - apt-get update
-
         - export GIT_SSL_NO_VERIFY=1
         - git clone https://gitlab.green-rabbit.net/kimata/hems_config.git
         - mv hems_config/rasp-shutter.yaml config.yaml
@@ -102,6 +100,7 @@ test-playwright:
         key: "${CI_JOB_NAME}"
         paths:
             - .venv
+            - /root/.cache
 
     artifacts:
         when: always
@@ -116,8 +115,6 @@ test-playwright-docker:
     script:
         # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
         - docker ps  --filter "label=job=${CI_JOB_NAME}" | grep hours | cut -d " " -f1 | while read id; do docker stop -t 5 $id; done || true
-
-        - apt-get update
 
         - docker pull ${CI_REGISTRY_IMAGE}
         - docker run --rm --detach=true --tty=true --name ${CI_JOB_NAME}-${CI_JOB_ID} --label job=${CI_JOB_NAME} ${CI_REGISTRY_IMAGE}
@@ -136,6 +133,7 @@ test-playwright-docker:
         key: "${CI_JOB_NAME}"
         paths:
             - .venv
+            - /root/.cache
 
     artifacts:
         when: always
@@ -170,6 +168,7 @@ test-playwright-docker-demo:
         key: "${CI_JOB_NAME}"
         paths:
             - .venv
+            - /root/.cache
 
     artifacts:
         when: always
