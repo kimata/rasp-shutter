@@ -6,17 +6,13 @@ import json
 import os
 import pathlib
 import re
-import sys
 import time
 from unittest import mock
 
-import pytest
-
-sys.path.append(str(pathlib.Path(__file__).parent.parent / "flask" / "app"))
-sys.path.append(str(pathlib.Path(__file__).parent.parent / "flask" / "lib"))
-
 import my_lib.config
+import my_lib.notify_slack
 import my_lib.webapp.config
+import pytest
 from app import create_app
 
 CONFIG_FILE = "config.example.yaml"
@@ -249,7 +245,7 @@ def check_notify_slack(message, index=-1):
 
 
 ######################################################################
-def test_time(freezer):
+def test_time(freezer, client):  # noqa:  ARG001
     import logging
 
     import schedule

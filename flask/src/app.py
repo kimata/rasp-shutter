@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 電動シャッターの開閉を自動化するアプリのサーバーです
 
@@ -16,15 +15,10 @@ Options:
 import atexit
 import logging
 import os
-import pathlib
-import sys
 
-from docopt import docopt
-from flask_cors import CORS
+import flask_cors
 
-from flask import Flask
-
-sys.path.append(str(pathlib.Path(__file__).parent.parent / "lib"))
+import flask
 
 
 def create_app(config, dummy_mode=False):
@@ -48,7 +42,7 @@ def create_app(config, dummy_mode=False):
     import rasp_shutter.webapp_schedule
     import rasp_shutter.webapp_sensor
 
-    app = Flask("rasp-shutter")
+    app = flask.Flask("rasp-shutter")
 
     # NOTE: アクセスログは無効にする
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
@@ -71,7 +65,7 @@ def create_app(config, dummy_mode=False):
     else:  # pragma: no cover
         pass
 
-    CORS(app)
+    flask_cors.CORS(app)
 
     app.config["CONFIG"] = config
     app.config["DUMMY_MODE"] = dummy_mode
@@ -94,19 +88,18 @@ def create_app(config, dummy_mode=False):
 
 
 if __name__ == "__main__":
+    import docopt
     import my_lib.config
     import my_lib.logger
 
-    args = docopt(__doc__)
+    args = docopt.docopt(__doc__)
 
     config_file = args["-c"]
     port = args["-p"]
     dummy_mode = args["-D"]
     debug_mode = args["-d"]
 
-    my_lib.logger.init(
-        "hems.rasp-shutter", level=logging.DEBUG if debug_mode else logging.INFO
-    )
+    my_lib.logger.init("hems.rasp-shutter", level=logging.DEBUG if debug_mode else logging.INFO)
 
     config = my_lib.config.load(config_file)
 

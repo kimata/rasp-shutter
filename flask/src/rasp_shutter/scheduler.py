@@ -294,7 +294,7 @@ def schedule_validate(schedule_data):  # noqa: C901, PLR0911
         logging.warning("Count of entry is Invalid: %d", len(schedule_data))
         return False
 
-    for entry in schedule_data:
+    for entry in schedule_data.values():
         for key in ["is_active", "time", "wday", "solar_rad", "lux"]:
             if key not in entry:
                 logging.warning("Does not contain %s", key)
@@ -316,7 +316,7 @@ def schedule_validate(schedule_data):  # noqa: C901, PLR0911
             return False
         for i, wday_flag in enumerate(entry["wday"]):
             if type(wday_flag) is not bool:
-                logging.warning("Type of wday[%d] is Invalid: %d", i, type(entry["wday"][i]))
+                logging.warning("Type of wday[%d] is Invalid: %s", i, type(entry["wday"][i]))
                 return False
     return True
 
