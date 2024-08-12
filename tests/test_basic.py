@@ -1564,7 +1564,6 @@ def test_schedule_ctrl_open_dup(client, mocker, freezer):
     mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
 
     move_to(freezer, time_morning(0))
-    time.sleep(1)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
