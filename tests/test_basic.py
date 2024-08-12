@@ -1573,6 +1573,7 @@ def test_schedule_ctrl_open_dup(client, mocker, freezer):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
+    time.sleep(1)
 
     ctrl_log_check(
         client,
