@@ -49,15 +49,18 @@ test-prepare:
 
     script:
         - CC=gcc rye sync
+        - playwright install
 
     artifacts:
         paths:
-            - .venv/
+            - .venv
+            - /root/.cache
 
     cache:
         key: "${CI_JOB_NAME}"
         paths:
             - .venv/
+            - /root/.cache
 
 test-walk-through:
     stage: test
