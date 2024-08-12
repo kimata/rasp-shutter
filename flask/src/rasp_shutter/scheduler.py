@@ -115,7 +115,7 @@ def shutter_auto_open(config):
         < rasp_shutter.config.EXEC_INTERVAL_AUTO_MIN * 60
     ):
         # NOTE: 自動で閉めてから時間が経っていない場合は，処理を行わない．
-        logging.debug("just closed")
+        logging.debug("just closed before %d", my_lib.footprint.elapsed(rasp_shutter.config.STAT_AUTO_CLOSE))
         return
 
     sense_data = rasp_shutter.webapp_sensor.get_sensor_data(config)
@@ -189,7 +189,11 @@ def shutter_auto_close(config):
             < rasp_shutter.config.EXEC_INTERVAL_AUTO_MIN * 60
         ):
             # NOTE: 自動で開けてから時間が経っていない場合は，処理を行わない．
-            logging.debug("just opened (%d)", index)
+            logging.debug(
+                "just opened before %d sec (%d)",
+                my_lib.footprint.elapsed(rasp_shutter.webapp_control.exec_stat_file("open", index)),
+                index,
+            )
             return
 
     sense_data = rasp_shutter.webapp_sensor.get_sensor_data(config)
