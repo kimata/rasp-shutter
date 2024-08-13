@@ -65,7 +65,7 @@ def schedule_entry_str(name, entry):
         time=entry["time"],
         solar_rad=entry["solar_rad"],
         lux=entry["lux"],
-        wday=",".join(wday_str_list(entry["wday"], "ja")),
+        wday=",".join(wday_str_list(entry["wday"])),
     )
 
 
