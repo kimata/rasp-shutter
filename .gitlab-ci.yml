@@ -25,7 +25,6 @@ build-vue:
 
 build-image:
     stage: build-image
-    needs: ["build-vue"]
 
     variables:
         BUILDER: arm_builder
@@ -64,8 +63,6 @@ test-prepare:
 test-walk-through:
     stage: test
 
-    needs: ["build-vue", "test-prepare"]
-
     script:
         - rye run pytest --cov=flask --cov-report=html tests/test_basic.py
 
@@ -81,7 +78,6 @@ test-walk-through:
 
 test-playwright:
     stage: test
-    needs: ["build-vue", "test-prepare"]
 
     script:
         # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
@@ -110,7 +106,6 @@ test-playwright:
 
 test-playwright-docker:
     stage: test
-    needs: ["build-image", "test-prepare"]
 
     script:
         # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
@@ -145,7 +140,6 @@ test-playwright-docker:
 
 test-playwright-docker-demo:
     stage: test
-    needs: ["build-image", "test-prepare"]
 
     script:
         # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
@@ -180,7 +174,6 @@ test-playwright-docker-demo:
 
 test-healthz-docker:
     stage: test
-    needs: ["build-image"]
 
     script:
         # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
@@ -201,7 +194,6 @@ test-healthz-docker:
 
 deploy-webapp:
     stage: deploy
-    needs: ["test-playwright-docker", "test-healthz-docker", "test-walk-through"]
 
     image:
         name: bitnami/kubectl:latest
@@ -224,7 +216,6 @@ deploy-webapp:
 
 deploy-webapp-demo:
     stage: deploy
-    needs: ["test-playwright-docker-demo", "test-healthz-docker", "test-walk-through"]
 
     image:
         name: bitnami/kubectl:latest
