@@ -39,8 +39,15 @@
 
 <script>
 import axios from "axios";
-import moment from "moment";
-import "moment/locale/ja";
+
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import localizedFormat from "dayjs/plugin/localizedFormat";
+
+dayjs.locale("ja");
+dayjs.extend(relativeTime);
+dayjs.extend(localizedFormat);
+
 import AppConfig from "../mixins/AppConfig.js";
 
 export default {
@@ -66,7 +73,7 @@ export default {
                 .then((response) => {
                     this.log = response.data.data;
                     for (let entry in this.log) {
-                        let date = moment(this.log[entry]["date"]);
+                        const date = dayjs(this.log[entry]["date"]);
                         this.log[entry]["date"] = date.format("M月D日(ddd) HH:mm");
                         this.log[entry]["fromNow"] = date.fromNow();
                     }
