@@ -1013,6 +1013,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
+    time.sleep(1)
 
     move_to(freezer, time_evening(1))
     time.sleep(1)
