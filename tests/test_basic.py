@@ -822,7 +822,7 @@ def test_schedule_ctrl_execute(client, mocker, freezer):
     assert response.json["result"] == "success"
 
     move_to(freezer, time_evening(0))
-    time.sleep(0.5)
+    time.sleep(1)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
