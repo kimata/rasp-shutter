@@ -1049,7 +1049,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
     )
 
     move_to(freezer, time_evening(5))
-    time.sleep(1)
+    time.sleep(2)
 
     ctrl_log_check(
         client,
