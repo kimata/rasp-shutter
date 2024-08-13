@@ -1033,7 +1033,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     move_to(freezer, time_evening(3))
-    time.sleep(1)
+    time.sleep(2)
 
     move_to(freezer, time_evening(4))
     time.sleep(2)
