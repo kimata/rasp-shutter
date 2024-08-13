@@ -1287,6 +1287,7 @@ def test_schedule_ctrl_auto_inactive(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     move_to(freezer, time_morning(0))
+    time.sleep(0.5)
 
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
@@ -1406,6 +1407,7 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, freezer):
     assert response.json["result"] == "success"
 
     move_to(freezer, time_morning(0))
+    time.sleep(0.5)
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
@@ -1496,6 +1498,7 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(freezer, time_morning(0))
+    time.sleep(0.5)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1565,6 +1568,7 @@ def test_schedule_ctrl_open_dup(client, mocker, freezer):
     mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
 
     move_to(freezer, time_morning(0))
+    time.sleep(0.5)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1625,6 +1629,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, freezer):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(freezer, time_morning(0))
+    time.sleep(0.5)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1851,7 +1856,7 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, freezer):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(freezer, time_morning(0))
-    time.sleep(1)
+    time.sleep(0.5)
 
     sensor_data = SENSOR_DATA_BRIGHT.copy()
     sensor_data["lux"] = {"valid": False, "value": 5000}
@@ -1887,7 +1892,7 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, freezer):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(freezer, time_morning(0))
-    time.sleep(1)
+    time.sleep(0.5)
 
     sensor_data = SENSOR_DATA_BRIGHT.copy()
     sensor_data["solar_rad"] = {"valid": False, "value": 5000}
