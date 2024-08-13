@@ -15,7 +15,6 @@
         "bootstrap-vue": "2.23.1",
         "core-js": "3.38.0",
         "dayjs": "^1.11.12",
-        "eslint-plugin-cypress": "^3.5.0",
         "vue": "^3.4.37",
         "vue-toast-notification": "^3.1.2"
     },
@@ -26,7 +25,7 @@
         "@vue/cli-plugin-eslint": "5.0.8",
         "@vue/cli-service": "5.0.8",
         "@vue/compiler-sfc": "^3.4.37",
-        "eslint": "9.9.0",
+        "eslint": "8.57.0",
         "eslint-plugin-vue": "9.27.0"
     },
     "eslintConfig": {
@@ -36,8 +35,7 @@
         },
         "extends": [
             "plugin:vue/essential",
-            "eslint:recommended",
-            "plugin:cypress/recommended"
+            "eslint:recommended"
         ],
         "rules": {},
         "parserOptions": {
