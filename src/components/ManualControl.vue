@@ -15,7 +15,7 @@
 </template>
 
 <script>
-import ManualEntry from "./ManualEntry";
+import ManualEntry from "./ManualEntry.vue";
 import axios from "axios";
 import AppConfig from "../mixins/AppConfig.js";
 

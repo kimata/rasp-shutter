@@ -29,7 +29,7 @@
 <script>
 import axios from "axios";
 import AppConfig from "../mixins/AppConfig.js";
-import ScheduleEntry from "./ScheduleEntry";
+import ScheduleEntry from "./ScheduleEntry.vue";
 
 export default {
     name: "schedule-setting",

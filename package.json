@@ -1,55 +1,33 @@
 {
     "name": "rasp-shutter",
-    "version": "0.1.0",
+    "version": "0.0.0",
     "private": true,
+    "type": "module",
     "scripts": {
-        "serve": "vue-cli-service serve",
-        "build": "vue-cli-service build",
-        "lint": "vue-cli-service lint"
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
+        "format": "prettier --write src/"
     },
     "dependencies": {
-        "@vue/compat": "^3.4.37",
-        "axios": "1.7.3",
-        "bootstrap": "5.3.3",
+        "axios": "^1.7.3",
+        "bootstrap": "^5.3.3",
         "bootstrap-icons": "^1.11.3",
         "bootstrap-vue-next": "^0.24.7",
-        "core-js": "3.38.0",
         "dayjs": "^1.11.12",
-        "vue": "^3.4.37",
+        "vue": "^3.4.29",
         "vue-toast-notification": "^3.1.2"
     },
     "devDependencies": {
-        "@babel/core": "7.25.2",
-        "@babel/eslint-parser": "7.25.1",
-        "@vue/cli-plugin-babel": "5.0.8",
-        "@vue/cli-plugin-eslint": "5.0.8",
-        "@vue/cli-service": "5.0.8",
-        "@vue/compiler-sfc": "^3.4.37",
-        "eslint": "8.57.0",
-        "eslint-plugin-vue": "9.27.0"
-    },
-    "eslintConfig": {
-        "root": true,
-        "env": {
-            "node": true
-        },
-        "extends": [
-            "plugin:vue/essential",
-            "eslint:recommended"
-        ],
-        "rules": {},
-        "parserOptions": {
-            "parser": "@babel/eslint-parser"
-        }
-    },
-    "postcss": {
-        "plugins": {
-            "autoprefixer": {}
-        }
-    },
-    "browserslist": [
-        "> 1%",
-        "last 2 versions",
-        "not dead"
-    ]
+        "@eslint/js": "^9.9.0",
+        "@rushstack/eslint-patch": "^1.8.0",
+        "@vitejs/plugin-vue": "^5.0.5",
+        "@vue/eslint-config-prettier": "^9.0.0",
+        "eslint": "^9.9.0",
+        "eslint-plugin-vue": "^9.27.0",
+        "globals": "^15.9.0",
+        "prettier": "^3.2.5",
+        "vite": "^5.3.1"
+    }
 }
