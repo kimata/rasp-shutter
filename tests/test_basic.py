@@ -1355,12 +1355,12 @@ def test_schedule_ctrl_pending_open(client, mocker, freezer):
     time.sleep(1)
 
     move_to(freezer, time_morning(3))
-    time.sleep(1)
+    time.sleep(2)
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(freezer, time_morning(4))
-    time.sleep(1)
+    time.sleep(2)
 
     ctrl_log_check(
         client,
