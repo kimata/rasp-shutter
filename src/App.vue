@@ -12,12 +12,12 @@
 </template>
 
 <script>
-import AppHeader from "./components/AppHeader";
-import ManualControl from "./components/ManualControl";
-import ScheduleSetting from "./components/ScheduleSetting";
-import SensorData from "./components/SensorData";
-import AppLog from "./components/AppLog";
-import AppFooter from "./components/AppFooter";
+import AppHeader from "./components/AppHeader.vue";
+import ManualControl from "./components/ManualControl.vue";
+import ScheduleSetting from "./components/ScheduleSetting.vue";
+import SensorData from "./components/SensorData.vue";
+import AppLog from "./components/AppLog.vue";
+import AppFooter from "./components/AppFooter.vue";
 
 export default {
     name: "app",
