@@ -1116,7 +1116,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):  # noqa: PLR0915
     time.sleep(1)
 
     move_to(freezer, time_morning(2))
-    time.sleep(1)
+    time.sleep(2)
 
     move_to(freezer, time_morning(3))
     time.sleep(1)
