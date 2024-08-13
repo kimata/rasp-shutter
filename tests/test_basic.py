@@ -585,7 +585,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     import requests
 
     # NOTE: このテストだけは，制御の止め方を変える
-    def request_mock(url):  # noqa: ARG001
+    def request_mock(url, timeout):  # noqa: ARG001
         request_mock.i += 1
         response = requests.models.Response()
         if request_mock.i == 1:
