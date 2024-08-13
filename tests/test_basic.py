@@ -1097,6 +1097,9 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):  # noqa: PLR0915
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
+    move_to(freezer, time_morning(0))
+    time.sleep(0.5)
+
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     schedule_data = gen_schedule_data()
@@ -1323,6 +1326,9 @@ def test_schedule_ctrl_pending_open(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
+
+    move_to(freezer, time_morning(0))
+    time.sleep(0.5)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
