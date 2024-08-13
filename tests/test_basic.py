@@ -1223,12 +1223,12 @@ def test_schedule_ctrl_auto_reopen(client, mocker, freezer):  # noqa: PLR0915
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(freezer, time_morning(20))
-    time.sleep(1)
+    time.sleep(2)
 
     # OPEN
 
     move_to(freezer, time_evening(1))
-    time.sleep(1)
+    time.sleep(2)
 
     # CLOSE
 
