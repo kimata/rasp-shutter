@@ -822,6 +822,7 @@ def test_schedule_ctrl_execute(client, mocker, freezer):
     assert response.json["result"] == "success"
 
     move_to(freezer, time_evening(0))
+    time.sleep(0.5)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -879,6 +880,7 @@ def test_schedule_ctrl_auto_close(client, mocker, freezer):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(freezer, time_evening(0))
+    time.sleep(0.5)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -972,6 +974,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, freezer):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(freezer, time_evening(0))
+    time.sleep(0.5)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1732,6 +1735,7 @@ def test_schedule_ctrl_control_fail_1(client, mocker, freezer):
     mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
 
     move_to(freezer, time_evening(0))
+    time.sleep(0.5)
 
     response = client.get(
         "/rasp-shutter/api/shutter_ctrl",
@@ -1819,6 +1823,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, freezer):
     )
 
     move_to(freezer, time_evening(0))
+    time.sleep(0.5)
 
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
