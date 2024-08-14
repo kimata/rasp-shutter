@@ -2002,13 +2002,13 @@ def test_sensor_1(client):
 
 
 def test_sensor_2(client, mocker):
-    mocker.patch("rasp_shutter.sensor_data.fetch_data", return_value={"valid": False})
+    mocker.patch("my_lib.sensor_data.fetch_data", return_value={"valid": False})
 
     response = client.get("/rasp-shutter/api/sensor")
     assert response.status_code == 200
 
     mocker.patch(
-        "rasp_shutter.sensor_data.fetch_data",
+        "my_lib.sensor_data.fetch_data",
         return_value={
             "valid": True,
             "value": [0],
