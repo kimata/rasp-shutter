@@ -198,9 +198,9 @@ def shutter_auto_close(config):
 
     sense_data = rasp_shutter.webapp_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.DARK:
+        sensor_text = rasp_shutter.webapp_control.sensor_text(sense_data)
         my_lib.webapp.log.log(
-            "📝 予定より早いですが，暗くなってきたので閉めます．{sensor_text}",
-            rasp_shutter.webapp_control.sensor_text(sense_data),
+            f"📝 予定より早いですが，暗くなってきたので閉めます．{sensor_text}",
         )
 
         exec_shutter_control(
