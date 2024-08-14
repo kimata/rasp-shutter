@@ -1570,6 +1570,11 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, freezer):
 
     check_notify_slack(None)
 
+    # NOTE: 後始末
+    sensor_data_mock.return_value = SENSOR_DATA_BRIGHT.copy()
+    move_to(freezer, time_morning(5))
+    time.sleep(1)
+
 
 def test_schedule_ctrl_open_dup(client, mocker, freezer):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
