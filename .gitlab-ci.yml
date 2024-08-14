@@ -222,6 +222,8 @@ deploy-webapp:
               - flask/**/*
               - src/**/*
               - public/**/*
+          when: on_success
+        - when: never
 
 deploy-webapp-demo:
     stage: deploy
@@ -251,6 +253,8 @@ deploy-webapp-demo:
               - flask/**/*
               - src/**/*
               - public/**/*
+          when: on_success
+        - when: never
 
 renovate:
     stage: renovate
