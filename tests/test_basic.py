@@ -787,7 +787,7 @@ def test_schedule_ctrl_invalid(client):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(2)
+    time.sleep(5)
 
     ctrl_log_check(client, [])
     app_log_check(
