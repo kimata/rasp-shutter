@@ -25,7 +25,7 @@ dependencies = [
     "docopt-ng>=0.9.0",
     "psutil>=6.0.0",
     "requests>=2.32.3",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@10412e556d831551b49213fb4fa63633211ce9ad",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@82c211fc2e104fbe41ce71d4b22f85b22cdb67c6",
 ]
 
 [build-system]
@@ -54,9 +54,9 @@ dev-dependencies = [
 [tool.pytest.ini_options]
 minversion = "6.0"
 
-# addopts = "--verbose --log-cli-level=DEBUG --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys  --html=tests/evidence/index.htm --self-contained-html"
+# addopts = "--verbose --log-cli-level=DEBUG --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys  --html=tests/evidence/index.htm --self-contained-html --cov=flask --cov-report=html"
 
-addopts = "--verbose --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys  --html=tests/evidence/index.htm --self-contained-html"
+addopts = "--verbose --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys  --html=tests/evidence/index.htm --self-contained-html --cov=flask --cov-report=html"
 
 testpaths = [
     "tests",

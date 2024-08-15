@@ -91,7 +91,7 @@ def exec_shutter_control(config, state, mode, sense_data, user):
             return True
         logging.debug("Retry")
 
-    my_lib.webapp.log.log("😵 シャッターの制御に失敗しました。")
+    my_lib.webapp.log.info("😵 シャッターの制御に失敗しました。")
     return False
 
 
@@ -121,7 +121,7 @@ def shutter_auto_open(config):
     sense_data = rasp_shutter.webapp_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "open") == BRIGHTNESS_STATE.BRIGHT:
         sensor_text = rasp_shutter.webapp_control.sensor_text(sense_data)
-        my_lib.webapp.log.log(f"📝 暗くて延期されていましたが，明るくなってきたので開けます．{sensor_text}")
+        my_lib.webapp.log.info(f"📝 暗くて延期されていましたが，明るくなってきたので開けます．{sensor_text}")
 
         exec_shutter_control(
             config,
@@ -199,7 +199,7 @@ def shutter_auto_close(config):
     sense_data = rasp_shutter.webapp_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.DARK:
         sensor_text = rasp_shutter.webapp_control.sensor_text(sense_data)
-        my_lib.webapp.log.log(
+        my_lib.webapp.log.info(
             f"📝 予定より早いですが，暗くなってきたので閉めます．{sensor_text}",
         )
 
@@ -252,19 +252,18 @@ def shutter_schedule_control(config, state):
         if not sense_data["lux"]["valid"]:
             error_sensor.append("照度センサ")
 
-        my_lib.webapp.log.log(
+        my_lib.webapp.log.error(
             "😵 {error_sensor}の値が不明なので{state}るのを見合わせました。".format(
                 error_sensor="と".join(error_sensor),
                 state="開け" if state == "open" else "閉め",
-            ),
-            my_lib.webapp.log.LOG_LEVEL.ERROR,
+            )
         )
         return
 
     if state == "open":
         if check_brightness(sense_data, state) == BRIGHTNESS_STATE.DARK:
             sensor_text = rasp_shutter.webapp_control.sensor_text(sense_data)
-            my_lib.webapp.log.log(f"📝 まだ暗いので開けるのを見合わせました．{sensor_text}")
+            my_lib.webapp.log.info(f"📝 まだ暗いので開けるのを見合わせました．{sensor_text}")
 
             rasp_shutter.webapp_control.cmd_hist_push(
                 {
@@ -337,7 +336,7 @@ def schedule_store(schedule_data):
                 pickle.dump(schedule_data, f)
     except Exception:
         logging.exception("Failed to save schedule settings.")
-        my_lib.webapp.log.log("😵 スケジュール設定の保存に失敗しました。", my_lib.webapp.log.LOG_LEVEL.ERROR)
+        my_lib.webapp.log.error("😵 スケジュール設定の保存に失敗しました。")
 
 
 def schedule_load():
@@ -350,9 +349,7 @@ def schedule_load():
                     return schedule_data
         except Exception:
             logging.exception("Failed to load schedule settings.")
-            my_lib.webapp.log.log(
-                "😵 スケジュール設定の読み出しに失敗しました。", my_lib.webapp.log.LOG_LEVEL.ERROR
-            )
+            my_lib.webapp.log.error("😵 スケジュール設定の読み出しに失敗しました。")
 
     schedule_data = {
         "is_active": False,
