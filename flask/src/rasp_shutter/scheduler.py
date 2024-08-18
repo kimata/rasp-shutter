@@ -29,7 +29,7 @@ RETRY_COUNT = 3
 
 schedule_lock = None
 schedule_data = None
-should_terminate = False
+should_terminate = threading.Event()
 
 
 def init():
@@ -406,7 +406,18 @@ def set_schedule(config, schedule_data):  # noqa: C901
 
     idle_sec = schedule.idle_seconds()
     if idle_sec is not None:
-        logging.info("Time to next jobs is %d sec", idle_sec)
+        hours, remainder = divmod(idle_sec, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        logging.info(
+            "Now is %s, time to next jobs is %d hour(s) %d minute(s) %d second(s)",
+            datetime.datetime.now(
+                tz=datetime.timezone(datetime.timedelta(hours=my_lib.webapp.config.TIMEZONE_OFFSET))
+            ).strftime("%Y-%m-%d %H:%M"),
+            hours,
+            minutes,
+            seconds,
+        )
 
     schedule.every().minutes.do(shutter_auto_control, config)
 
@@ -429,7 +440,7 @@ def schedule_worker(config, queue):
 
     i = 0
     while True:
-        if should_terminate:
+        if should_terminate.is_set():
             break
 
         try:
@@ -463,10 +474,9 @@ if __name__ == "__main__":
     my_lib.logger.init("test", level=logging.DEBUG)
 
     def test_func():
-        global should_terminate  # noqa: PLW0603
         logging.info("TEST")
 
-        should_terminate = True
+        should_terminate.set()
 
     config = my_lib.config.load()
     queue = Queue()
