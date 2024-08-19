@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import datetime
 import logging
-import os
 import pathlib
 import pickle
 import re
@@ -142,16 +141,9 @@ def shutter_auto_open(config):
 
 def conv_schedule_time_to_datetime(schedule_time):
     return (
-        datetime.datetime.strptime(  # noqa: DTZ007
+        datetime.datetime.strptime(
             datetime.datetime.now(my_lib.webapp.config.TIMEZONE).strftime("%Y/%m/%d ") + schedule_time,
             "%Y/%m/%d %H:%M",
-        )
-        # NOTE: freezegun と scheduler を組み合わせて使うと，
-        # タイムゾーンの扱いがおかしくなるので補正する．
-        + datetime.timedelta(
-            hours=int(my_lib.webapp.config.TIMEZONE_OFFSET)
-            if os.environ.get("FROZEN", "false") == "true"
-            else 0
         )
     ).replace(
         tzinfo=my_lib.webapp.config.TIMEZONE,
@@ -441,6 +433,7 @@ def schedule_worker(config, queue):
     i = 0
     while True:
         if should_terminate.is_set():
+            schedule.clear()
             break
 
         try:
