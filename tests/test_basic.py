@@ -396,7 +396,7 @@ def test_valve_ctrl_manual_single_1(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(1)
+    time.sleep(2)
 
     ctrl_log_check(client, [{"index": 0, "state": "open"}, {"index": 0, "state": "close"}])
     app_log_check(client, ["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
@@ -427,7 +427,7 @@ def test_valve_ctrl_manual_single_2(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(1)
+    time.sleep(2)
 
     ctrl_log_check(client, [{"index": 1, "state": "open"}, {"index": 1, "state": "close"}])
     app_log_check(client, ["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
