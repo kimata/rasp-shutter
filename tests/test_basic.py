@@ -138,6 +138,8 @@ def app_log_check(  # noqa: C901, PLR0912
 ):
     import logging
 
+    time.sleep(2)
+
     response = client.get("/rasp-shutter/api/log_view")
 
     log_list = response.json["data"]
@@ -396,7 +398,7 @@ def test_valve_ctrl_manual_single_1(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(2)
+    time.sleep(1)
 
     ctrl_log_check(client, [{"index": 0, "state": "open"}, {"index": 0, "state": "close"}])
     app_log_check(client, ["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
@@ -427,7 +429,7 @@ def test_valve_ctrl_manual_single_2(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(2)
+    time.sleep(1)
 
     ctrl_log_check(client, [{"index": 1, "state": "open"}, {"index": 1, "state": "close"}])
     app_log_check(client, ["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
@@ -551,7 +553,7 @@ def test_valve_ctrl_manual_all(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(2)
+    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1052,7 +1054,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, time_machine):
     )
 
     move_to(time_machine, time_evening(5))
-    time.sleep(2)
+    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1371,7 +1373,7 @@ def test_schedule_ctrl_pending_open(client, mocker, time_machine):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
-    time.sleep(2)
+    time.sleep(1)
 
     ctrl_log_check(
         client,
