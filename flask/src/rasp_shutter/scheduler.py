@@ -159,7 +159,7 @@ def shutter_auto_close(config):
         return
     elif (
         datetime.datetime.now(my_lib.webapp.config.TIMEZONE)
-        < conv_schedule_time_to_datetime(schedule_data["open"]["time"])
+        <= conv_schedule_time_to_datetime(schedule_data["open"]["time"])
     ) or my_lib.footprint.exists(rasp_shutter.config.STAT_PENDING_OPEN):
         # NOTE: 開ける時刻よりも早い場合は処理しない
         logging.debug("before open time")
