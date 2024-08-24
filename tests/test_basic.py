@@ -142,7 +142,7 @@ def app_log_check(  # noqa: C901, PLR0912
 
     log_list = response.json["data"]
 
-    logging.debug(log_list)
+    logging.debug(json.dumps(log_list, indent=2, ensure_ascii=False))
 
     if is_strict:
         # NOTE: クリアする直前のログが残っている可能性があるので，+1 でも OK とする
@@ -212,7 +212,7 @@ def ctrl_log_check(client, expect):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    logging.debug(response.json["log"])
+    logging.debug(json.dumps(response.json["log"], indent=2, ensure_ascii=False))
 
     assert response.json["log"] == expect
 
@@ -1209,24 +1209,27 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(20))
-    time.sleep(2)
 
     # OPEN
 
+    ctrl_log_check(
+        client,
+        [
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+            {"cmd": "pending", "state": "open"},
+            {"index": 0, "state": "open"},
+            {"index": 1, "state": "open"},
+            {"index": 0, "state": "close"},
+            {"index": 1, "state": "close"},
+            {"index": 0, "state": "open"},
+            {"index": 1, "state": "open"},
+        ],
+    )
+
     move_to(time_machine, time_evening(1))
-    time.sleep(2)
 
     # CLOSE
-
-    move_to(time_machine, time_evening(2))
-    time.sleep(1)
-
-    move_to(time_machine, time_evening(3))
-    time.sleep(1)
-
-    response = client.get("/rasp-shutter/api/ctrl/log")
-    assert response.status_code == 200
-    assert response.json["result"] == "success"
 
     ctrl_log_check(
         client,
