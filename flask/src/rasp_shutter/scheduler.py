@@ -164,7 +164,7 @@ def shutter_auto_close(config):
         # NOTE: 開ける時刻よりも早い場合は処理しない
         logging.debug("before open time")
         return
-    elif conv_schedule_time_to_datetime(schedule_data["close"]["time"]) < datetime.datetime.now(
+    elif conv_schedule_time_to_datetime(schedule_data["close"]["time"]) <= datetime.datetime.now(
         my_lib.webapp.config.TIMEZONE
     ):
         # NOTE: スケジュールで閉めていた場合は処理しない
