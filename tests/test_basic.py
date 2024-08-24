@@ -138,8 +138,6 @@ def app_log_check(  # noqa: C901, PLR0912
 ):
     import logging
 
-    time.sleep(2)
-
     response = client.get("/rasp-shutter/api/log_view")
 
     log_list = response.json["data"]
@@ -207,6 +205,8 @@ def app_log_clear(client):
 
 def ctrl_log_check(client, expect):
     import logging
+
+    time.sleep(3)
 
     response = client.get("/rasp-shutter/api/ctrl/log")
     assert response.status_code == 200
@@ -291,7 +291,6 @@ def test_redirect(client):
     response = client.get("/")
     assert response.status_code == 302
     assert re.search(r"/rasp-shutter/$", response.location)
-    time.sleep(1)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR"])
@@ -305,7 +304,6 @@ def test_index(client):
 
     response = client.get("/rasp-shutter/", headers={"Accept-Encoding": "gzip"})
     assert response.status_code == 200
-    time.sleep(1)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR"])
@@ -329,7 +327,6 @@ def test_shutter_ctrl_read(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(1)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR"])
@@ -367,7 +364,6 @@ def test_shutter_ctrl_inconsistent_read(client):
     assert response.json["result"] == "success"
     assert response.json["state"][1]["state"] == rasp_shutter.webapp_control.SHUTTER_STATE.OPEN
     assert response.json["state"][0]["state"] == rasp_shutter.webapp_control.SHUTTER_STATE.UNKNOWN
-    time.sleep(1)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR"])
@@ -398,7 +394,6 @@ def test_valve_ctrl_manual_single_1(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(1)
 
     ctrl_log_check(client, [{"index": 0, "state": "open"}, {"index": 0, "state": "close"}])
     app_log_check(client, ["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
@@ -429,7 +424,6 @@ def test_valve_ctrl_manual_single_2(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(1)
 
     ctrl_log_check(client, [{"index": 1, "state": "open"}, {"index": 1, "state": "close"}])
     app_log_check(client, ["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
@@ -553,7 +547,6 @@ def test_valve_ctrl_manual_all(client):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -612,8 +605,6 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    time.sleep(1)
-
     ctrl_log_check(
         client,
         [
@@ -631,8 +622,6 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -657,8 +646,6 @@ def test_event(client):
 
         client.get("/rasp-shutter/api/event", query_string={"count": "1"})
         future.result()
-
-    time.sleep(1)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR"])
@@ -723,7 +710,6 @@ def test_schedule_ctrl_inactive(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_evening(3))
-    time.sleep(1)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR", "SCHEDULE", "SCHEDULE"])
@@ -794,7 +780,7 @@ def test_schedule_ctrl_invalid(client):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(5)
+    time.sleep(3)
 
     ctrl_log_check(client, [])
     app_log_check(
@@ -856,7 +842,6 @@ def test_schedule_ctrl_execute(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -916,7 +901,6 @@ def test_schedule_ctrl_auto_close(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -932,7 +916,6 @@ def test_schedule_ctrl_auto_close(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_evening(4))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -948,7 +931,6 @@ def test_schedule_ctrl_auto_close(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_evening(6))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1029,7 +1011,6 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1046,7 +1027,6 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, time_machine):
     time.sleep(2)
 
     move_to(time_machine, time_evening(4))
-    time.sleep(2)
 
     ctrl_log_check(
         client,
@@ -1059,7 +1039,6 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, time_machine):
     )
 
     move_to(time_machine, time_evening(5))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1089,7 +1068,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, time_machine):
     check_notify_slack(None)
 
 
-def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):  # noqa: PLR0915
+def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
@@ -1132,7 +1111,6 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):  # noqa: PLR09
     time.sleep(2)
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1146,7 +1124,6 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):  # noqa: PLR09
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
-    time.sleep(1)
 
     # OPEN
     ctrl_log_check(
@@ -1163,7 +1140,6 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):  # noqa: PLR09
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     move_to(time_machine, time_morning(5))
-    time.sleep(1)
 
     # NOT CLOSE (自動的に開いてから時間が経過してない)
 
@@ -1179,7 +1155,6 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):  # noqa: PLR09
     )
 
     move_to(time_machine, time_morning(10))
-    time.sleep(1)
 
     # CLOSE
     ctrl_log_check(
@@ -1198,7 +1173,6 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):  # noqa: PLR09
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(11))
-    time.sleep(1)
 
     # NOT OPEN (自動的に閉じてから時間が経過してない)
     ctrl_log_check(
@@ -1217,7 +1191,6 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):  # noqa: PLR09
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     move_to(time_machine, time_morning(12))
-    time.sleep(1)
 
     # NOT CLOSE (開いていない)
     ctrl_log_check(
@@ -1322,7 +1295,6 @@ def test_schedule_ctrl_auto_inactive(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR", "SCHEDULE"])
@@ -1378,7 +1350,6 @@ def test_schedule_ctrl_pending_open(client, mocker, time_machine):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1434,7 +1405,6 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, time_machine):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1451,7 +1421,6 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1482,7 +1451,6 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_morning(6))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1525,7 +1493,6 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, time_machine):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1560,7 +1527,6 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_morning(4))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1600,7 +1566,6 @@ def test_schedule_ctrl_open_dup(client, mocker, time_machine):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1621,7 +1586,6 @@ def test_schedule_ctrl_open_dup(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1699,7 +1663,6 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(2)
 
     ctrl_log_check(
         client,
@@ -1717,7 +1680,6 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_morning(4))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1764,7 +1726,6 @@ def test_schedule_ctrl_control_fail_1(client, mocker, time_machine):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1790,7 +1751,6 @@ def test_schedule_ctrl_control_fail_1(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_evening(3))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1856,7 +1816,6 @@ def test_schedule_ctrl_control_fail_2(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -1895,7 +1854,6 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, time_machine):
     time.sleep(1)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR", "SCHEDULE", "FAIL_SENSOR"])
@@ -1928,7 +1886,6 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, time_machine):
     time.sleep(2)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR", "SCHEDULE", "FAIL_SENSOR"])
