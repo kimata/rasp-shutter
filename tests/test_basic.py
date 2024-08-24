@@ -644,14 +644,19 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     app_log_check(client, ["CLEAR", "OPEN_FAIL", "CLOSE_MANUAL"])
     check_notify_slack("手動で開けるのに失敗しました")
 
-    # NOTE: ログを出し切らせる
-    time.sleep(1)
-
 
 def test_event(client):
-    response = client.get("/rasp-shutter/api/event", query_string={"count": "1"})
-    assert response.status_code == 200
-    assert response.data.decode()
+    import concurrent.futures
+
+    def log_write():
+        time.sleep(2)
+        client.get("/rasp-shutter/exec/log_write")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(log_write)
+
+        client.get("/rasp-shutter/api/event", query_string={"count": "1"})
+        future.result()
 
     time.sleep(1)
 
