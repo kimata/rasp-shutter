@@ -1549,7 +1549,7 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, time_machine):
     # NOTE: 後始末
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT.copy()
     move_to(time_machine, time_morning(5))
-    time.sleep(1)
+    time.sleep(2)
 
 
 def test_schedule_ctrl_open_dup(client, mocker, time_machine):
