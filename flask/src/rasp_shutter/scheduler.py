@@ -157,6 +157,13 @@ def shutter_auto_close(config):
     if not schedule_data["close"]["is_active"]:
         logging.debug("inactive")
         return
+    elif abs(
+        datetime.datetime.now(my_lib.webapp.config.TIMEZONE)
+        - conv_schedule_time_to_datetime(schedule_data["open"]["time"])
+    ) < datetime.timedelta(minutes=1):
+        # NOTE: 開ける時刻付近の場合は処理しない
+        logging.debug("near open time")
+        return
     elif (
         datetime.datetime.now(my_lib.webapp.config.TIMEZONE)
         <= conv_schedule_time_to_datetime(schedule_data["open"]["time"])
