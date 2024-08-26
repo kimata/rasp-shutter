@@ -101,6 +101,7 @@ if __name__ == "__main__":
 
     my_lib.logger.init("hems.rasp-shutter", level=logging.DEBUG if debug_mode else logging.INFO)
 
+    logging.info("Using config config: %s", config_file)
     config = my_lib.config.load(config_file)
 
     app = create_app(config, dummy_mode)
