@@ -1,5 +1,0 @@
-influxdb:
-    url: http://proxy.green-rabbit.net:8086
-    token: fffjkjkgfklhjglkjiojtroijojhkljhklghklfjklhhlnklhnklfgnhklgnhgfdlhfgnhlkngdfnfnhgdkfnh==
-    org: home
-    bucket: sensor
