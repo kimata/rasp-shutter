@@ -1,4 +1,7 @@
 .git/
+.venv/
+.mypy_cache/
+.pytest_cache/
 flask/data/*
 tests/evidence/*
 node_modules/
