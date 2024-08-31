@@ -41,7 +41,7 @@ slack:
 
 liveness:
     file:
-        scheduler: /dev/shm/rasp-water/liveness/scheduler
+        scheduler: flask/data/liveness/scheduler
 
 shutter:
     - name: リビング①

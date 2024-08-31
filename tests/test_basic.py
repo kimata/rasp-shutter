@@ -43,7 +43,8 @@ def slack_mock():
 def _clear():
     import my_lib.webapp.config
 
-    my_lib.webapp.config.init(my_lib.config.load(CONFIG_FILE))
+    config = my_lib.config.load(CONFIG_FILE)
+    my_lib.webapp.config.init(config)
 
     import my_lib.footprint
     import my_lib.notify_slack
@@ -51,6 +52,7 @@ def _clear():
 
     my_lib.footprint.clear(rasp_shutter.config.STAT_AUTO_CLOSE)
     my_lib.footprint.clear(rasp_shutter.config.STAT_PENDING_OPEN)
+    my_lib.footprint.clear(pathlib.Path(config["liveness"]["file"]["scheduler"]))
 
     my_lib.notify_slack.interval_clear()
     my_lib.notify_slack.hist_clear()
@@ -2094,6 +2096,23 @@ def test_second_str():
     assert rasp_shutter.webapp_control.time_str(3600) == "1時間"
     assert rasp_shutter.webapp_control.time_str(3660) == "1時間1分"
     assert rasp_shutter.webapp_control.time_str(50) == "50秒"
+
+
+def test_liveness(client):  # noqa: ARG001
+    import healthz
+
+    config = my_lib.config.load(CONFIG_FILE)
+
+    assert healthz.check_liveness(
+        [
+            {
+                "name": name,
+                "liveness_file": pathlib.Path(config["liveness"]["file"][name]),
+                "interval": 10,
+            }
+            for name in ["scheduler"]
+        ]
+    )
 
 
 def test_terminate():
