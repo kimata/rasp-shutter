@@ -84,7 +84,7 @@ jobs:
               run: |
                   curl -sSf https://rye.astral.sh/get | RYE_NO_AUTO_INSTALL=1 RYE_INSTALL_OPTION="--yes" bash
 
-            - name: Add path of Poetry
+            - name: Add path of Rye
               run: echo "$HOME/.rye/shims" >> $GITHUB_PATH
 
             - name: Cache python modules
