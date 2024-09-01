@@ -249,6 +249,23 @@ def check_notify_slack(message, index=-1):
 
 
 ######################################################################
+def test_liveness(client):  # noqa: ARG001
+    import healthz
+
+    config = my_lib.config.load(CONFIG_FILE)
+
+    assert healthz.check_liveness(
+        [
+            {
+                "name": name,
+                "liveness_file": pathlib.Path(config["liveness"]["file"][name]),
+                "interval": 10,
+            }
+            for name in ["scheduler"]
+        ]
+    )
+
+
 def test_time(time_machine, client):  # noqa:  ARG001
     import logging
 
@@ -2096,23 +2113,6 @@ def test_second_str():
     assert rasp_shutter.webapp_control.time_str(3600) == "1時間"
     assert rasp_shutter.webapp_control.time_str(3660) == "1時間1分"
     assert rasp_shutter.webapp_control.time_str(50) == "50秒"
-
-
-def test_liveness(client):  # noqa: ARG001
-    import healthz
-
-    config = my_lib.config.load(CONFIG_FILE)
-
-    assert healthz.check_liveness(
-        [
-            {
-                "name": name,
-                "liveness_file": pathlib.Path(config["liveness"]["file"][name]),
-                "interval": 10,
-            }
-            for name in ["scheduler"]
-        ]
-    )
 
 
 def test_terminate():
