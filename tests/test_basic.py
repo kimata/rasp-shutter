@@ -140,7 +140,7 @@ def app_log_check(  # noqa: C901, PLR0912
 ):
     import logging
 
-    response = client.get("/rasp-shutter/api/log_view")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_view")
 
     log_list = response.json["data"]
 
@@ -191,7 +191,7 @@ def app_log_check(  # noqa: C901, PLR0912
 
 def ctrl_log_clear(client):
     response = client.get(
-        "/rasp-shutter/api/ctrl/log",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/ctrl/log",
         query_string={
             "cmd": "clear",
         },
@@ -201,7 +201,7 @@ def ctrl_log_clear(client):
 
 
 def app_log_clear(client):
-    response = client.get("/rasp-shutter/api/log_clear")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_clear")
     assert response.status_code == 200
 
 
@@ -210,7 +210,7 @@ def ctrl_log_check(client, expect):
 
     time.sleep(3)
 
-    response = client.get("/rasp-shutter/api/ctrl/log")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/ctrl/log")
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
@@ -311,7 +311,7 @@ def test_redirect(client):
 
     response = client.get("/")
     assert response.status_code == 302
-    assert re.search(r"/rasp-shutter/$", response.location)
+    assert re.search(rf"{my_lib.webapp.config.URL_PREFIX}/$", response.location)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR"])
@@ -319,11 +319,11 @@ def test_redirect(client):
 
 
 def test_index(client):
-    response = client.get("/rasp-shutter/")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/")
     assert response.status_code == 200
     assert "電動シャッター" in response.data.decode("utf-8")
 
-    response = client.get("/rasp-shutter/", headers={"Accept-Encoding": "gzip"})
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/", headers={"Accept-Encoding": "gzip"})
     assert response.status_code == 200
 
     ctrl_log_check(client, [])
@@ -338,13 +338,13 @@ def test_index_with_other_status(client, mocker):
         new_callable=mocker.PropertyMock,
     )
 
-    response = client.get("/rasp-shutter/", headers={"Accept-Encoding": "gzip"})
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/", headers={"Accept-Encoding": "gzip"})
     assert response.status_code == 301
 
 
 def test_shutter_ctrl_read(client):
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
@@ -365,7 +365,7 @@ def test_shutter_ctrl_inconsistent_read(client):
     my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("close", 0))
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
@@ -379,7 +379,7 @@ def test_shutter_ctrl_inconsistent_read(client):
     my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("open", 1))
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
@@ -393,7 +393,7 @@ def test_shutter_ctrl_inconsistent_read(client):
 
 def test_valve_ctrl_manual_single_1(client):
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 0,
@@ -406,7 +406,7 @@ def test_valve_ctrl_manual_single_1(client):
     ctrl_log_check(client, [{"index": 0, "state": "open"}])
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 0,
@@ -423,7 +423,7 @@ def test_valve_ctrl_manual_single_1(client):
 
 def test_valve_ctrl_manual_single_2(client):
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 1,
@@ -436,7 +436,7 @@ def test_valve_ctrl_manual_single_2(client):
     ctrl_log_check(client, [{"index": 1, "state": "open"}])
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 1,
@@ -453,7 +453,7 @@ def test_valve_ctrl_manual_single_2(client):
 
 def test_valve_ctrl_manual_all(client):
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 0,
@@ -466,7 +466,7 @@ def test_valve_ctrl_manual_all(client):
     ctrl_log_check(client, [{"index": 0, "state": "open"}])
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 1,
@@ -479,7 +479,7 @@ def test_valve_ctrl_manual_all(client):
     ctrl_log_check(client, [{"index": 0, "state": "open"}, {"index": 1, "state": "open"}])
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 1,
@@ -499,7 +499,7 @@ def test_valve_ctrl_manual_all(client):
     )
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 0,
@@ -522,7 +522,7 @@ def test_valve_ctrl_manual_all(client):
     ctrl_log_clear(client)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "open",
@@ -540,7 +540,7 @@ def test_valve_ctrl_manual_all(client):
     )
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "close",
@@ -560,7 +560,7 @@ def test_valve_ctrl_manual_all(client):
     )
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "close",
@@ -616,7 +616,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     mocker.patch("rasp_shutter.webapp_control.requests.get", side_effect=request_mock)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 1,
@@ -634,7 +634,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     )
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 1,
@@ -660,12 +660,12 @@ def test_event(client):
 
     def log_write():
         time.sleep(2)
-        client.get("/rasp-shutter/exec/log_write")
+        client.get(f"{my_lib.webapp.config.URL_PREFIX}/exec/log_write")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         future = executor.submit(log_write)
 
-        client.get("/rasp-shutter/api/event", query_string={"count": "1"})
+        client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/event", query_string={"count": "1"})
         future.result()
 
     ctrl_log_check(client, [])
@@ -680,7 +680,7 @@ def test_schedule_ctrl_inactive(client, mocker, time_machine):
     schedule_data["open"]["is_active"] = False
     schedule_data["close"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -709,7 +709,7 @@ def test_schedule_ctrl_inactive(client, mocker, time_machine):
     schedule_data["close"]["is_active"] = True
     schedule_data["close"]["wday"] = [False] * 7
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -741,7 +741,7 @@ def test_schedule_ctrl_invalid(client):
     schedule_data = gen_schedule_data()
     del schedule_data["open"]
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -749,7 +749,7 @@ def test_schedule_ctrl_invalid(client):
     schedule_data = gen_schedule_data()
     del schedule_data["open"]["is_active"]
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -757,7 +757,7 @@ def test_schedule_ctrl_invalid(client):
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = "TEST"
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -765,7 +765,7 @@ def test_schedule_ctrl_invalid(client):
     schedule_data = gen_schedule_data()
     schedule_data["open"]["lux"] = "TEST"
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -773,7 +773,7 @@ def test_schedule_ctrl_invalid(client):
     schedule_data = gen_schedule_data()
     schedule_data["open"]["solar_rad"] = "TEST"
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -781,7 +781,7 @@ def test_schedule_ctrl_invalid(client):
     schedule_data = gen_schedule_data()
     schedule_data["open"]["time"] = "TEST"
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -789,7 +789,7 @@ def test_schedule_ctrl_invalid(client):
     schedule_data = gen_schedule_data()
     schedule_data["open"]["wday"] = [True] * 5
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -797,7 +797,7 @@ def test_schedule_ctrl_invalid(client):
     schedule_data = gen_schedule_data()
     schedule_data["open"]["wday"] = ["TEST"] * 7
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -826,7 +826,7 @@ def test_schedule_ctrl_execute(client, mocker, time_machine):
     mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "open",
@@ -839,7 +839,7 @@ def test_schedule_ctrl_execute(client, mocker, time_machine):
     time.sleep(1)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 1,
@@ -852,7 +852,7 @@ def test_schedule_ctrl_execute(client, mocker, time_machine):
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -896,7 +896,7 @@ def test_schedule_ctrl_auto_close(client, mocker, time_machine):
     time.sleep(0.5)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "open",
@@ -911,7 +911,7 @@ def test_schedule_ctrl_auto_close(client, mocker, time_machine):
     schedule_data["open"]["is_active"] = False
     schedule_data["close"]["time"] = time_str(time_evening(5))
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -987,7 +987,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, time_machine):
     time.sleep(0.5)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "open",
@@ -997,7 +997,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, time_machine):
     assert response.json["result"] == "success"
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 1,
@@ -1022,7 +1022,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, time_machine):
     schedule_data["close"]["time"] = time_str(time_evening(4))
     schedule_data["open"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1095,7 +1095,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "close",
@@ -1112,7 +1112,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):
     schedule_data = gen_schedule_data()
     schedule_data["open"]["time"] = time_str(time_morning(2))
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1303,7 +1303,7 @@ def test_schedule_ctrl_auto_inactive(client, mocker, time_machine):
     schedule_data["open"]["is_active"] = False
     schedule_data["close"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1334,7 +1334,7 @@ def test_schedule_ctrl_pending_open(client, mocker, time_machine):
     time.sleep(0.5)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "close",
@@ -1349,7 +1349,7 @@ def test_schedule_ctrl_pending_open(client, mocker, time_machine):
     schedule_data["open"]["time"] = time_str(time_morning(3))
     schedule_data["close"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1408,7 +1408,7 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, time_machine):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "close",
@@ -1425,7 +1425,7 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, time_machine):
     schedule_data = gen_schedule_data()
     schedule_data["close"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1460,7 +1460,7 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, time_machine):
     schedule_data["open"]["is_active"] = False
     schedule_data["close"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1509,7 +1509,7 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, time_machine):
     time.sleep(0.5)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "close",
@@ -1531,7 +1531,7 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, time_machine):
     schedule_data = gen_schedule_data()
     schedule_data["close"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1582,7 +1582,7 @@ def test_schedule_ctrl_open_dup(client, mocker, time_machine):
     time.sleep(0.5)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "open",
@@ -1603,7 +1603,7 @@ def test_schedule_ctrl_open_dup(client, mocker, time_machine):
     schedule_data["open"]["time"] = time_str(time_morning(1))
     schedule_data["close"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1641,7 +1641,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     time.sleep(0.5)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "close",
@@ -1652,7 +1652,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     time.sleep(1)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "index": 1,
@@ -1676,7 +1676,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     schedule_data = gen_schedule_data()
     schedule_data["close"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1742,7 +1742,7 @@ def test_schedule_ctrl_control_fail_1(client, mocker, time_machine):
     time.sleep(0.5)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "open",
@@ -1762,7 +1762,7 @@ def test_schedule_ctrl_control_fail_1(client, mocker, time_machine):
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1802,7 +1802,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, time_machine):
     mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
 
     response = client.get(
-        "/rasp-shutter/api/shutter_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
         query_string={
             "cmd": 1,
             "state": "open",
@@ -1830,7 +1830,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, time_machine):
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1868,7 +1868,7 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, time_machine):
     schedule_data = gen_schedule_data()
     schedule_data["close"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1900,7 +1900,7 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, time_machine):
     schedule_data = gen_schedule_data()
     schedule_data["close"]["is_active"] = False
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1917,7 +1917,7 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, time_machine):
 
 
 def test_schedule_ctrl_read(client):
-    response = client.get("/rasp-shutter/api/schedule_ctrl")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl")
     assert response.status_code == 200
     assert len(response.json) == 2
 
@@ -1928,7 +1928,7 @@ def test_schedule_ctrl_read_fail_1(client, mocker):
 
     mocker.patch("pickle.load", return_value=schedule_data)
 
-    response = client.get("/rasp-shutter/api/schedule_ctrl")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl")
     assert response.status_code == 200
     assert len(response.json) == 2
 
@@ -1937,7 +1937,7 @@ def test_schedule_ctrl_read_fail_2(client):
     with pathlib.Path(my_lib.webapp.config.SCHEDULE_FILE_PATH).open(mode="wb") as f:
         f.write(b"TEST")
 
-    response = client.get("/rasp-shutter/api/schedule_ctrl")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl")
     assert response.status_code == 200
     assert len(response.json) == 2
 
@@ -1947,7 +1947,7 @@ def test_schedule_ctrl_write_fail(client, mocker):
 
     schedule_data = gen_schedule_data()
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1955,7 +1955,7 @@ def test_schedule_ctrl_write_fail(client, mocker):
     # NOTE: 次回のテストに向けて，正常なものに戻しておく
     schedule_data = gen_schedule_data()
     response = client.get(
-        "/rasp-shutter/api/schedule_ctrl",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
@@ -1964,35 +1964,35 @@ def test_schedule_ctrl_write_fail(client, mocker):
 def test_schedule_ctrl_validate_fail(client, mocker):
     mocker.patch("rasp_shutter.scheduler.schedule_validate", return_value=False)
 
-    response = client.get("/rasp-shutter/api/schedule_ctrl")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl")
     assert response.status_code == 200
     assert len(response.json) == 2
 
 
 def test_shutter_list(client):
-    response = client.get("/rasp-shutter/api/shutter_list")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_list")
     assert response.status_code == 200
 
 
 def test_dummy_open(client):
-    response = client.get("/rasp-shutter/api/dummy/open")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/dummy/open")
     assert response.status_code == 200
 
 
 def test_dummy_close(client):
-    response = client.get("/rasp-shutter/api/dummy/close")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/dummy/close")
     assert response.status_code == 200
 
 
 def test_sensor_1(client):
-    response = client.get("/rasp-shutter/api/sensor")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/sensor")
     assert response.status_code == 200
 
 
 def test_sensor_2(client, mocker):
     mocker.patch("my_lib.sensor_data.fetch_data", return_value={"valid": False})
 
-    response = client.get("/rasp-shutter/api/sensor")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/sensor")
     assert response.status_code == 200
 
     mocker.patch(
@@ -2004,7 +2004,7 @@ def test_sensor_2(client, mocker):
         },
     )
 
-    response = client.get("/rasp-shutter/api/sensor")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/sensor")
     assert response.status_code == 200
 
 
@@ -2040,14 +2040,14 @@ def test_sensor_dummy(client, mocker):
         return_value=query_api_mock,
     )
 
-    response = client.get("/rasp-shutter/api/sensor")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/sensor")
     assert response.status_code == 200
 
 
 def test_sensor_fail_1(client, mocker):
     mocker.patch("influxdb_client.InfluxDBClient.query_api", side_effect=RuntimeError())
 
-    response = client.get("/rasp-shutter/api/sensor")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/sensor")
     assert response.status_code == 200
 
 
@@ -2057,13 +2057,13 @@ def test_sensor_fail_2(client, mocker):
         return_value=None,
     )
 
-    response = client.get("/rasp-shutter/api/sensor")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/sensor")
     assert response.status_code == 200
 
 
 def test_log_view(client):
     response = client.get(
-        "/rasp-shutter/api/log_view",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/log_view",
         headers={"Accept-Encoding": "gzip"},
         query_string={
             "callback": "TEST",
@@ -2073,11 +2073,11 @@ def test_log_view(client):
 
 
 def test_log_clear(client):
-    response = client.get("/rasp-shutter/api/log_clear")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_clear")
     assert response.status_code == 200
 
     response = client.get(
-        "/rasp-shutter/api/log_view",
+        f"{my_lib.webapp.config.URL_PREFIX}/api/log_view",
         headers={"Accept-Encoding": "gzip"},
         query_string={
             "callback": "TEST",
@@ -2087,7 +2087,7 @@ def test_log_clear(client):
 
 
 def test_sysinfo(client):
-    response = client.get("/rasp-shutter/api/sysinfo")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/sysinfo")
     assert response.status_code == 200
     assert "date" in response.json
     assert "uptime" in response.json
@@ -2095,16 +2095,16 @@ def test_sysinfo(client):
 
 
 def test_snapshot(client):
-    response = client.get("/rasp-shutter/api/snapshot")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/snapshot")
     assert response.status_code == 200
     assert "msg" in response.json
-    response = client.get("/rasp-shutter/api/snapshot")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/snapshot")
     assert response.status_code == 200
     assert "msg" not in response.json
 
 
 def test_memory(client):
-    response = client.get("/rasp-shutter/api/memory")
+    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/memory")
     assert response.status_code == 200
     assert "memory" in response.json
 
