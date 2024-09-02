@@ -47,7 +47,7 @@ minversion = "6.0"
 
 # addopts = "--verbose --log-cli-level=DEBUG --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys  --html=tests/evidence/index.htm --self-contained-html --cov=flask --cov-report=html -vv"
 
-addopts = "--verbose --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys  --html=tests/evidence/index.htm --self-contained-html --cov=flask --cov-report=html"
+addopts = "--verbose --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys  --html=tests/evidence/index.htm --self-contained-html --cov=flask --cov-report=html -vv"
 
 testpaths = [
     "tests",
@@ -55,7 +55,6 @@ testpaths = [
 filterwarnings = [
     "ignore:The hookimpl CovPlugin.pytest_configure_node uses",
     "ignore:The hookimpl CovPlugin.pytest_testnodedown uses",
-    "ignore::DeprecationWarning:pytest_freezegun",
 ]
 
 [tool.coverage.run]
