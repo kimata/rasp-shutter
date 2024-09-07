@@ -20,6 +20,8 @@ import flask_cors
 
 import flask
 
+CONFIG_SCHEMA = "config.schema"
+
 
 def create_app(config, dummy_mode=False):
     # NOTE: オプションでダミーモードが指定された場合，環境変数もそれに揃えておく
@@ -88,6 +90,8 @@ def create_app(config, dummy_mode=False):
 
 
 if __name__ == "__main__":
+    import pathlib
+
     import docopt
     import my_lib.config
     import my_lib.logger
@@ -101,7 +105,7 @@ if __name__ == "__main__":
 
     my_lib.logger.init("hems.rasp-shutter", level=logging.DEBUG if debug_mode else logging.INFO)
 
-    config = my_lib.config.load(config_file)
+    config = my_lib.config.load(config_file, pathlib.Path(CONFIG_SCHEMA))
 
     app = create_app(config, dummy_mode)
 
