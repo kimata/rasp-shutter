@@ -35,7 +35,7 @@ slack:
     error:
         channel:
             name: "#error"
-            id: 00000000000
+            id: XXXXXXXXXX
         interval_min: 180
 
 liveness:
