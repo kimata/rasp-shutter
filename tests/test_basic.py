@@ -10,7 +10,7 @@ import time
 from unittest import mock
 
 import my_lib.config
-import my_lib.notify_slack
+import my_lib.notify.slack
 import my_lib.webapp.config
 import pytest
 from app import create_app
@@ -33,7 +33,7 @@ def env_mock():
 @pytest.fixture(scope="session", autouse=True)
 def slack_mock():
     with mock.patch(
-        "my_lib.notify_slack.slack_sdk.web.client.WebClient.chat_postMessage",
+        "my_lib.notify.slack.slack_sdk.web.client.WebClient.chat_postMessage",
         retunr_value=True,
     ) as fixture:
         yield fixture
@@ -47,15 +47,15 @@ def _clear():
     my_lib.webapp.config.init(config)
 
     import my_lib.footprint
-    import my_lib.notify_slack
+    import my_lib.notify.slack
     import rasp_shutter.config
 
     my_lib.footprint.clear(rasp_shutter.config.STAT_AUTO_CLOSE)
     my_lib.footprint.clear(rasp_shutter.config.STAT_PENDING_OPEN)
     my_lib.footprint.clear(pathlib.Path(config["liveness"]["file"]["scheduler"]))
 
-    my_lib.notify_slack.interval_clear()
-    my_lib.notify_slack.hist_clear()
+    my_lib.notify.slack.interval_clear()
+    my_lib.notify.slack.hist_clear()
 
     ctrl_stat_clear()
 
@@ -236,9 +236,9 @@ def ctrl_stat_clear():
 def check_notify_slack(message, index=-1):
     import logging
 
-    import my_lib.notify_slack
+    import my_lib.notify.slack
 
-    notify_hist = my_lib.notify_slack.hist_get()
+    notify_hist = my_lib.notify.slack.hist_get()
     logging.debug(notify_hist)
 
     if message is None:

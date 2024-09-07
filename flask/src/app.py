@@ -20,7 +20,7 @@ import flask_cors
 
 import flask
 
-CONFIG_SCHEMA = "config.schema"
+SCHEMA_CONFIG = "config.schema"
 
 
 def create_app(config, dummy_mode=False):
@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
     my_lib.logger.init("hems.rasp-shutter", level=logging.DEBUG if debug_mode else logging.INFO)
 
-    config = my_lib.config.load(config_file, pathlib.Path(CONFIG_SCHEMA))
+    config = my_lib.config.load(config_file, pathlib.Path(SCHEMA_CONFIG))
 
     app = create_app(config, dummy_mode)
 
