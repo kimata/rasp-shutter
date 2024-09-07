@@ -1,4 +1,3 @@
----
 webapp:
     timezone:
         offset: "+9"
@@ -46,10 +45,10 @@ liveness:
 shutter:
     - name: リビング①
       endpoint:
-          open: http://127.0.0.1:5000/rasp-shutter/api/dummy/open
-          close: http://127.0.0.1:5000/rasp-shutter/api/dummy/close
+        open: http://127.0.0.1:5000/rasp-shutter/api/dummy/open
+        close: http://127.0.0.1:5000/rasp-shutter/api/dummy/close
 
     - name: リビング②
       endpoint:
-          open: http://127.0.0.1:5000/rasp-shutter/api/dummy/open
-          close: http://127.0.0.1:5000/rasp-shutter/api/dummy/close
+        open: http://127.0.0.1:5000/rasp-shutter/api/dummy/open
+        close: http://127.0.0.1:5000/rasp-shutter/api/dummy/close
