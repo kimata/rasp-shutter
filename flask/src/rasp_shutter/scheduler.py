@@ -2,7 +2,6 @@
 import datetime
 import logging
 import pathlib
-import pickle
 import re
 import threading
 import time
@@ -10,6 +9,7 @@ import traceback
 from enum import IntEnum
 
 import my_lib.footprint
+import my_lib.serializer
 import my_lib.webapp.config
 import my_lib.webapp.log
 import rasp_shutter.config
@@ -330,26 +330,13 @@ def schedule_store(schedule_data):
     global schedule_lock
     try:
         with schedule_lock:
-            my_lib.webapp.config.SCHEDULE_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
-            with pathlib.Path(my_lib.webapp.config.SCHEDULE_FILE_PATH).open(mode="wb") as f:
-                pickle.dump(schedule_data, f)
+            my_lib.serializer.store(my_lib.webapp.config.SCHEDULE_FILE_PATH, schedule_data)
     except Exception:
         logging.exception("Failed to save schedule settings.")
         my_lib.webapp.log.error("😵 スケジュール設定の保存に失敗しました。")
 
 
-def schedule_load():
-    global schedule_lock
-    if my_lib.webapp.config.SCHEDULE_FILE_PATH.exists():
-        try:
-            with schedule_lock, pathlib.Path(my_lib.webapp.config.SCHEDULE_FILE_PATH).open(mode="rb") as f:
-                schedule_data = pickle.load(f)  # noqa: S301
-                if schedule_validate(schedule_data):
-                    return schedule_data
-        except Exception:
-            logging.exception("Failed to load schedule settings.")
-            my_lib.webapp.log.error("😵 スケジュール設定の読み出しに失敗しました。")
-
+def gen_schedule_default():
     schedule_data = {
         "is_active": False,
         "time": "00:00",
@@ -362,6 +349,21 @@ def schedule_load():
         "open": schedule_data | {"time": "08:00", "solar_rad": 150, "lux": 1000},
         "close": schedule_data | {"time": "17:00", "solar_rad": 80, "lux": 1200},
     }
+
+
+def schedule_load():
+    global schedule_lock
+
+    try:
+        with schedule_lock:
+            schedule_data = my_lib.serializer.load(
+                my_lib.webapp.config.SCHEDULE_FILE_PATH, gen_schedule_default()
+            )
+            if schedule_validate(schedule_data):
+                return schedule_data
+    except Exception:
+        logging.exception("Failed to load schedule settings.")
+        my_lib.webapp.log.error("😵 スケジュール設定の読み出しに失敗しました。")
 
 
 def set_schedule(config, schedule_data):  # noqa: C901
