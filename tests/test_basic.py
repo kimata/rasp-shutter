@@ -69,7 +69,8 @@ def app():
 
         app = create_app(my_lib.config.load(CONFIG_FILE), dummy_mode=True)
 
-        yield app
+        with app.app_context():
+            yield app
 
         # NOTE: 特定のテストのみ実行したときのため，ここでも呼ぶ
         test_terminate()
@@ -238,7 +239,7 @@ def check_notify_slack(message, index=-1):
 
     import my_lib.notify.slack
 
-    notify_hist = my_lib.notify.slack.hist_get()
+    notify_hist = my_lib.notify.slack.hist_get(False)
     logging.debug(notify_hist)
 
     if message is None:
