@@ -354,16 +354,18 @@ def gen_schedule_default():
 def schedule_load():
     global schedule_lock
 
+    schedule_default = gen_schedule_default()
+
     try:
         with schedule_lock:
-            schedule_data = my_lib.serializer.load(
-                my_lib.webapp.config.SCHEDULE_FILE_PATH, gen_schedule_default()
-            )
+            schedule_data = my_lib.serializer.load(my_lib.webapp.config.SCHEDULE_FILE_PATH, schedule_default)
             if schedule_validate(schedule_data):
                 return schedule_data
     except Exception:
         logging.exception("Failed to load schedule settings.")
         my_lib.webapp.log.error("😵 スケジュール設定の読み出しに失敗しました。")
+
+    return schedule_default
 
 
 def set_schedule(config, schedule_data):  # noqa: C901
