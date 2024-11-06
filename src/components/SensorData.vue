@@ -108,7 +108,7 @@ export default {
         },
         sensorValue: function (name) {
             if (this.sensor[name].valid) {
-                return Number(this.sensor[name].value).toFixed();
+                return Number(this.sensor[name].value).toFixed().toLocaleString();
             } else {
                 return "-";
             }
