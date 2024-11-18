@@ -237,8 +237,10 @@ def sensor_text(sense_data):
     if sense_data is None:
         return ""
     else:
-        return "(日射: {solar_rad:.1f} W/m^2, 照度: {lux:.1f} LUX)".format(
-            solar_rad=sense_data["solar_rad"]["value"], lux=sense_data["lux"]["value"]
+        return "(日射: {solar_rad:.1f} W/m^2, 照度: {lux:.1f} LUX, 高度: {altitude:.1f})".format(
+            solar_rad=sense_data["solar_rad"]["value"],
+            lux=sense_data["lux"]["value"],
+            altitude=sense_data["altitude"]["value"],
         )
 
 
