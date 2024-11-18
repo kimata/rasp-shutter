@@ -14,14 +14,13 @@ blueprint = flask.Blueprint("rasp-shutter-sensor", __name__, url_prefix=my_lib.w
 
 
 def get_solar_altitude(config):
+    now = datetime.datetime.now(datetime.timezone.utc)
     return {
         "value": pysolar.solar.get_altitude(
-            config["location"]["latitude"],
-            config["location"]["longitude"],
-            datetime.datetime.now(datetime.timezone.utc),
+            config["location"]["latitude"], config["location"]["longitude"], now
         ),
         "valid": True,
-        "time": datetime.datetime.now(),  # noqa: DTZ005
+        "time": now,
     }
 
 
