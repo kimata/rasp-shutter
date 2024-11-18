@@ -46,7 +46,7 @@ def brightness_text(sense_data, cur_schedule_data):
             if sense_data[sensor]["value"] > cur_schedule_data[sensor]
             else ("<" if sense_data[sensor]["value"] < cur_schedule_data[sensor] else "="),
         )
-        for sensor in ["solar_rad", "lux"]
+        for sensor in ["solar_rad", "lux", "altitude"]
     ]
 
     return ", ".join(text)
@@ -56,8 +56,10 @@ def check_brightness(sense_data, state):
     if (not sense_data["lux"]["valid"]) or (not sense_data["solar_rad"]["valid"]):
         return BRIGHTNESS_STATE.UNKNOWN
 
-    if (sense_data["lux"]["value"] < schedule_data[state]["lux"]) and (
-        sense_data["solar_rad"]["value"] < schedule_data[state]["solar_rad"]
+    if (
+        (sense_data["lux"]["value"] < schedule_data[state]["lux"])
+        and (sense_data["solar_rad"]["value"] < schedule_data[state]["solar_rad"])
+        and (sense_data["altitude"]["value"] < schedule_data[state]["altitude"])
     ):
         if state == "close":
             logging.info("Getting darker %s", brightness_text(sense_data, schedule_data[state]))
@@ -300,7 +302,7 @@ def schedule_validate(schedule_data):  # noqa: C901, PLR0911
         return False
 
     for entry in schedule_data.values():
-        for key in ["is_active", "time", "wday", "solar_rad", "lux"]:
+        for key in ["is_active", "time", "wday", "solar_rad", "lux", "altitude"]:
             if key not in entry:
                 logging.warning("Does not contain %s", key)
                 return False
@@ -308,10 +310,13 @@ def schedule_validate(schedule_data):  # noqa: C901, PLR0911
             logging.warning("Type of is_active is invalid: %s", type(entry["is_active"]))
             return False
         if type(entry["lux"]) is not int:
-            logging.warning("Type of lux is invalid: %s", type(entry["is_active"]))
+            logging.warning("Type of lux is invalid: %s", type(entry["lux"]))
+            return False
+        if type(entry["altitude"]) is not int:
+            logging.warning("Type of altitude is invalid: %s", type(entry["altitude"]))
             return False
         if type(entry["solar_rad"]) is not int:
-            logging.warning("Type of solar_rad is invalid: %s", type(entry["is_active"]))
+            logging.warning("Type of solar_rad is invalid: %s", type(entry["solar_rad"]))
             return False
         if not re.compile(r"\d{2}:\d{2}").search(entry["time"]):
             logging.warning("Format of time is invalid: %s", entry["time"])
@@ -342,6 +347,7 @@ def gen_schedule_default():
         "time": "00:00",
         "solar_rad": 0,
         "lux": 0,
+        "altitude": 0,
         "wday": [True] * 7,
     }
 
@@ -499,6 +505,7 @@ if __name__ == "__main__":
                 "wday": [True] * 7,
                 "solar_rad": 0,
                 "lux": 0,
+                "altitude": 0,
                 "func": test_func,
             }
         }

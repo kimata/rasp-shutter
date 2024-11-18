@@ -27,6 +27,10 @@ sensor:
         measure: sensor.rasp
         hostname: rasp-storeroom
 
+location:
+    latitude: 35.6895
+    longitude: 139.6917
+
 slack:
     bot_token: xoxb-000000000000-0000000000000-000000000000000000000000
 

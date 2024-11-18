@@ -62,11 +62,12 @@ def wday_str_list(wday_list):
 
 
 def schedule_entry_str(name, entry):
-    return "{name} {time} {solar_rad} W/mm^2 {lux} LUX {wday}".format(
+    return "{name} {time} {solar_rad} W/mm^2 {lux} LUX {altitude} deg {wday}".format(
         name=name.upper(),
         time=entry["time"],
         solar_rad=entry["solar_rad"],
         lux=entry["lux"],
+        altitude=entry["altitude"],
         wday=",".join(wday_str_list(entry["wday"])),
     )
 
