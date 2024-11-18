@@ -19,7 +19,9 @@ def get_solar_altitude(config):
             config["location"]["latitude"],
             config["location"]["longitude"],
             datetime.datetime.now(datetime.timezone.utc),
-        )
+        ),
+        "valid": True,
+        "time": datetime.datetime.now(),  # noqa: DTZ005
     }
 
 
