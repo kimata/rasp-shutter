@@ -75,6 +75,25 @@
         </div>
 
         <div class="row">
+            <h3>太陽高度閾値</h3>
+            <div class="form-group">
+                <div class="input-group" v-bind:id="name + '-schedule-entry-altitude'">
+                    <input
+                        type="number"
+                        class="form-control text-end"
+                        name="altitude"
+                        v-model="entry.altitude"
+                        v-bind:disabled="!entry.is_active"
+                        @input="emit()"
+                    />
+                    <div class="input-group-append">
+                        <div class="input-group-text" style="width: 4em">度</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
             <h3>曜日</h3>
             <div v-bind:id="name + '-schedule-entry-wday'">
                 <span
@@ -109,6 +128,7 @@ export default {
                 time: this.modelValue.time,
                 solar_rad: this.modelValue.solar_rad,
                 lux: this.modelValue.lux,
+                altitude: this.modelValue.altitude,
                 wday: this.modelValue.wday,
             };
         },

@@ -12,7 +12,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="name in ['lux', 'solar_rad']" :key="name" className="row">
+                        <tr v-for="name in ['lux', 'solar_rad', 'altitude']" :key="name" className="row">
                             <td class="text-start col-2">{{ this.SENSOR_DEF[name].label }}</td>
                             <td class="text-end col-2">
                                 <span v-if="sensor[name].valid">
@@ -24,12 +24,12 @@
                                 <small v-html="this.SENSOR_DEF[name].unit" />
                             </td>
                             <td class="text-start col-2">
-                                <span v-if="sensor[name].valid">{{ sensor.lux.time.fromNow() }}</span>
+                                <span v-if="sensor[name].valid">{{ sensor[name].time.fromNow() }}</span>
                                 <span v-else>不明</span>
                             </td>
                             <td class="text-start col-4 text-nowrap">
                                 <span v-if="sensor[name].valid">{{
-                                    sensor.lux.time.format("M/D HH:mm")
+                                    sensor[name].time.format("M/D HH:mm")
                                 }}</span>
                                 <span v-else>不明</span>
                             </td>
@@ -58,6 +58,10 @@ const SENSOR_DEF = {
     lux: {
         label: "照度",
         unit: "LUX",
+    },
+    altitude: {
+        label: "太陽高度",
+        unit: "度",
     },
 };
 
@@ -94,7 +98,7 @@ export default {
                 .then((response) => {
                     this.sensor = response.data;
 
-                    ["solar_rad", "lux"].forEach((name) => {
+                    ["solar_rad", "lux", "altitude"].forEach((name) => {
                         this.sensor[name].time = dayjs(this.sensor[name].time);
                     });
                 })
