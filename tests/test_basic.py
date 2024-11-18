@@ -113,10 +113,12 @@ def move_to(time_machine, target_time):
 SENSOR_DATA_DARK = {
     "lux": {"valid": True, "value": 10},
     "solar_rad": {"valid": True, "value": 10},
+    "altitude": {"valid": True, "value": 0},
 }
 SENSOR_DATA_BRIGHT = {
     "solar_rad": {"valid": True, "value": 200},
     "lux": {"valid": True, "value": 2000},
+    "altitude": {"valid": True, "value": 50},
 }
 
 
@@ -125,12 +127,15 @@ def gen_schedule_data():
         "is_active": True,
         "solar_rad": 0,
         "lux": 0,
+        "altitude": 0,
         "wday": [True] * 7,
     }
 
     return {
-        "open": schedule_data | {"time": time_str(time_morning(1)), "solar_rad": 150, "lux": 1000},
-        "close": schedule_data | {"time": time_str(time_evening(1)), "solar_rad": 80, "lux": 1200},
+        "open": schedule_data
+        | {"time": time_str(time_morning(1)), "solar_rad": 150, "lux": 1000, "altitude": 10},
+        "close": schedule_data
+        | {"time": time_str(time_evening(1)), "solar_rad": 80, "lux": 1200, "altitude": 15},
     }
 
 
