@@ -52,22 +52,29 @@ def brightness_text(sense_data, cur_schedule_data):
     return ", ".join(text)
 
 
-def check_brightness(sense_data, state):
+def check_brightness(sense_data, action):
     if (not sense_data["lux"]["valid"]) or (not sense_data["solar_rad"]["valid"]):
         return BRIGHTNESS_STATE.UNKNOWN
 
-    if (
-        (sense_data["lux"]["value"] < schedule_data[state]["lux"])
-        and (sense_data["solar_rad"]["value"] < schedule_data[state]["solar_rad"])
-        and (sense_data["altitude"]["value"] < schedule_data[state]["altitude"])
-    ):
-        if state == "close":
-            logging.info("Getting darker %s", brightness_text(sense_data, schedule_data[state]))
-        return BRIGHTNESS_STATE.DARK
-    else:
-        if state == "open":
-            logging.info("Getting brighter %s", brightness_text(sense_data, schedule_data[state]))
-        return BRIGHTNESS_STATE.BRIGHT
+    if action == "close":
+        if (
+            (sense_data["lux"]["value"] < schedule_data[action]["lux"])
+            and (sense_data["solar_rad"]["value"] < schedule_data[action]["solar_rad"])
+        ) or (sense_data["altitude"]["value"] < schedule_data[action]["altitude"]):
+            logging.info("Getting darker %s", brightness_text(sense_data, schedule_data[action]))
+            return BRIGHTNESS_STATE.DARK
+        else:
+            return BRIGHTNESS_STATE.BRIGHT
+    else:  # noqa: PLR5501
+        if (
+            (sense_data["lux"]["value"] > schedule_data[action]["lux"])
+            or (sense_data["solar_rad"]["value"] > schedule_data[action]["solar_rad"])
+            or (sense_data["altitude"]["value"] > schedule_data[action]["altitude"])
+        ):
+            logging.info("Getting brighter %s", brightness_text(sense_data, schedule_data[action]))
+            return BRIGHTNESS_STATE.BRIGHT
+        else:
+            return BRIGHTNESS_STATE.DARK
 
 
 def exec_shutter_control_impl(config, state, mode, sense_data, user):
