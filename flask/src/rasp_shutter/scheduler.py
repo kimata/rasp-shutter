@@ -69,8 +69,7 @@ def check_brightness(sense_data, action):
         if (
             (sense_data["lux"]["value"] > schedule_data[action]["lux"])
             or (sense_data["solar_rad"]["value"] > schedule_data[action]["solar_rad"])
-            or (sense_data["altitude"]["value"] > schedule_data[action]["altitude"])
-        ):
+        ) and (sense_data["altitude"]["value"] > schedule_data[action]["altitude"]):
             logging.info("Getting brighter %s", brightness_text(sense_data, schedule_data[action]))
             return BRIGHTNESS_STATE.BRIGHT
         else:
