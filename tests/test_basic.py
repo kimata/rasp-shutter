@@ -260,7 +260,7 @@ def test_liveness(client):  # noqa: ARG001
 
     config = my_lib.config.load(CONFIG_FILE)
 
-    time.sleep(1)
+    time.sleep(2)
 
     assert healthz.check_liveness(
         [
