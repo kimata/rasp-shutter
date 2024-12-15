@@ -434,7 +434,7 @@ def set_schedule(config, schedule_data):  # noqa: C901
             seconds,
         )
 
-    schedule.every().minutes.do(shutter_auto_control, config)
+    schedule.every(10).seconds.do(shutter_auto_control, config)
 
 
 def schedule_worker(config, queue):
