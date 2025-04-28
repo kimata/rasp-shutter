@@ -17,7 +17,7 @@
         "bootstrap-vue-next": "^0.24.15",
         "dayjs": "^1.11.13",
         "vite-plugin-html": "^3.2.2",
-        "vue": "^3.5.5",
+        "vue": "^3.5.13",
         "vue-toast-notification": "^3.1.2"
     },
     "devDependencies": {
