@@ -82,9 +82,6 @@ test-walk-through:
 test-playwright:
     stage: test
 
-    variables:
-        TEST: "true"
-
     needs:
         - build-vue
         - test-prepare
@@ -116,9 +113,6 @@ test-playwright:
 
 test-playwright-docker:
     stage: test
-
-    variables:
-        TEST: "true"
 
     needs:
         - build-image
@@ -155,9 +149,6 @@ test-playwright-docker:
 
 test-playwright-docker-demo:
     stage: test
-
-    variables:
-        TEST: "true"
 
     needs:
         - build-image
