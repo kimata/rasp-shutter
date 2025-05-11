@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 import datetime
+import enum
 import logging
 import pathlib
 import re
 import threading
 import time
 import traceback
-from enum import IntEnum
 
 import my_lib.footprint
 import my_lib.serializer
@@ -18,7 +18,7 @@ import rasp_shutter.webapp_sensor
 import schedule
 
 
-class BRIGHTNESS_STATE(IntEnum):  # noqa: N801
+class BRIGHTNESS_STATE(enum.IntEnum):  # noqa: N801
     DARK = 0
     BRIGHT = 1
     UNKNOWN = 2
@@ -481,8 +481,8 @@ def schedule_worker(config, queue):
 
 
 if __name__ == "__main__":
-    from multiprocessing import Queue
-    from multiprocessing.pool import ThreadPool
+    import multiprocessing
+    import multiprocessing.pool
 
     import my_lib.config
     import my_lib.logger
@@ -495,11 +495,11 @@ if __name__ == "__main__":
         should_terminate.set()
 
     config = my_lib.config.load()
-    queue = Queue()
+    queue = multiprocessing.Queue()
 
     init()
 
-    pool = ThreadPool(processes=1)
+    pool = multiprocessing.pool.ThreadPool(processes=1)
     result = pool.apply_async(schedule_worker, (config, queue))
 
     exec_time = datetime.datetime.now(my_lib.webapp.config.TIMEZONE) + datetime.timedelta(seconds=5)

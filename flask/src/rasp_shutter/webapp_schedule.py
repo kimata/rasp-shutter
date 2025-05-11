@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import json
+import multiprocessing
 import threading
 import urllib.parse
-from multiprocessing import Queue
 
 import flask_cors
 import my_lib.flask_util
@@ -30,7 +30,7 @@ def init(config):
     if worker is not None:
         raise ValueError("worker should be None")  # noqa: TRY003, EM101
 
-    schedule_queue = Queue()
+    schedule_queue = multiprocessing.Queue()
     rasp_shutter.scheduler.init()
     worker = threading.Thread(
         target=rasp_shutter.scheduler.schedule_worker,
