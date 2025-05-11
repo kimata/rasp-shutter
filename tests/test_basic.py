@@ -72,7 +72,7 @@ def app():
         with app.app_context():
             yield app
 
-        # NOTE: 特定のテストのみ実行したときのため，ここでも呼ぶ
+        # NOTE: 特定のテストのみ実行したときのため、ここでも呼ぶ
         test_terminate()
 
 
@@ -153,7 +153,7 @@ def app_log_check(  # noqa: C901, PLR0912
     logging.debug(json.dumps(log_list, indent=2, ensure_ascii=False))
 
     if is_strict:
-        # NOTE: クリアする直前のログが残っている可能性があるので，+1 でも OK とする
+        # NOTE: クリアする直前のログが残っている可能性があるので、+1 でも OK とする
         assert (len(log_list) == len(expect_list)) or (len(log_list) == (len(expect_list) + 1))
 
     for i, expect in enumerate(reversed(expect_list)):
@@ -192,7 +192,7 @@ def app_log_check(  # noqa: C901, PLR0912
         elif expect == "CLEAR":
             assert "クリアされました" in log_list[i]["message"]
         else:
-            raise AssertionError(f"テストコードのバグです．({expect})")  # noqa: EM102
+            raise AssertionError(f"テストコードのバグです。({expect})")  # noqa: EM102
 
 
 def ctrl_log_clear(client):
@@ -248,9 +248,9 @@ def check_notify_slack(message, index=-1):
     logging.debug(notify_hist)
 
     if message is None:
-        assert notify_hist == [], "正常なはずなのに，エラー通知がされています。"
+        assert notify_hist == [], "正常なはずなのに、エラー通知がされています。"
     else:
-        assert len(notify_hist) != 0, "異常が発生したはずなのに，エラー通知がされていません。"
+        assert len(notify_hist) != 0, "異常が発生したはずなのに、エラー通知がされていません。"
         assert notify_hist[index].find(message) != -1, f"「{message}」が Slack で通知されていません。"
 
 
@@ -364,7 +364,7 @@ def test_shutter_ctrl_inconsistent_read(client):
     import my_lib.footprint
     import rasp_shutter.webapp_control
 
-    # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (close が後)
+    # NOTE: 本来ないはずの、oepn と close の両方のファイルが存在する場合 (close が後)
     ctrl_stat_clear()
     my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("open", 0))
     time.sleep(0.1)
@@ -378,7 +378,7 @@ def test_shutter_ctrl_inconsistent_read(client):
     assert response.json["state"][0]["state"] == rasp_shutter.webapp_control.SHUTTER_STATE.CLOSE
     assert response.json["state"][1]["state"] == rasp_shutter.webapp_control.SHUTTER_STATE.UNKNOWN
 
-    # NOTE: 本来ないはずの，oepn と close の両方のファイルが存在する場合 (open が後)
+    # NOTE: 本来ないはずの、oepn と close の両方のファイルが存在する場合 (open が後)
     ctrl_stat_clear()
     my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("close", 1))
     time.sleep(0.1)
@@ -606,7 +606,7 @@ def test_valve_ctrl_manual_all(client):
 def test_valve_ctrl_manual_single_fail(client, mocker):
     import requests
 
-    # NOTE: このテストだけは，制御の止め方を変える
+    # NOTE: このテストだけは、制御の止め方を変える
     def request_mock(url, timeout):  # noqa: ARG001
         request_mock.i += 1
         response = requests.models.Response()
@@ -1461,7 +1461,7 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, time_machine):
         ],
     )
 
-    # NOTE: pending open になった後に，open が inactive
+    # NOTE: pending open になった後に、open が inactive
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
     schedule_data["close"]["is_active"] = False
@@ -1958,7 +1958,7 @@ def test_schedule_ctrl_write_fail(client, mocker):
     )
     assert response.status_code == 200
 
-    # NOTE: 次回のテストに向けて，正常なものに戻しておく
+    # NOTE: 次回のテストに向けて、正常なものに戻しておく
     schedule_data = gen_schedule_data()
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",

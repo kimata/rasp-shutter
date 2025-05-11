@@ -98,14 +98,14 @@ export default {
                     this.$root.$toast.open({
                         type: "success",
                         position: "top-right",
-                        message: "正常に保存できました．",
+                        message: "正常に保存できました。",
                     });
                 })
                 .catch(() => {
                     this.$root.$toast.open({
                         type: "error",
                         position: "top-right",
-                        message: "保存に失敗しました．",
+                        message: "保存に失敗しました。",
                     });
                 });
         },

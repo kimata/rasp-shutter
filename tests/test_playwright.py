@@ -24,7 +24,7 @@ def check_log(page, message, timeout_sec=2):
         message, timeout=timeout_sec * 1000
     )
 
-    # NOTE: ログクリアする場合，ログの内容が変化しているので，ここで再取得する
+    # NOTE: ログクリアする場合、ログの内容が変化しているので、ここで再取得する
     log_list = page.locator('//div[contains(@class,"log")]/div/div[2]')
     for i in range(log_list.count()):
         expect(log_list.nth(i)).not_to_contain_text("失敗")
@@ -214,15 +214,15 @@ def test_schedule_run(page, host, port):
     time.sleep(1)
     check_log(page, "ログがクリアされました")
 
-    # NOTE: 次の「分」で実行させるにあたって，秒数を調整する
+    # NOTE: 次の「分」で実行させるにあたって、秒数を調整する
     time.sleep((90 - datetime.datetime.now(my_lib.webapp.config.TIMEZONE).second) % 60)
 
-    # NOTE: スケジュールに従って閉める評価をしたいので，一旦あけておく
+    # NOTE: スケジュールに従って閉める評価をしたいので、一旦あけておく
     page.get_by_test_id("open-0").click()
     page.get_by_test_id("open-1").click()
 
     for state in ["open", "close"]:
-        # NOTE: checkbox 自体は hidden にして，CSS で表示しているので，
+        # NOTE: checkbox 自体は hidden にして、CSS で表示しているので、
         # 通常の locator では操作できない
         enable_checkbox = page.locator(f'//input[contains(@id,"{state}-schedule-entry")]')
         enable_checkbox.evaluate("node => node.checked = false")
@@ -251,13 +251,13 @@ def test_schedule_disable(page, host, port):
     time.sleep(1)
     check_log(page, "ログがクリアされました")
 
-    # NOTE: スケジュールに従って閉める評価をしたいので，一旦あけておく
+    # NOTE: スケジュールに従って閉める評価をしたいので、一旦あけておく
     page.get_by_test_id("open-0").click()
     page.get_by_test_id("open-1").click()
     time.sleep(1)
 
     for state in ["open", "close"]:
-        # NOTE: checkbox 自体は hidden にして，CSS で表示しているので，
+        # NOTE: checkbox 自体は hidden にして、CSS で表示しているので、
         # 通常の locator では操作できない
         enable_checkbox = page.locator(f'//input[contains(@id,"{state}-schedule-entry")]')
         enable_checkbox.evaluate("node => node.checked = false")

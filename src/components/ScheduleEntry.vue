@@ -33,8 +33,8 @@
             </div>
         </div>
         <div class="row mt-3">
-            <small v-if="name == 'open'" class="text-success">以下の何れかの閾値を超えるまで待ちます．</small>
-            <small v-else class="text-success">午後，高度もしくは日射・照度が共に下回ったら閉じます．</small>
+            <small v-if="name == 'open'" class="text-success">以下の何れかの閾値を超えるまで待ちます。</small>
+            <small v-else class="text-success">午後、高度もしくは日射・照度が共に下回ったら閉じます。</small>
         </div>
         <div class="row">
             <h3>日射閾値</h3>

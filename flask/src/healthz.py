@@ -6,9 +6,9 @@ Usage:
   healthz.py [-c CONFIG] [-p PORT] [-d]
 
 Options:
-  -c CONFIG         : CONFIG を設定ファイルとして読み込んで実行します．[default: config.yaml]
-  -p PORT           : WEB サーバのポートを指定します．[default: 5000]
-  -d                : デバッグモードで動作します．
+  -c CONFIG         : CONFIG を設定ファイルとして読み込んで実行します。[default: config.yaml]
+  -p PORT           : WEB サーバのポートを指定します。[default: 5000]
+  -d                : デバッグモードで動作します。
 """
 
 import logging
