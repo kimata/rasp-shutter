@@ -78,7 +78,7 @@ def check_brightness(sense_data, action):
 
 def exec_shutter_control_impl(config, state, mode, sense_data, user):
     try:
-        # NOTE: Web 経由だと認証つけた場合に困るので，直接関数を呼ぶ
+        # NOTE: Web 経由だと認証つけた場合に困るので、直接関数を呼ぶ
         rasp_shutter.webapp_control.set_shutter_state(
             config, list(range(len(config["shutter"]))), state, mode, sense_data, user
         )
@@ -111,7 +111,7 @@ def shutter_auto_open(config):
 
     elapsed_pendiing_open = my_lib.footprint.elapsed(rasp_shutter.config.STAT_PENDING_OPEN)
     if elapsed_pendiing_open > 6 * 60 * 60:
-        # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない．
+        # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない。
         logging.debug("NOT pending")
         return
     else:
@@ -121,14 +121,14 @@ def shutter_auto_open(config):
         my_lib.footprint.elapsed(rasp_shutter.config.STAT_AUTO_CLOSE)
         < rasp_shutter.config.EXEC_INTERVAL_AUTO_MIN * 60
     ):
-        # NOTE: 自動で閉めてから時間が経っていない場合は，処理を行わない．
+        # NOTE: 自動で閉めてから時間が経っていない場合は、処理を行わない。
         logging.debug("just closed before %d", my_lib.footprint.elapsed(rasp_shutter.config.STAT_AUTO_CLOSE))
         return
 
     sense_data = rasp_shutter.webapp_sensor.get_sensor_data(config)
     if check_brightness(sense_data, "open") == BRIGHTNESS_STATE.BRIGHT:
         sensor_text = rasp_shutter.webapp_control.sensor_text(sense_data)
-        my_lib.webapp.log.info(f"📝 暗くて延期されていましたが，明るくなってきたので開けます．{sensor_text}")
+        my_lib.webapp.log.info(f"📝 暗くて延期されていましたが、明るくなってきたので開けます。{sensor_text}")
 
         exec_shutter_control(
             config,
@@ -195,7 +195,7 @@ def shutter_auto_close(config):
             my_lib.footprint.elapsed(rasp_shutter.webapp_control.exec_stat_file("open", index))
             < rasp_shutter.config.EXEC_INTERVAL_AUTO_MIN * 60
         ):
-            # NOTE: 自動で開けてから時間が経っていない場合は，処理を行わない．
+            # NOTE: 自動で開けてから時間が経っていない場合は、処理を行わない。
             logging.debug(
                 "just opened before %d sec (%d)",
                 my_lib.footprint.elapsed(rasp_shutter.webapp_control.exec_stat_file("open", index)),
@@ -207,7 +207,7 @@ def shutter_auto_close(config):
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.DARK:
         sensor_text = rasp_shutter.webapp_control.sensor_text(sense_data)
         my_lib.webapp.log.info(
-            f"📝 予定より早いですが，暗くなってきたので閉めます．{sensor_text}",
+            f"📝 予定より早いですが、暗くなってきたので閉めます。{sensor_text}",
         )
 
         exec_shutter_control(
@@ -220,14 +220,14 @@ def shutter_auto_close(config):
         logging.info("Set Auto CLOSE")
         my_lib.footprint.update(rasp_shutter.config.STAT_AUTO_CLOSE)
 
-        # NOTE: まだ明るくなる可能性がある時間帯の場合，再度自動的に開けるようにする
+        # NOTE: まだ明るくなる可能性がある時間帯の場合、再度自動的に開けるようにする
         hour = datetime.datetime.now(my_lib.webapp.config.TIMEZONE).hour
         if (hour > 5) and (hour < 13):
             logging.info("Set Pending OPEN")
             my_lib.footprint.update(rasp_shutter.config.STAT_PENDING_OPEN)
 
     else:  # pragma: no cover
-        # NOTE: pending close の制御は無いのでここには来ない．
+        # NOTE: pending close の制御は無いのでここには来ない。
         logging.debug(
             "Skip pendding close (solar_rad: %.1f W/m^2, lux: %.1f LUX)",
             sense_data["solar_rad"]["value"] if sense_data["solar_rad"]["valid"] else -1,
@@ -270,7 +270,7 @@ def shutter_schedule_control(config, state):
     if state == "open":
         if check_brightness(sense_data, state) == BRIGHTNESS_STATE.DARK:
             sensor_text = rasp_shutter.webapp_control.sensor_text(sense_data)
-            my_lib.webapp.log.info(f"📝 まだ暗いので開けるのを見合わせました．{sensor_text}")
+            my_lib.webapp.log.info(f"📝 まだ暗いので開けるのを見合わせました。{sensor_text}")
 
             rasp_shutter.webapp_control.cmd_hist_push(
                 {
@@ -283,7 +283,7 @@ def shutter_schedule_control(config, state):
             logging.info("Set Pending OPEN")
             my_lib.footprint.update(rasp_shutter.config.STAT_PENDING_OPEN)
         else:
-            # NOTE: ここにきたときのみ，スケジュールに従って開ける
+            # NOTE: ここにきたときのみ、スケジュールに従って開ける
             exec_shutter_control(
                 config,
                 state,
@@ -469,7 +469,7 @@ def schedule_worker(config, queue):
             logging.debug("Sleep %.1f sec...", sleep_sec)
             time.sleep(sleep_sec)
         except OverflowError:  # pragma: no cover
-            # NOTE: テストする際，freezer 使って日付をいじるとこの例外が発生する
+            # NOTE: テストする際、freezer 使って日付をいじるとこの例外が発生する
             logging.debug(traceback.format_exc())
 
         if i % (10 / sleep_sec) == 0:

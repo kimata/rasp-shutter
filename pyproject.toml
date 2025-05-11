@@ -1,7 +1,7 @@
 [project]
 name = "rasp-shutter"
 version = "0.1.0"
-description = "電動シャッターを自動制御するアプリです．"
+description = "電動シャッターを自動制御するアプリです。"
 authors = [
     { name = "KIMATA Tetsuya", email = "kimata@green-rabbit.net" }
 ]
@@ -15,7 +15,7 @@ dependencies = [
     "fluent-logger>=0.11.1",
     "influxdb-client[ciso]>=1.44.0",
     "schedule==1.2.2",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@e3b1074bbbc99225da970440b7304fa748fb0220",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@7779ec6e3cdb64a60bbfc3d75bf4d61e6f732663",
     "pysolar>=0.13",
 ]
 
@@ -66,7 +66,7 @@ exclude_lines = [
   "pragma: no cover",
   "if __name__ == .__main__.:",
 
-  # 以下，未使用関数
+  # 以下、未使用関数
 ]
 
 [tool.coverage.html]

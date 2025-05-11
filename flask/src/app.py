@@ -6,10 +6,10 @@ Usage:
   app.py [-c CONFIG] [-p PORT] [-D] [-d]
 
 Options:
-  -c CONFIG         : CONFIG を設定ファイルとして読み込んで実行します．[default: config.yaml]
-  -p PORT           : WEB サーバのポートを指定します．[default: 5000]
-  -D                : ダミーモードで実行します．CI テストで利用することを想定しています．
-  -d                : デバッグモードで動作します．
+  -c CONFIG         : CONFIG を設定ファイルとして読み込んで実行します。[default: config.yaml]
+  -p PORT           : WEB サーバのポートを指定します。[default: 5000]
+  -D                : ダミーモードで実行します。CI テストで利用することを想定しています。
+  -d                : デバッグモードで動作します。
 """
 
 import atexit
@@ -24,13 +24,13 @@ SCHEMA_CONFIG = "config.schema"
 
 
 def create_app(config, dummy_mode=False):
-    # NOTE: オプションでダミーモードが指定された場合，環境変数もそれに揃えておく
+    # NOTE: オプションでダミーモードが指定された場合、環境変数もそれに揃えておく
     if dummy_mode:
         os.environ["DUMMY_MODE"] = "true"
     else:  # pragma: no cover
         os.environ["DUMMY_MODE"] = "false"
 
-    # NOTE: テストのため，環境変数 DUMMY_MODE をセットしてからロードしたいのでこの位置
+    # NOTE: テストのため、環境変数 DUMMY_MODE をセットしてからロードしたいのでこの位置
     import my_lib.webapp.config
 
     my_lib.webapp.config.URL_PREFIX = "/rasp-shutter"
@@ -60,7 +60,7 @@ def create_app(config, dummy_mode=False):
         my_lib.webapp.log.init(config)
 
         def notify_terminate():  # pragma: no cover
-            my_lib.webapp.log.info("🏃 アプリを再起動します．")
+            my_lib.webapp.log.info("🏃 アプリを再起動します。")
             my_lib.webapp.log.term()
 
         atexit.register(notify_terminate)

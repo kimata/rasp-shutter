@@ -14,11 +14,11 @@ import requests
 
 import flask
 
-# この時間内に同じ制御がスケジューラで再度リクエストされた場合，
-# 実行をやめる．
+# この時間内に同じ制御がスケジューラで再度リクエストされた場合、
+# 実行をやめる。
 EXEC_INTERVAL_SCHEDULE_HOUR = 12
-# この時間内に同じ制御が手動で再度リクエストされた場合，
-# 実行をやめる．
+# この時間内に同じ制御が手動で再度リクエストされた場合、
+# 実行をやめる。
 EXEC_INTERVAL_MANUAL_MINUTES = 1
 
 
@@ -132,14 +132,14 @@ def get_shutter_state(config):
 
 
 def set_shutter_state_impl(config, index, state, mode, sense_data=None, user=""):  # noqa: PLR0913
-    # NOTE: 閉じている場合に再度閉じるボタンをおしたり，逆に開いている場合に再度
-    # 開くボタンを押すことが続くと，スイッチがエラーになるので exec_hist を使って
-    # 防止する．また，明るさに基づく自動の開閉が連続するのを防止する．
-    # exec_hist はこれ以外の目的で使わない．
+    # NOTE: 閉じている場合に再度閉じるボタンをおしたり、逆に開いている場合に再度
+    # 開くボタンを押すことが続くと、スイッチがエラーになるので exec_hist を使って
+    # 防止する。また、明るさに基づく自動の開閉が連続するのを防止する。
+    # exec_hist はこれ以外の目的で使わない。
     exec_hist = exec_stat_file(state, index)
     diff_sec = my_lib.footprint.elapsed(exec_hist)
 
-    # NOTE: 制御間隔が短く，実際には御できなかった場合，ログを残す．
+    # NOTE: 制御間隔が短く、実際には御できなかった場合、ログを残す。
     if mode == CONTROL_MODE.MANUAL:
         if (diff_sec / 60) < EXEC_INTERVAL_MANUAL_MINUTES:
             my_lib.webapp.log.info(
@@ -171,7 +171,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
             return
     elif mode == CONTROL_MODE.AUTO:
         if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:  # pragma: no cover
-            # NOTE: shutter_auto_close の段階で撥ねられているので，ここには来ない．
+            # NOTE: shutter_auto_close の段階で撥ねられているので、ここには来ない。
             my_lib.webapp.log.info(
                 (
                     "🔔 自動で{name}のシャッターを{state}るのを見合わせました。"
@@ -218,12 +218,12 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
 def set_shutter_state(config, index_list, state, mode, sense_data=None, user=""):  # noqa: PLR0913
     if state == "open":
         if mode != CONTROL_MODE.MANUAL:
-            # NOTE: 手動以外でシャッターを開けた場合は，
-            # 自動で閉じた履歴を削除する．
+            # NOTE: 手動以外でシャッターを開けた場合は、
+            # 自動で閉じた履歴を削除する。
             rasp_shutter.config.STAT_AUTO_CLOSE.unlink(missing_ok=True)
     else:
-        # NOTE: シャッターを閉じる指示がされた場合は，
-        # 暗くて延期されていた開ける制御を取り消す．
+        # NOTE: シャッターを閉じる指示がされた場合は、
+        # 暗くて延期されていた開ける制御を取り消す。
         rasp_shutter.config.STAT_PENDING_OPEN.unlink(missing_ok=True)
 
     with control_lock:
@@ -261,7 +261,7 @@ def api_shutter_ctrl():
     state = flask.request.args.get("state", "close", type=str)
     config = flask.current_app.config["CONFIG"]
 
-    # NOTE: シャッターが指定されていない場合は，全てを制御対象にする
+    # NOTE: シャッターが指定されていない場合は、全てを制御対象にする
     index_list = list(range(len(config["shutter"]))) if index == -1 else [index]
 
     if cmd == 1:

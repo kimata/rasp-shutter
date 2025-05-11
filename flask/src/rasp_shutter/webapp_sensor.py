@@ -41,7 +41,7 @@ def get_sensor_data(config):
         if data["valid"]:
             sense_data[field] = {
                 "value": data["value"][0],
-                # NOTE: タイムゾーン情報を削除しておく．
+                # NOTE: タイムゾーン情報を削除しておく。
                 "time": timezone.localize(data["time"][0].replace(tzinfo=None)),
                 "valid": True,
             }
