@@ -3,13 +3,13 @@
 電動シャッターの開閉を自動化するアプリのサーバーです
 
 Usage:
-  app.py [-c CONFIG] [-p PORT] [-D] [-d]
+  app.py [-c CONFIG] [-p PORT] [-d] [-D]
 
 Options:
   -c CONFIG         : CONFIG を設定ファイルとして読み込んで実行します。[default: config.yaml]
   -p PORT           : WEB サーバのポートを指定します。[default: 5000]
-  -D                : ダミーモードで実行します。CI テストで利用することを想定しています。
-  -d                : デバッグモードで動作します。
+  -d                : ダミーモードで実行します。CI テストで利用することを想定しています。
+  -D                : デバッグモードで動作します。
 """
 
 import atexit
@@ -84,8 +84,6 @@ def create_app(config, dummy_mode=False):
     app.register_blueprint(my_lib.webapp.log.blueprint)
     app.register_blueprint(my_lib.webapp.util.blueprint)
 
-    # app.debug = True
-
     return app
 
 
@@ -100,8 +98,8 @@ if __name__ == "__main__":
 
     config_file = args["-c"]
     port = args["-p"]
-    dummy_mode = args["-D"]
-    debug_mode = args["-d"]
+    dummy_mode = args["-d"]
+    debug_mode = args["-D"]
 
     my_lib.logger.init("hems.rasp-shutter", level=logging.DEBUG if debug_mode else logging.INFO)
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+import enum
 import logging
 import os
 import pathlib
 import threading
-from enum import Enum, IntEnum
 
 import my_lib.flask_util
 import my_lib.footprint
@@ -22,13 +22,13 @@ EXEC_INTERVAL_SCHEDULE_HOUR = 12
 EXEC_INTERVAL_MANUAL_MINUTES = 1
 
 
-class SHUTTER_STATE(IntEnum):  # noqa: N801
+class SHUTTER_STATE(enum.IntEnum):  # noqa: N801
     OPEN = 0
     CLOSE = 1
     UNKNOWN = 2
 
 
-class CONTROL_MODE(Enum):  # noqa: N801
+class CONTROL_MODE(enum.Enum):  # noqa: N801
     MANUAL = "🔧手動"
     SCHEDULE = "⏰スケジューラ"
     AUTO = "🤖自動"
