@@ -1,0 +1,11 @@
+services:
+    rasp-shutter:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        tty: true
+        stdin_open: true
+        volumes:
+            - ./flask/data:/opt/rasp-shutter/flask/data
+        ports:
+            - "5000:5000"
