@@ -13,8 +13,6 @@
 Vue で作られた UI と、Flask で作られたアプリサーバで構成されます。
 ESP32 の REST API を叩いて電動シャッターの制御を行います。
 
-スケジュール機能は cron ファイルを読み書きして実現しています。
-
 ESP32 のソフト関係は[ブログ](https://rabbit-note.com/2019/03/17/shutter-automation/)で紹介しています。
 
 ![システム構成](./img/システム構成.png)
@@ -25,36 +23,51 @@ ESP32 のソフト関係は[ブログ](https://rabbit-note.com/2019/03/17/shutte
 
 https://rasp-shutter-demo.kubernetes.green-rabbit.net/rasp-shutter/
 
-## カスタマイズ
 
-ESP32 の REST API のアドレスは flask/config.py にて定義していますので、
-ここを書き換えることで制御方法を変えることができます。
+## 動作環境
 
-## 準備
+基本的には，Python が動作する環境であれば動作します。
+下記の環境での動作を確認しています。
 
-### ライブラリのインストール
+- Linux (Ubuntu 24.04)
+- Kubernetes
+
+## 設定
+
+同封されている `config.example.yaml` を `config.yaml` に名前変更して，お手元の環境に合わせて書き換えてください。
+
+## 動かし方
+
+### 準備
 
 ```bash:bash
-poetry install
+sudo apt install docker npm
 ```
 
-Ubuntu 18.04 の場合、apt install python3-crontab でインストールしたライブラ
-リだとバージョンが古いのでエラーが出ます。
-
-## ビルド方法
+### 実行
 
 ```bash:bash
 npm ci
 npm run build
+
+docker compose run --build --rm --publish 5000:5000 rasp-shutter
 ```
 
-## 実行方法
+### Docker を使いたくない場合
 
-```bash:bash
-poetry run python3 flask/app.py
+[Rye](https://rye.astral.sh/) がインストールされた環境であれば，
+下記のようにして Docker を使わずに実行できます．
+
+```
+rye sync
+rye run python flask/src/app.py
 ```
 
 ## テスト結果
 
 -   https://kimata.github.io/rasp-shutter/
 -   https://kimata.github.io/rasp-shutter/coverage/
+
+# ライセンス
+
+Apache License Version 2.0 を適用します。
