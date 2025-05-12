@@ -38,13 +38,15 @@ https://rasp-shutter-demo.kubernetes.green-rabbit.net/rasp-shutter/
 
 ## 動かし方
 
-### 準備
+### Linux の場合
+
+#### 準備
 
 ```bash:bash
-sudo apt install docker npm
+sudo apt install npm docker
 ```
 
-### 実行
+#### 実行
 
 ```bash:bash
 npm ci
@@ -53,15 +55,20 @@ npm run build
 docker compose run --build --rm --publish 5000:5000 rasp-shutter
 ```
 
-### Docker を使いたくない場合
+#### Docker を使いたくない場合
 
-[Rye](https://rye.astral.sh/) がインストールされた環境であれば，
+[Rye](https://rye.astral.sh/) と Google Chrome がインストールされた環境であれば，
 下記のようにして Docker を使わずに実行できます．
 
-```
+```bash:bash
 rye sync
 rye run python flask/src/app.py
 ```
+
+### Kubernetes の場合
+
+Kubernetes で CronJob を使って定期的に実行するため設定ファイルが `kubernetes/rasp-shutter.yaml` に入っていますので，
+適宜カスタマイズして使っていただければと思います。
 
 ## テスト結果
 

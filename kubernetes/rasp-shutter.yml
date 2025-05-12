@@ -1,0 +1,98 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+    name: pv-rasp-shutter
+    namespace: hems
+spec:
+    storageClassName: manual
+    capacity:
+        storage: 10Mi
+    accessModes:
+        - ReadWriteOnce
+    local:
+        path: /home/kimata/github/rasp-shutter/flask/data
+    nodeAffinity:
+        required:
+            nodeSelectorTerms:
+                - matchExpressions:
+                    - key: kubernetes.io/hostname
+                      operator: In
+                      values:
+                        - hems
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: pvc-rasp-shutter
+    namespace: hems
+spec:
+    storageClassName: manual
+    accessModes:
+        - ReadWriteOnce
+    resources:
+        requests:
+            storage: 10Mi
+---
+kind: Service
+apiVersion: v1
+metadata:
+    name: rasp-shutter
+    namespace: hems
+    annotations:
+        metallb.universe.tf/address-pool: default
+        external-dns.alpha.kubernetes.io/hostname: rasp-shutter.kubernetes.green-rabbit.net
+spec:
+    selector:
+        app: rasp-shutter
+    ports:
+        - port: 5000
+          targetPort: 5000
+    type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: rasp-shutter
+    namespace: hems
+    labels:
+        app: rasp-shutter
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: rasp-shutter
+    template:
+        metadata:
+            labels:
+                app: rasp-shutter
+        spec:
+            containers:
+                - name: rasp-shutter
+                  image: registry.green-rabbit.net:5000/kimata/rasp-shutter:latest
+                  imagePullPolicy: Always
+                  ports:
+                    - containerPort: 5000
+                  volumeMounts:
+                    - name: data
+                      mountPath: /opt/rasp-shutter/flask/data
+                  resources:
+                    requests:
+                        memory: 128Mi
+                    limits:
+                        memory: 256Mi
+                  livenessProbe:
+                    exec:
+                        command:
+                            - /opt/rasp-shutter/flask/src/healthz.py
+                    initialDelaySeconds: 120
+                    periodSeconds: 120
+                    timeoutSeconds: 30
+                    successThreshold: 1
+                    failureThreshold: 3
+            volumes:
+                - name: data
+                  persistentVolumeClaim:
+                    claimName: pvc-rasp-shutter
+            dnsPolicy: ClusterFirst
+            nodeSelector:
+                kubernetes.io/hostname: hems
