@@ -1,9 +1,4 @@
 webapp:
-    timezone:
-        offset: "+9"
-        name: JST
-        zone: Asia/Tokyo
-
     static_dir_path: dist
 
     data:
