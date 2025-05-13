@@ -26,7 +26,7 @@ https://rasp-shutter-demo.kubernetes.green-rabbit.net/rasp-shutter/
 
 ## 動作環境
 
-基本的には，Python が動作する環境であれば動作します。
+基本的には、Python が動作する環境であれば動作します。
 下記の環境での動作を確認しています。
 
 - Linux (Ubuntu 24.04)
@@ -34,7 +34,7 @@ https://rasp-shutter-demo.kubernetes.green-rabbit.net/rasp-shutter/
 
 ## 設定
 
-同封されている `config.example.yaml` を `config.yaml` に名前変更して，お手元の環境に合わせて書き換えてください。
+同封されている `config.example.yaml` を `config.yaml` に名前変更して、お手元の環境に合わせて書き換えてください。
 
 ## 準備
 
@@ -51,10 +51,10 @@ npm run build
 docker compose run --build --rm --publish 5000:5000 rasp-shutter
 ```
 
-## 実行 (Docker 未使用)
+## 実行 (Docker 不使用)
 
-[Rye](https://rye.astral.sh/) がインストールされた環境であれば，
-下記のようにして Docker を使わずに実行できます．
+[Rye](https://rye.astral.sh/) がインストールされた環境であれば、
+下記のようにして Docker を使わずに実行できます。
 
 ```bash:bash
 rye sync
@@ -62,7 +62,7 @@ rye run python flask/src/app.py
 ```
 ## Kubernetes で動かす場合
 
-Kubernetes で CronJob を使って定期的に実行するため設定ファイルが `kubernetes/rasp-shutter.yaml` に入っていますので，
+Kubernetes で CronJob を使って定期的に実行するため設定ファイルが `kubernetes/rasp-shutter.yaml` に入っていますので、
 適宜カスタマイズして使っていただければと思います。
 
 ## テスト結果
