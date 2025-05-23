@@ -150,12 +150,12 @@ def shutter_auto_open(config):
 def conv_schedule_time_to_datetime(schedule_time):
     return (
         datetime.datetime.strptime(
-            datetime.datetime.now(my_lib.webapp.config.TIMEZONE).strftime("%Y/%m/%d ") + schedule_time,
+            my_lib.time.now().strftime("%Y/%m/%d ") + schedule_time,
             "%Y/%m/%d %H:%M",
         )
     ).replace(
-        tzinfo=my_lib.webapp.config.TIMEZONE,
-        day=datetime.datetime.now(my_lib.webapp.config.TIMEZONE).day,
+        tzinfo=my_lib.time.get_zoneinfo(),
+        day=my_lib.time.now().day,
     )
 
 
@@ -166,22 +166,18 @@ def shutter_auto_close(config):
         logging.debug("inactive")
         return
     elif abs(
-        datetime.datetime.now(my_lib.webapp.config.TIMEZONE)
-        - conv_schedule_time_to_datetime(schedule_data["open"]["time"])
+        my_lib.time.now() - conv_schedule_time_to_datetime(schedule_data["open"]["time"])
     ) < datetime.timedelta(minutes=1):
         # NOTE: 開ける時刻付近の場合は処理しない
         logging.debug("near open time")
         return
     elif (
-        datetime.datetime.now(my_lib.webapp.config.TIMEZONE)
-        <= conv_schedule_time_to_datetime(schedule_data["open"]["time"])
+        my_lib.time.now() <= conv_schedule_time_to_datetime(schedule_data["open"]["time"])
     ) or my_lib.footprint.exists(rasp_shutter.config.STAT_PENDING_OPEN):
         # NOTE: 開ける時刻よりも早い場合は処理しない
         logging.debug("before open time")
         return
-    elif conv_schedule_time_to_datetime(schedule_data["close"]["time"]) <= datetime.datetime.now(
-        my_lib.webapp.config.TIMEZONE
-    ):
+    elif conv_schedule_time_to_datetime(schedule_data["close"]["time"]) <= my_lib.time.now():
         # NOTE: スケジュールで閉めていた場合は処理しない
         logging.debug("after close time")
         return
@@ -221,7 +217,7 @@ def shutter_auto_close(config):
         my_lib.footprint.update(rasp_shutter.config.STAT_AUTO_CLOSE)
 
         # NOTE: まだ明るくなる可能性がある時間帯の場合、再度自動的に開けるようにする
-        hour = datetime.datetime.now(my_lib.webapp.config.TIMEZONE).hour
+        hour = my_lib.time.now().hour
         if (hour > 5) and (hour < 13):
             logging.info("Set Pending OPEN")
             my_lib.footprint.update(rasp_shutter.config.STAT_PENDING_OPEN)
@@ -236,7 +232,7 @@ def shutter_auto_close(config):
 
 
 def shutter_auto_control(config):
-    hour = datetime.datetime.now(my_lib.webapp.config.TIMEZONE).hour
+    hour = my_lib.time.now().hour
 
     # NOTE: 時間帯によって自動制御の内容を分ける
     if (hour > 5) and (hour < 12):
@@ -388,31 +384,31 @@ def set_schedule(config, schedule_data):  # noqa: C901
             continue
 
         if entry["wday"][0]:
-            schedule.every().sunday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+            schedule.every().sunday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
         if entry["wday"][1]:
-            schedule.every().monday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+            schedule.every().monday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
         if entry["wday"][2]:
-            schedule.every().tuesday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+            schedule.every().tuesday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
         if entry["wday"][3]:
-            schedule.every().wednesday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+            schedule.every().wednesday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
         if entry["wday"][4]:
-            schedule.every().thursday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+            schedule.every().thursday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
         if entry["wday"][5]:
-            schedule.every().friday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+            schedule.every().friday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
         if entry["wday"][6]:
-            schedule.every().saturday.at(entry["time"], my_lib.webapp.config.TIMEZONE_PYTZ).do(
+            schedule.every().saturday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
 
@@ -426,9 +422,7 @@ def set_schedule(config, schedule_data):  # noqa: C901
 
         logging.info(
             "Now is %s, time to next jobs is %d hour(s) %d minute(s) %d second(s)",
-            datetime.datetime.now(
-                tz=datetime.timezone(datetime.timedelta(hours=my_lib.webapp.config.TIMEZONE_OFFSET))
-            ).strftime("%Y-%m-%d %H:%M"),
+            my_lib.time.now().strftime("%Y-%m-%d %H:%M"),
             hours,
             minutes,
             seconds,
@@ -502,7 +496,7 @@ if __name__ == "__main__":
     pool = multiprocessing.pool.ThreadPool(processes=1)
     result = pool.apply_async(schedule_worker, (config, queue))
 
-    exec_time = datetime.datetime.now(my_lib.webapp.config.TIMEZONE) + datetime.timedelta(seconds=5)
+    exec_time = my_lib.time.now() + datetime.timedelta(seconds=5)
     queue.put(
         {
             "open": {

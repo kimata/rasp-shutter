@@ -3,6 +3,7 @@
 
 import datetime
 import json
+import logging
 import os
 import pathlib
 import re
@@ -91,15 +92,11 @@ def client(app):
 
 
 def time_morning(offset_min=0):
-    return datetime.datetime.now(my_lib.webapp.config.TIMEZONE).replace(
-        hour=7, minute=0 + offset_min, second=0
-    )
+    return my_lib.time.now().replace(hour=7, minute=0 + offset_min, second=0)
 
 
 def time_evening(offset_min=0):
-    return datetime.datetime.now(my_lib.webapp.config.TIMEZONE).replace(
-        hour=17, minute=0 + offset_min, second=0
-    )
+    return my_lib.time.now().replace(hour=17, minute=0 + offset_min, second=0)
 
 
 def time_str(time):
@@ -144,8 +141,6 @@ def app_log_check(  # noqa: C901, PLR0912
     expect_list,
     is_strict=True,
 ):
-    import logging
-
     response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_view")
 
     log_list = response.json["data"]
@@ -212,8 +207,6 @@ def app_log_clear(client):
 
 
 def ctrl_log_check(client, expect):
-    import logging
-
     time.sleep(3)
 
     response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/ctrl/log")
@@ -240,8 +233,6 @@ def ctrl_stat_clear():
 
 
 def check_notify_slack(message, index=-1):
-    import logging
-
     import my_lib.notify.slack
 
     notify_hist = my_lib.notify.slack.hist_get(False)
@@ -274,42 +265,47 @@ def test_liveness(client):  # noqa: ARG001
     )
 
 
-def test_time(time_machine, client):  # noqa:  ARG001
-    import logging
-
+def test_time(time_machine):
     import schedule
 
-    logging.debug("datetime.now()                 = %s", datetime.datetime.now())  # noqa: DTZ005
-    logging.debug("datetime.now(JST)              = %s", datetime.datetime.now(my_lib.webapp.config.TIMEZONE))
+    logging.debug("datetime.now()                        = %s", datetime.datetime.now())  # noqa: DTZ005
     logging.debug(
-        "datetime.now().replace(...)    = %s",
+        "datetime.now(%10s)              = %s",
+        my_lib.time.get_tz(),
+        datetime.datetime.now(my_lib.time.get_zoneinfo()),
+    )
+    logging.debug(
+        "datetime.now().replace(...)           = %s",
         datetime.datetime.now().replace(hour=0, minute=0, second=0),  # noqa: DTZ005
     )
     logging.debug(
-        "datetime.now(JST).replace(...) = %s",
-        datetime.datetime.now(my_lib.webapp.config.TIMEZONE).replace(hour=0, minute=0, second=0),
+        "datetime.now(%10s).replace(...) = %s",
+        my_lib.time.get_tz(),
+        my_lib.time.now().replace(hour=0, minute=0, second=0),
     )
-
-    logging.debug("Freeze time at %s", time_str(time_morning(0)))
 
     move_to(time_machine, time_morning(0))
 
     logging.debug(
-        "datetime.now()                 = %s",
+        "datetime.now()                        = %s",
         datetime.datetime.now(),  # noqa: DTZ005
     )
-    logging.debug("datetime.now(JST)              = %s", datetime.datetime.now(my_lib.webapp.config.TIMEZONE))
+    logging.debug("datetime.now(%10s)              = %s", my_lib.time.get_tz(), my_lib.time.now())
 
     schedule.clear()
     job_time_str = time_str(time_morning(1))
     logging.debug("set schedule at %s", job_time_str)
-    job = schedule.every().day.at(job_time_str, my_lib.webapp.config.TIMEZONE_PYTZ).do(lambda: True)
+
+    job_add = schedule.every().day.at(job_time_str, my_lib.time.get_pytz()).do(lambda: True)
+
+    for i, job in enumerate(schedule.get_jobs()):
+        logging.debug("Current schedule [%d]: %s", i, job.next_run)
 
     idle_sec = schedule.idle_seconds()
-    logging.error("Time to next jobs is %.1f sec", idle_sec)
-    logging.debug("Next run is %s", job.next_run)
+    logging.info("Time to next jobs is %.1f sec", idle_sec)
+    logging.debug("Next run is %s", job_add.next_run)
 
-    assert idle_sec < 60
+    assert abs(idle_sec - 60) < 5
 
 
 def test_redirect(client):
