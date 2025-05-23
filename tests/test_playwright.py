@@ -2,17 +2,14 @@
 # ruff: noqa: S101
 
 import datetime
-import pathlib
+import logging
 import random
-import sys
 import time
 
+import my_lib.time
+import my_lib.webapp.config
 from flaky import flaky
 from playwright.sync_api import expect
-
-sys.path.append(str(pathlib.Path(__file__).parent.parent / "flask" / "lib"))
-
-import my_lib.webapp.config
 
 APP_URL_TMPL = "http://{host}:{port}/rasp-shutter/"
 
@@ -36,9 +33,7 @@ def time_str_random():
 
 
 def time_str_after(min_value):
-    return (
-        datetime.datetime.now(my_lib.webapp.config.TIMEZONE) + datetime.timedelta(minutes=min_value)
-    ).strftime("%H:%M")
+    return (my_lib.time.now() + datetime.timedelta(minutes=min_value)).strftime("%H:%M")
 
 
 def number_random(min_value, max_value):
@@ -87,25 +82,28 @@ def init(page):
 
 ######################################################################
 def test_time():
-    import logging
-
     import schedule
 
-    logging.debug("datetime.now()                 = %s", datetime.datetime.now())  # noqa: DTZ005
-    logging.debug("datetime.now(JST)              = %s", datetime.datetime.now(my_lib.webapp.config.TIMEZONE))
+    logging.debug("datetime.now()                        = %s", datetime.datetime.now())  # noqa: DTZ005
     logging.debug(
-        "datetime.now().replace(...)    = %s",
+        "datetime.now(%10s)              = %s",
+        my_lib.time.get_tz(),
+        datetime.datetime.now(my_lib.time.get_zoneinfo()),
+    )
+    logging.debug(
+        "datetime.now().replace(...)           = %s",
         datetime.datetime.now().replace(hour=0, minute=0, second=0),  # noqa: DTZ005
     )
     logging.debug(
-        "datetime.now(JST).replace(...) = %s",
-        datetime.datetime.now(my_lib.webapp.config.TIMEZONE).replace(hour=0, minute=0, second=0),
+        "datetime.now(%10s).replace(...) = %s",
+        my_lib.time.get_tz(),
+        my_lib.time.now().replace(hour=0, minute=0, second=0),
     )
 
     schedule.clear()
     job_time_str = time_str_after(SCHEDULE_AFTER_MIN)
     logging.debug("set schedule at %s", job_time_str)
-    job = schedule.every().day.at(job_time_str, my_lib.webapp.config.TIMEZONE_PYTZ).do(lambda: True)
+    job = schedule.every().day.at(job_time_str, my_lib.time.get_pytz()).do(lambda: True)
 
     idle_sec = schedule.idle_seconds()
     logging.debug("Time to next jobs is %.1f sec", idle_sec)
@@ -215,7 +213,7 @@ def test_schedule_run(page, host, port):
     check_log(page, "ログがクリアされました")
 
     # NOTE: 次の「分」で実行させるにあたって、秒数を調整する
-    time.sleep((90 - datetime.datetime.now(my_lib.webapp.config.TIMEZONE).second) % 60)
+    time.sleep((90 - my_lib.time.now().second) % 60)
 
     # NOTE: スケジュールに従って閉める評価をしたいので、一旦あけておく
     page.get_by_test_id("open-0").click()
