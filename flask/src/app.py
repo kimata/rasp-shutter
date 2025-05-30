@@ -72,7 +72,7 @@ def create_app(config, dummy_mode=False):
     app.config["CONFIG"] = config
     app.config["DUMMY_MODE"] = dummy_mode
 
-    app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
+    app.json.compat = True
 
     app.register_blueprint(rasp_shutter.webapp_control.blueprint)
     app.register_blueprint(rasp_shutter.webapp_schedule.blueprint)

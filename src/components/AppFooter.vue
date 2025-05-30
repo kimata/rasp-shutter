@@ -81,7 +81,7 @@ export default {
                     this.sysinfo.timezone = response.data["timezone"];
                     this.sysinfo.uptime = uptime.format("llll");
                     this.sysinfo.uptimeFrom = uptime.fromNow();
-                    this.sysinfo.loadAverage = response.data["loadAverage"];
+                    this.sysinfo.loadAverage = response.data["load_average"];
                 })
                 .catch(() => {});
         },
