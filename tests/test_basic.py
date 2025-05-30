@@ -67,7 +67,7 @@ def _clear(config):
     my_lib.notify.slack.interval_clear()
     my_lib.notify.slack.hist_clear()
 
-    ctrl_stat_clear()
+    ctrl_stat_clear(config)
 
 
 @pytest.fixture(scope="session")
@@ -368,7 +368,7 @@ def test_shutter_ctrl_inconsistent_read(client):
     import rasp_shutter.webapp_control
 
     # NOTE: 本来ないはずの、oepn と close の両方のファイルが存在する場合 (close が後)
-    ctrl_stat_clear()
+    ctrl_stat_clear(config)
     my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("open", 0))
     time.sleep(0.1)
     my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("close", 0))
@@ -382,7 +382,7 @@ def test_shutter_ctrl_inconsistent_read(client):
     assert response.json["state"][1]["state"] == rasp_shutter.webapp_control.SHUTTER_STATE.UNKNOWN
 
     # NOTE: 本来ないはずの、oepn と close の両方のファイルが存在する場合 (open が後)
-    ctrl_stat_clear()
+    ctrl_stat_clear(config)
     my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("close", 1))
     time.sleep(0.1)
     my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("open", 1))
