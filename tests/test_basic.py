@@ -43,6 +43,8 @@ def slack_mock():
 
 @pytest.fixture(scope="session")
 def config():
+    import pathlib
+
     import my_lib.config
 
     return my_lib.config.load(CONFIG_FILE, pathlib.aPth(SCHEMA_CONFIG))
