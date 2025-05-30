@@ -47,7 +47,7 @@ def config():
 
     import my_lib.config
 
-    return my_lib.config.load(CONFIG_FILE, pathlib.aPth(SCHEMA_CONFIG))
+    return my_lib.config.load(CONFIG_FILE, pathlib.Path(SCHEMA_CONFIG))
 
 
 @pytest.fixture(autouse=True)
