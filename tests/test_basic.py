@@ -363,7 +363,7 @@ def test_shutter_ctrl_read(client):
     check_notify_slack(None)
 
 
-def test_shutter_ctrl_inconsistent_read(client):
+def test_shutter_ctrl_inconsistent_read(client, config):
     import my_lib.footprint
     import rasp_shutter.webapp_control
 
