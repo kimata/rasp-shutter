@@ -17,6 +17,7 @@ import pytest
 from app import create_app
 
 CONFIG_FILE = "config.example.yaml"
+SCHEMA_CONFIG = "config.schema"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -40,11 +41,17 @@ def slack_mock():
         yield fixture
 
 
+@pytest.fixture(scope="session")
+def config():
+    import my_lib.config
+
+    return my_lib.config.load(CONFIG_FILE, pathlib.aPth(SCHEMA_CONFIG))
+
+
 @pytest.fixture(autouse=True)
-def _clear():
+def _clear(config):
     import my_lib.webapp.config
 
-    config = my_lib.config.load(CONFIG_FILE)
     my_lib.webapp.config.init(config)
 
     import my_lib.footprint
@@ -62,13 +69,13 @@ def _clear():
 
 
 @pytest.fixture(scope="session")
-def app():
-    my_lib.webapp.config.init(my_lib.config.load(CONFIG_FILE))
+def app(config):
+    my_lib.webapp.config.init(config)
 
     with mock.patch.dict("os.environ", {"WERKZEUG_RUN_MAIN": "true"}):
         my_lib.webapp.config.SCHEDULE_FILE_PATH.unlink(missing_ok=True)
 
-        app = create_app(my_lib.config.load(CONFIG_FILE), dummy_mode=True)
+        app = create_app(config, dummy_mode=True)
 
         with app.app_context():
             yield app
@@ -218,16 +225,16 @@ def ctrl_log_check(client, expect):
     assert response.json["log"] == expect
 
 
-def ctrl_stat_clear():
+def ctrl_stat_clear(config):
     import my_lib.config
 
-    my_lib.webapp.config.init(my_lib.config.load(CONFIG_FILE))
+    my_lib.webapp.config.init(config)
 
     import my_lib.webapp.config
     import rasp_shutter.config
     import rasp_shutter.webapp_control
 
-    rasp_shutter.webapp_control.clean_stat_exec(my_lib.config.load(CONFIG_FILE))
+    rasp_shutter.webapp_control.clean_stat_exec(config)
 
     rasp_shutter.config.STAT_AUTO_CLOSE.unlink(missing_ok=True)
 
@@ -246,10 +253,8 @@ def check_notify_slack(message, index=-1):
 
 
 ######################################################################
-def test_liveness(client):  # noqa: ARG001
+def test_liveness(client, config):  # noqa: ARG001
     import healthz
-
-    config = my_lib.config.load(CONFIG_FILE)
 
     time.sleep(2)
 
