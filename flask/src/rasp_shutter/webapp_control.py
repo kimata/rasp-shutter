@@ -42,8 +42,6 @@ cmd_hist = []
 
 def init():
     global cmd_hist  # noqa: PLW0603
-    rasp_shutter.config.STAT_EXEC_TMPL["open"].parent.mkdir(parents=True, exist_ok=True)
-    rasp_shutter.config.STAT_EXEC_TMPL["close"].parent.mkdir(parents=True, exist_ok=True)
     cmd_hist = []
 
 
@@ -110,16 +108,16 @@ def get_shutter_state(config):
         exec_stat_open = exec_stat_file("open", index)
         exec_stat_close = exec_stat_file("close", index)
 
-        if exec_stat_open.exists():
-            if exec_stat_close.exists():
-                if exec_stat_open.stat().st_mtime > exec_stat_close.stat().st_mtime:
+        if my_lib.footprint.exists(exec_stat_open):
+            if my_lib.footprint.exists(exec_stat_close):
+                if my_lib.footprint.compare(exec_stat_open, exec_stat_close):
                     shutter_state["state"] = SHUTTER_STATE.OPEN
                 else:
                     shutter_state["state"] = SHUTTER_STATE.CLOSE
             else:
                 shutter_state["state"] = SHUTTER_STATE.OPEN
         else:  # noqa: PLR5501
-            if exec_stat_close.exists():
+            if my_lib.footprint.exists(exec_stat_close):
                 shutter_state["state"] = SHUTTER_STATE.CLOSE
             else:
                 shutter_state["state"] = SHUTTER_STATE.UNKNOWN
@@ -191,7 +189,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
 
     my_lib.footprint.update(exec_hist)
     exec_inv_hist = exec_stat_file("close" if state == "open" else "open", index)
-    exec_inv_hist.unlink(missing_ok=True)
+    my_lib.footprint.clear(exec_inv_hist)
 
     if result:
         my_lib.webapp.log.info(
@@ -220,11 +218,11 @@ def set_shutter_state(config, index_list, state, mode, sense_data=None, user="")
         if mode != CONTROL_MODE.MANUAL:
             # NOTE: 手動以外でシャッターを開けた場合は、
             # 自動で閉じた履歴を削除する。
-            rasp_shutter.config.STAT_AUTO_CLOSE.unlink(missing_ok=True)
+            my_lib.footprint.clear(rasp_shutter.config.STAT_AUTO_CLOSE)
     else:
         # NOTE: シャッターを閉じる指示がされた場合は、
         # 暗くて延期されていた開ける制御を取り消す。
-        rasp_shutter.config.STAT_PENDING_OPEN.unlink(missing_ok=True)
+        my_lib.footprint.clear(rasp_shutter.config.STAT_PENDING_OPEN)
 
     with control_lock:
         for index in index_list:
