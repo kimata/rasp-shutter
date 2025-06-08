@@ -2,6 +2,7 @@
 import datetime
 import enum
 import logging
+import os
 import pathlib
 import re
 import threading
@@ -29,6 +30,20 @@ RETRY_COUNT = 3
 schedule_lock = None
 schedule_data = None
 should_terminate = threading.Event()
+
+# Worker-specific scheduler instance for pytest-xdist parallel execution
+_scheduler_instances = {}
+
+
+def get_scheduler():
+    """Get worker-specific scheduler instance for pytest-xdist parallel execution"""
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+
+    if worker_id not in _scheduler_instances:
+        # Create a new scheduler instance for this worker
+        _scheduler_instances[worker_id] = schedule.Scheduler()
+
+    return _scheduler_instances[worker_id]
 
 
 def init():
@@ -377,45 +392,46 @@ def schedule_load():
 
 
 def set_schedule(config, schedule_data):  # noqa: C901
-    schedule.clear()
+    scheduler = get_scheduler()
+    scheduler.clear()
 
     for state, entry in schedule_data.items():
         if not entry["is_active"]:
             continue
 
         if entry["wday"][0]:
-            schedule.every().sunday.at(entry["time"], my_lib.time.get_pytz()).do(
+            scheduler.every().sunday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
         if entry["wday"][1]:
-            schedule.every().monday.at(entry["time"], my_lib.time.get_pytz()).do(
+            scheduler.every().monday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
         if entry["wday"][2]:
-            schedule.every().tuesday.at(entry["time"], my_lib.time.get_pytz()).do(
+            scheduler.every().tuesday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
         if entry["wday"][3]:
-            schedule.every().wednesday.at(entry["time"], my_lib.time.get_pytz()).do(
+            scheduler.every().wednesday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
         if entry["wday"][4]:
-            schedule.every().thursday.at(entry["time"], my_lib.time.get_pytz()).do(
+            scheduler.every().thursday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
         if entry["wday"][5]:
-            schedule.every().friday.at(entry["time"], my_lib.time.get_pytz()).do(
+            scheduler.every().friday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
         if entry["wday"][6]:
-            schedule.every().saturday.at(entry["time"], my_lib.time.get_pytz()).do(
+            scheduler.every().saturday.at(entry["time"], my_lib.time.get_pytz()).do(
                 shutter_schedule_control, config, state
             )
 
-    for job in schedule.get_jobs():
+    for job in scheduler.get_jobs():
         logging.info("Next run: %s", job.next_run)
 
-    idle_sec = schedule.idle_seconds()
+    idle_sec = scheduler.idle_seconds
     if idle_sec is not None:
         hours, remainder = divmod(idle_sec, 3600)
         minutes, seconds = divmod(remainder, 60)
@@ -428,7 +444,7 @@ def set_schedule(config, schedule_data):  # noqa: C901
             seconds,
         )
 
-    schedule.every(10).seconds.do(shutter_auto_control, config)
+    scheduler.every(10).seconds.do(shutter_auto_control, config)
 
 
 def schedule_worker(config, queue):
@@ -436,6 +452,7 @@ def schedule_worker(config, queue):
     global schedule_data  # noqa: PLW0603
 
     sleep_sec = 0.5
+    scheduler = get_scheduler()
 
     liveness_file = pathlib.Path(config["liveness"]["file"]["scheduler"])
 
@@ -449,7 +466,7 @@ def schedule_worker(config, queue):
     i = 0
     while True:
         if should_terminate.is_set():
-            schedule.clear()
+            scheduler.clear()
             break
 
         try:
@@ -458,7 +475,7 @@ def schedule_worker(config, queue):
                 set_schedule(config, schedule_data)
                 schedule_store(schedule_data)
 
-            schedule.run_pending()
+            scheduler.run_pending()
 
             logging.debug("Sleep %.1f sec...", sleep_sec)
             time.sleep(sleep_sec)

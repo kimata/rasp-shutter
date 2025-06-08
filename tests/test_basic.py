@@ -273,7 +273,7 @@ def test_liveness(client, config):  # noqa: ARG001
 
 
 def test_time(time_machine):
-    import schedule
+    import rasp_shutter.scheduler
 
     logging.debug("datetime.now()                        = %s", datetime.datetime.now())  # noqa: DTZ005
     logging.debug(
@@ -299,16 +299,17 @@ def test_time(time_machine):
     )
     logging.debug("datetime.now(%10s)              = %s", my_lib.time.get_tz(), my_lib.time.now())
 
-    schedule.clear()
+    scheduler = rasp_shutter.scheduler.get_scheduler()
+    scheduler.clear()
     job_time_str = time_str(time_morning(1))
     logging.debug("set schedule at %s", job_time_str)
 
-    job_add = schedule.every().day.at(job_time_str, my_lib.time.get_pytz()).do(lambda: True)
+    job_add = scheduler.every().day.at(job_time_str, my_lib.time.get_pytz()).do(lambda: True)
 
-    for i, job in enumerate(schedule.get_jobs()):
+    for i, job in enumerate(scheduler.get_jobs()):
         logging.debug("Current schedule [%d]: %s", i, job.next_run)
 
-    idle_sec = schedule.idle_seconds()
+    idle_sec = scheduler.idle_seconds
     logging.info("Time to next jobs is %.1f sec", idle_sec)
     logging.debug("Next run is %s", job_add.next_run)
 
