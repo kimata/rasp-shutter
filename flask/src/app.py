@@ -84,6 +84,8 @@ def create_app(config, dummy_mode=False):
     app.register_blueprint(my_lib.webapp.log.blueprint)
     app.register_blueprint(my_lib.webapp.util.blueprint)
 
+    my_lib.webapp.config.show_handler_list(app)
+
     return app
 
 
