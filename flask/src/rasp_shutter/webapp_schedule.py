@@ -52,7 +52,6 @@ def term():
     worker.join()
 
     worker = None
-    rasp_shutter.scheduler.should_terminate.clear()
 
 
 def wday_str_list(wday_list):

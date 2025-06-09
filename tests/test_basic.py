@@ -52,8 +52,6 @@ def config():
 
 @pytest.fixture(autouse=True)
 def _clear(config):
-    import my_lib.webapp.config
-
     my_lib.webapp.config.init(config)
 
     import my_lib.footprint

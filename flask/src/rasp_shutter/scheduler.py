@@ -48,7 +48,10 @@ def get_scheduler():
 
 def init():
     global schedule_lock  # noqa: PLW0603
+    global should_terminate
+
     schedule_lock = threading.Lock()
+    should_terminate.clear()
 
 
 def brightness_text(sense_data, cur_schedule_data):
