@@ -48,7 +48,7 @@ def term():
     if worker is None:
         return
 
-    rasp_shutter.scheduler.should_terminate.set()
+    rasp_shutter.scheduler.term()
     worker.join()
 
     worker = None

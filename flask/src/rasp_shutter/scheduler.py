@@ -54,6 +54,12 @@ def init():
     should_terminate.clear()
 
 
+def term():
+    global should_terminate
+
+    should_terminate.set()
+
+
 def brightness_text(sense_data, cur_schedule_data):
     text = [
         "{sensor}: current {current:.1f} {cmp} threshold {threshold:.1f}".format(
