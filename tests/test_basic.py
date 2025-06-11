@@ -10,8 +10,6 @@ import re
 import time
 from unittest import mock
 
-import my_lib.config
-import my_lib.notify.slack
 import my_lib.webapp.config
 import pytest
 from app import create_app
@@ -52,10 +50,9 @@ def config():
 
 @pytest.fixture(autouse=True)
 def _clear(config):
-    my_lib.webapp.config.init(config)
-
     import my_lib.footprint
     import my_lib.notify.slack
+    import my_lib.webapp.config
     import rasp_shutter.config
 
     my_lib.footprint.clear(rasp_shutter.config.STAT_AUTO_CLOSE)
@@ -70,6 +67,8 @@ def _clear(config):
 
 @pytest.fixture(scope="session")
 def app(config):
+    import my_lib.webapp.config
+
     my_lib.webapp.config.init(config)
 
     with mock.patch.dict("os.environ", {"WERKZEUG_RUN_MAIN": "true"}):
@@ -226,11 +225,6 @@ def ctrl_log_check(client, expect):
 
 
 def ctrl_stat_clear(config):
-    import my_lib.config
-
-    my_lib.webapp.config.init(config)
-
-    import my_lib.webapp.config
     import rasp_shutter.config
     import rasp_shutter.webapp_control
 
