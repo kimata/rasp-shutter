@@ -197,7 +197,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
                 name=config["shutter"][index]["name"],
                 mode=mode.value,
                 state="開け" if state == "open" else "閉め",
-                sensor_text=sensor_text(sense_data),
+                sensor_text=sensor_text(sense_data) if mode != CONTROL_MODE.MANUAL else "",
                 by=f"\n(by {user})" if user != "" else "",
             )
         )
@@ -207,7 +207,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
                 name=config["shutter"][index]["name"],
                 mode=mode.value,
                 state="開け" if state == "open" else "閉め",
-                sensor_text=sensor_text(sense_data),
+                sensor_text=sensor_text(sense_data) if mode != CONTROL_MODE.MANUAL else "",
                 by=f"\n(by {user})" if user != "" else "",
             )
         )
