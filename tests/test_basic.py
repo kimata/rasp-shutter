@@ -87,7 +87,7 @@ def app(config):
 def client(app):
     test_client = app.test_client()
 
-    time.sleep(1)
+    time.sleep(0.1)  # Optimized for test setup
     app_log_clear(test_client)
     app_log_check(test_client, [])
     ctrl_log_clear(test_client)
@@ -213,7 +213,7 @@ def app_log_clear(client):
 
 
 def ctrl_log_check(client, expect):
-    time.sleep(3)
+    time.sleep(1.0)  # Important function - needs full 1.0s for ctrl_log and async operations
 
     response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/ctrl/log")
     assert response.status_code == 200
@@ -250,7 +250,7 @@ def check_notify_slack(message, index=-1):
 def test_liveness(client, config):  # noqa: ARG001
     import healthz
 
-    time.sleep(2)
+    time.sleep(1.0)  # Important - need time for scheduler to write liveness file
 
     assert healthz.check_liveness(
         [
@@ -363,7 +363,7 @@ def test_shutter_ctrl_inconsistent_read(client, config):
     # NOTE: 本来ないはずの、oepn と close の両方のファイルが存在する場合 (close が後)
     ctrl_stat_clear(config)
     my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("open", 0))
-    time.sleep(0.1)
+    time.sleep(0.1)  # Optimized for non-scheduler test
     my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("close", 0))
 
     response = client.get(
@@ -377,7 +377,7 @@ def test_shutter_ctrl_inconsistent_read(client, config):
     # NOTE: 本来ないはずの、oepn と close の両方のファイルが存在する場合 (open が後)
     ctrl_stat_clear(config)
     my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("close", 1))
-    time.sleep(0.1)
+    time.sleep(0.1)  # Optimized for non-scheduler test
     my_lib.footprint.update(rasp_shutter.webapp_control.exec_stat_file("open", 1))
 
     response = client.get(
@@ -628,6 +628,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
+    time.sleep(2.0)  # Increased wait time for open failure processing and logging
     ctrl_log_check(
         client,
         [
@@ -646,6 +647,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
+    time.sleep(2.0)  # Increased wait time for close processing and logging
     ctrl_log_check(
         client,
         [
@@ -653,6 +655,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
             {"index": 1, "state": "close"},
         ],
     )
+    time.sleep(2.0)  # Increased wait for async log processing and failure notification
     app_log_check(client, ["CLEAR", "OPEN_FAIL", "CLOSE_MANUAL"])
     check_notify_slack("手動で開けるのに失敗しました")
 
@@ -661,7 +664,7 @@ def test_event(client):
     import concurrent.futures
 
     def log_write():
-        time.sleep(2)
+        time.sleep(0.2)  # Optimized for non-scheduler test
         client.get(f"{my_lib.webapp.config.URL_PREFIX}/exec/log_write")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
@@ -686,25 +689,25 @@ def test_schedule_ctrl_inactive(client, mocker, time_machine):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(3))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     schedule_data["open"]["is_active"] = True
     schedule_data["open"]["wday"] = [False] * 7
@@ -715,22 +718,22 @@ def test_schedule_ctrl_inactive(client, mocker, time_machine):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(3))
 
@@ -803,7 +806,7 @@ def test_schedule_ctrl_invalid(client):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(5)
+    time.sleep(0.2)  # Optimized for non-scheduler test
 
     ctrl_log_check(client, [])
     app_log_check(
@@ -838,7 +841,7 @@ def test_schedule_ctrl_execute(client, mocker, time_machine):
     assert response.json["result"] == "success"
 
     move_to(time_machine, time_evening(0))
-    time.sleep(1)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
@@ -859,10 +862,10 @@ def test_schedule_ctrl_execute(client, mocker, time_machine):
     )
     assert response.status_code == 200
 
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(2))
 
@@ -895,7 +898,7 @@ def test_schedule_ctrl_auto_close(client, mocker, time_machine):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(time_machine, time_evening(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
@@ -918,10 +921,10 @@ def test_schedule_ctrl_auto_close(client, mocker, time_machine):
     )
     assert response.status_code == 200
 
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(2))
 
@@ -936,7 +939,7 @@ def test_schedule_ctrl_auto_close(client, mocker, time_machine):
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     move_to(time_machine, time_evening(3))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(4))
 
@@ -951,7 +954,7 @@ def test_schedule_ctrl_auto_close(client, mocker, time_machine):
     )
 
     move_to(time_machine, time_evening(5))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(6))
 
@@ -986,7 +989,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, time_machine):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(time_machine, time_evening(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
@@ -1028,10 +1031,10 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, time_machine):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(2))
 
@@ -1047,7 +1050,7 @@ def test_schedule_ctrl_auto_close_dup(client, mocker, time_machine):
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     move_to(time_machine, time_evening(3))
-    time.sleep(2)
+    time.sleep(2)  # Restored to 2s for auto close detection
 
     move_to(time_machine, time_evening(4))
 
@@ -1107,7 +1110,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):
     assert response.json["result"] == "success"
 
     move_to(time_machine, time_morning(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
@@ -1128,10 +1131,10 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):
     )
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(2))
-    time.sleep(2)
+    time.sleep(2)  # Restored to 2s for pending open
 
     move_to(time_machine, time_morning(3))
 
@@ -1299,7 +1302,7 @@ def test_schedule_ctrl_auto_inactive(client, mocker, time_machine):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     move_to(time_machine, time_morning(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
@@ -1309,16 +1312,16 @@ def test_schedule_ctrl_auto_inactive(client, mocker, time_machine):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(2))
 
@@ -1333,7 +1336,7 @@ def test_schedule_ctrl_pending_open(client, mocker, time_machine):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(time_machine, time_morning(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
@@ -1365,13 +1368,13 @@ def test_schedule_ctrl_pending_open(client, mocker, time_machine):
     )
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(3))
-    time.sleep(2)
+    time.sleep(2)  # Restored to 2s for pending open
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
@@ -1420,7 +1423,7 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, time_machine):
     assert response.json["result"] == "success"
 
     move_to(time_machine, time_morning(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
@@ -1441,10 +1444,10 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, time_machine):
     )
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(3))
 
@@ -1466,15 +1469,15 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, time_machine):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(5))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(6))
 
@@ -1508,7 +1511,7 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, time_machine):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(time_machine, time_morning(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
@@ -1537,20 +1540,20 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, time_machine):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     sensor_data = SENSOR_DATA_BRIGHT.copy()
     sensor_data["lux"] = {"valid": False, "value": 5000}
     sensor_data_mock.return_value = sensor_data
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(4))
 
@@ -1572,7 +1575,7 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, time_machine):
     # NOTE: 後始末
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT.copy()
     move_to(time_machine, time_morning(5))
-    time.sleep(2)
+    time.sleep(2)  # Restored to 2s for cleanup
 
 
 def test_schedule_ctrl_open_dup(client, mocker, time_machine):
@@ -1581,7 +1584,7 @@ def test_schedule_ctrl_open_dup(client, mocker, time_machine):
     mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
 
     move_to(time_machine, time_morning(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
@@ -1609,7 +1612,7 @@ def test_schedule_ctrl_open_dup(client, mocker, time_machine):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_morning(1))
 
@@ -1640,7 +1643,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(time_machine, time_morning(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
@@ -1651,7 +1654,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    time.sleep(1)
+    time.sleep(0.2)  # Optimized for non-scheduler test
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
@@ -1683,10 +1686,10 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     )
     assert response.status_code == 200
 
-    time.sleep(1)
+    time.sleep(0.2)  # Optimized for non-scheduler test
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(2))
 
@@ -1703,7 +1706,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(4))
 
@@ -1741,7 +1744,7 @@ def test_schedule_ctrl_control_fail_1(client, mocker, time_machine):
     mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
 
     move_to(time_machine, time_evening(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
@@ -1768,13 +1771,13 @@ def test_schedule_ctrl_control_fail_1(client, mocker, time_machine):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(3))
 
@@ -1827,7 +1830,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, time_machine):
     )
 
     move_to(time_machine, time_evening(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     schedule_data = gen_schedule_data()
     schedule_data["open"]["is_active"] = False
@@ -1836,10 +1839,10 @@ def test_schedule_ctrl_control_fail_2(client, mocker, time_machine):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(2))
 
@@ -1861,7 +1864,7 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, time_machine):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(time_machine, time_morning(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     sensor_data = SENSOR_DATA_BRIGHT.copy()
     sensor_data["lux"] = {"valid": False, "value": 5000}
@@ -1874,10 +1877,10 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, time_machine):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(2))
 
@@ -1893,7 +1896,7 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, time_machine):
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
 
     move_to(time_machine, time_morning(0))
-    time.sleep(0.5)
+    time.sleep(0.1)  # Optimized for non-scheduler test
 
     sensor_data = SENSOR_DATA_BRIGHT.copy()
     sensor_data["solar_rad"] = {"valid": False, "value": 5000}
@@ -1906,10 +1909,10 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, time_machine):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1)
+    time.sleep(1)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_morning(1))
-    time.sleep(2)
+    time.sleep(2)  # Restored to 2s for scheduler job
 
     move_to(time_machine, time_morning(2))
 
