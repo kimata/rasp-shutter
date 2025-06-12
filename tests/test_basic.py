@@ -142,17 +142,8 @@ def gen_schedule_data():
     }
 
 
-def app_log_check(  # noqa: C901, PLR0912
-    client,
-    expect_list,
-    is_strict=True,
-):
-    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_view")
-
-    log_list = response.json["data"]
-
-    logging.debug(json.dumps(log_list, indent=2, ensure_ascii=False))
-
+def _check_log_content(log_list, expect_list, is_strict):  # noqa: C901, PLR0912
+    """ログ内容をチェックする内部関数"""
     if is_strict:
         # NOTE: クリアする直前のログが残っている可能性があるので、+1 でも OK とする
         assert (len(log_list) == len(expect_list)) or (len(log_list) == (len(expect_list) + 1))
@@ -193,7 +184,47 @@ def app_log_check(  # noqa: C901, PLR0912
         elif expect == "CLEAR":
             assert "クリアされました" in log_list[i]["message"]
         else:
-            raise AssertionError(f"テストコードのバグです。({expect})")  # noqa: EM102
+            msg = f"テストコードのバグです。({expect})"
+            raise AssertionError(msg)
+
+
+def app_log_check(
+    client,
+    expect_list,
+    is_strict=True,
+    timeout_sec=5.0,
+    retry_interval=0.2,
+):
+    """
+    アプリケーションログをチェックする。
+
+    ログの非同期処理による競合状態を回避するため、
+    タイムアウト付きのリトライロジックを実装。
+    """
+    import time
+
+    start_time = time.time()
+    last_exception = None
+
+    while time.time() - start_time < timeout_sec:
+        try:
+            response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_view")
+            log_list = response.json["data"]
+
+            logging.debug(json.dumps(log_list, indent=2, ensure_ascii=False))
+            _check_log_content(log_list, expect_list, is_strict)
+            return
+
+        except (AssertionError, IndexError, KeyError) as e:  # noqa: PERF203
+            last_exception = e
+            time.sleep(retry_interval)
+
+    # タイムアウトした場合、最後の例外を再発生
+    if last_exception:
+        raise last_exception
+
+    msg = f"app_log_check failed after {timeout_sec} seconds"
+    raise AssertionError(msg)
 
 
 def ctrl_log_clear(client):
@@ -628,7 +659,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    time.sleep(2.0)  # Increased wait time for open failure processing and logging
+    # Control log should be available immediately
     ctrl_log_check(
         client,
         [
@@ -647,7 +678,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     assert response.status_code == 200
     assert response.json["result"] == "success"
 
-    time.sleep(2.0)  # Increased wait time for close processing and logging
+    # Control log should be available immediately
     ctrl_log_check(
         client,
         [
@@ -655,7 +686,8 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
             {"index": 1, "state": "close"},
         ],
     )
-    time.sleep(2.0)  # Increased wait for async log processing and failure notification
+
+    # Use the enhanced app_log_check with retry logic for async log processing
     app_log_check(client, ["CLEAR", "OPEN_FAIL", "CLOSE_MANUAL"])
     check_notify_slack("手動で開けるのに失敗しました")
 
