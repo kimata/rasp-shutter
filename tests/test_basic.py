@@ -203,6 +203,8 @@ def app_log_check(
     """
     import time
 
+    import my_lib.pretty
+
     start_time = time.time()
     last_exception = None
 
@@ -211,7 +213,7 @@ def app_log_check(
             response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_view")
             log_list = response.json["data"]
 
-            logging.debug(json.dumps(log_list, indent=2, ensure_ascii=False))
+            logging.debug(my_lib.pretty.format(log_list))
             _check_log_content(log_list, expect_list, is_strict)
             return
 
