@@ -645,7 +645,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
 
     request_mock.i = 0
 
-    mocker.patch.dict(os.environ, {"DUMMY_MODE": "false"}, clear=True)
+    mocker.patch.dict(os.environ, {"DUMMY_MODE": "false"})
     mocker.patch("rasp_shutter.webapp_control.requests.get", side_effect=request_mock)
 
     response = client.get(
