@@ -1020,7 +1020,13 @@ def test_schedule_ctrl_auto_close(client, mocker, time_machine):
 
 def test_schedule_ctrl_auto_close_dup(client, mocker, time_machine):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
+
+    # Mock both the direct call and the imported module in scheduler
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     move_to(time_machine, time_evening(0))
     time.sleep(0.1)  # Optimized for non-scheduler test
@@ -1132,6 +1138,10 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
@@ -1371,6 +1381,10 @@ def test_schedule_ctrl_pending_open(client, mocker, time_machine):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     move_to(time_machine, time_morning(0))
     time.sleep(0.1)  # Optimized for non-scheduler test
@@ -1449,6 +1463,10 @@ def test_schedule_ctrl_pending_open_inactive(client, mocker, time_machine):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
@@ -1679,6 +1697,10 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     move_to(time_machine, time_morning(0))
     time.sleep(0.1)  # Optimized for non-scheduler test
