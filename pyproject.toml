@@ -15,7 +15,7 @@ dependencies = [
     "fluent-logger>=0.11.1",
     "influxdb-client[ciso]>=1.44.0",
     "schedule==1.2.2",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@f3cfa21c0e6c0979f3e9df80174ce9542fc40f6f",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@fa1ee360d5e1c139696bd107704e9216be1ea2fe",
     "pysolar>=0.13",
 ]
 
@@ -29,7 +29,7 @@ packages = ["flask/src/rasp_shutter"]
 [tool.hatch.metadata]
 allow-direct-references = true
 
-[tool.rye]
+[tool.uv]
 managed = true
 dev-dependencies = [
     "flaky>=3.8.1",
