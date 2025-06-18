@@ -146,8 +146,8 @@ test-playwright:
         - git clone https://gitlab.green-rabbit.net/kimata/hems_config.git
         - mv hems_config/rasp-shutter.yaml config.yaml
 
-        - rye run playwright install --with-deps chromium
-        - rye run python ./flask/src/app.py -d 2>&1 > flask_log.txt &
+        - uv run playwright install --with-deps chromium
+        - uv run python ./flask/src/app.py -d 2>&1 > flask_log.txt &
         - uv run pytest --tracing on --output tests/evidence/playwright --junit-xml=tests/evidence/playwright-${TEST_NAME}-junit.xml tests/test_playwright.py::${TEST_NAME}
 
     cache:
@@ -193,8 +193,8 @@ test-playwright:
         - TARGET_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${CONTAINER_NAME})
         - 'echo "Target: ${TARGET_IP}"'
 
-        - rye run playwright install --with-deps chromium
-        - rye run pytest --tracing on --output tests/evidence/playwright tests/test_playwright.py --host ${TARGET_IP}
+        - uv run playwright install --with-deps chromium
+        - uv run pytest --tracing on --output tests/evidence/playwright tests/test_playwright.py --host ${TARGET_IP}
 
         - docker logs ${CONTAINER_NAME} > flask_log.txt
         - docker stop ${CONTAINER_NAME}
