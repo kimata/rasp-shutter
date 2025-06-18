@@ -49,8 +49,8 @@ build-image:
     stage: build-image
 
     needs:
-        - job: build-vue
-          artifacts: true
+        - generate-tag
+        - build-vue
 
     variables:
         BUILDER: arm_builder
@@ -102,10 +102,8 @@ test-walk-through:
     stage: test
 
     needs:
-        - job: build-vue
-          artifacts: true
-        - job: test-prepare
-          artifacts: true
+        - build-vue
+        - test-prepare
 
     script:
         - uv run pytest --numprocesses=auto --junit-xml=tests/evidence/junit-report.xml tests/test_basic.py
@@ -137,10 +135,8 @@ test-playwright:
     stage: test
 
     needs:
-        - job: build-vue
-          artifacts: true
-        - job: test-prepare
-          artifacts: true
+        - build-vue
+        - test-prepare
 
     parallel:
         matrix: *playwright_test_matrix
@@ -181,12 +177,9 @@ test-playwright:
     stage: test
 
     needs:
-        - job: generate-tag
-          artifacts: true
-        - job: build-image
-          artifacts: false
-        - job: test-prepare
-          artifacts: true
+        - generate-tag
+        - build-image
+        - test-prepare
 
     variables:
         JOB_TYPE: docker
