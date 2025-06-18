@@ -1749,7 +1749,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     time.sleep(0.2)  # Optimized for non-scheduler test
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1)  # Restored to 1s for scheduler job
+    time.sleep(1)
 
     move_to(time_machine, time_morning(2))
     time.sleep(1)  # Restored to 1s for scheduler job
@@ -1763,7 +1763,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     ]
 
     start_time = time.time()
-    while time.time() - start_time < 5.0:  # 5 second timeout
+    while time.time() - start_time < 10:  # 10 second timeout for parallel execution
         try:
             ctrl_log_check(client, expected_log)
             break
