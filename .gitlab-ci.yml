@@ -1,4 +1,4 @@
-image: registry.green-rabbit.net:5000/kimata/local_ubuntu:241105B
+image: registry.green-rabbit.net:5000/kimata/local_ubuntu:250615_38f4fdb9
 
 .playwright_test_matrix: &playwright_test_matrix
     - TEST_NAME: test_time
@@ -7,7 +7,12 @@ image: registry.green-rabbit.net:5000/kimata/local_ubuntu:241105B
     - TEST_NAME: test_schedule_run
     - TEST_NAME: test_schedule_disable
 
+variables:
+    UV_LINK_MODE: copy
+    UV_PYTHON_INSTALL_DIR: ${CI_PROJECT_DIR}/.uv_python
+
 stages:
+    - generate-tag
     - build-webapp
     - build-image
     - pre-test
@@ -15,6 +20,15 @@ stages:
     - tag-latest
     - deploy
     - renovate
+
+generate-tag:
+    stage: generate-tag
+    script:
+        - echo "TAG=$(date +%y%m%d)_${CI_COMMIT_SHORT_SHA}" > tag.env
+    artifacts:
+        reports:
+            dotenv: tag.env
+        expire_in: 1 hour
 
 build-vue:
     stage: build-webapp
