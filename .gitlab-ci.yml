@@ -1,10 +1,18 @@
 image: registry.green-rabbit.net:5000/kimata/local_ubuntu:241105B
 
+.playwright_test_matrix: &playwright_test_matrix
+    - TEST_NAME: test_time
+    - TEST_NAME: test_manual
+    - TEST_NAME: test_schedule
+    - TEST_NAME: test_schedule_run
+    - TEST_NAME: test_schedule_disable
+
 stages:
     - build-webapp
     - build-image
     - pre-test
     - test
+    - tag-latest
     - deploy
     - renovate
 
@@ -42,22 +50,37 @@ build-image:
         - docker buildx inspect --bootstrap
         - docker buildx build --provenance=false --progress=plain --platform linux/amd64 --cache-from type=registry,ref=${CI_REGISTRY_IMAGE}:cache --cache-to type=registry,ref=${CI_REGISTRY_IMAGE}:cache,mode=max --build-arg IMAGE_BUILD_DATE=$(date --iso-8601=seconds) --push --tag ${CI_REGISTRY_IMAGE} .
 
+
 test-prepare:
     stage: pre-test
 
+    needs: []
+
     script:
-        - rye sync
+        - uv sync --locked --no-editable
 
     artifacts:
         paths:
             - .venv
-            - /root/.cache
+            - .uv_python
+
+        expire_in: 1 hour
 
     cache:
-        key: "${CI_JOB_NAME}"
-        paths:
+        - key:
+            files:
+                - pyproject.toml
+                - .gitlab-ci.yml
+            prefix: ${CI_COMMIT_REF_SLUG}-venv
+          paths:
             - .venv
-            - /root/.cache
+          policy: pull-push
+
+        - key: ${CI_COMMIT_REF_SLUG}-uv-toolchain
+          paths:
+            - .uv_python
+          policy: pull-push
+
 
 test-walk-through:
     stage: test
@@ -67,17 +90,30 @@ test-walk-through:
         - test-prepare
 
     script:
-        - rye run pytest tests/test_basic.py
+        - uv run pytest --numprocesses=auto --junit-xml=tests/evidence/junit-report.xml tests/test_basic.py
+
 
     cache:
-        key: "${CI_JOB_NAME}"
-        paths:
+        - key:
+            files:
+                - pyproject.toml
+                - .gitlab-ci.yml
+            prefix: ${CI_COMMIT_REF_SLUG}-venv
+          paths:
             - .venv
+          policy: pull
+        - key: ${CI_COMMIT_REF_SLUG}-cache
+          paths:
+            - /root/.cache
+          policy: pull
 
     artifacts:
         when: always
         paths:
             - tests/evidence/**
+        reports:
+            junit: tests/evidence/junit-report.xml
+
 
 test-playwright:
     stage: test
@@ -86,24 +122,80 @@ test-playwright:
         - build-vue
         - test-prepare
 
+    parallel:
+        matrix: *playwright_test_matrix
+
     script:
-        # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
-        - docker ps  --filter "label=job=${CI_JOB_NAME}" | grep hours | cut -d " " -f1 | while read id; do docker stop -t 5 $id; done || true
-
-        - python3 -m playwright install
-
         - export GIT_SSL_NO_VERIFY=1
         - git clone https://gitlab.green-rabbit.net/kimata/hems_config.git
         - mv hems_config/rasp-shutter.yaml config.yaml
 
+        - rye run playwright install --with-deps chromium
         - rye run python ./flask/src/app.py -d 2>&1 > flask_log.txt &
-        - rye run pytest --tracing on --output tests/evidence/playwright tests/test_playwright.py
+        - uv run pytest --tracing on --output tests/evidence/playwright --junit-xml=tests/evidence/playwright-${TEST_NAME}-junit.xml tests/test_playwright.py::${TEST_NAME}
 
     cache:
-        key: "${CI_JOB_NAME}"
-        paths:
+        - key:
+            files:
+                - pyproject.toml
+                - .gitlab-ci.yml
+            prefix: ${CI_COMMIT_REF_SLUG}-venv
+          paths:
             - .venv
+          policy: pull
+
+        - key: ${CI_COMMIT_REF_SLUG}-uv-toolchain
+          paths:
+            - .uv_python
+          policy: pull
+
+    artifacts:
+        when: always
+        paths:
+            - tests/evidence/**
+        reports:
+            junit: tests/evidence/playwright-*-junit.xml
+
+
+.test-playwright-docker-base:
+    stage: test
+
+    needs:
+        - generate-tag
+        - build-image
+        - test-prepare
+
+    variables:
+        JOB_TYPE: docker
+        CONFIG_ARGS: "-d"
+
+    script:
+        - docker ps --filter "label=job=test-playwright-${JOB_TYPE}" | grep hours | cut -d " " -f1 | while read id; do docker stop -t 5 $id; done || true
+        - export CONTAINER_NAME="test-playwright-${JOB_TYPE}-${CI_JOB_ID}"
+        - docker run --rm --detach=true --tty=true --name ${CONTAINER_NAME} --label job=test-playwright-${JOB_TYPE} ${CI_REGISTRY_IMAGE}:${TAG} ./flask/src/app.py ${CONFIG_ARGS}
+
+        - TARGET_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${CONTAINER_NAME})
+        - 'echo "Target: ${TARGET_IP}"'
+
+        - rye run playwright install --with-deps chromium
+        - rye run pytest --tracing on --output tests/evidence/playwright tests/test_playwright.py --host ${TARGET_IP}
+
+        - docker logs ${CONTAINER_NAME} > flask_log.txt
+        - docker stop ${CONTAINER_NAME}
+
+    cache:
+        - key:
+            files:
+                - pyproject.toml
+                - .gitlab-ci.yml
+            prefix: ${CI_COMMIT_REF_SLUG}-venv
+          paths:
+            - .venv
+          policy: pull
+        - key: ${CI_COMMIT_REF_SLUG}-cache
+          paths:
             - /root/.cache
+          policy: pull
 
     artifacts:
         when: always
@@ -112,93 +204,31 @@ test-playwright:
             - tests/evidence/**
 
 test-playwright-docker:
-    stage: test
-
-    needs:
-        - build-image
-        - test-prepare
-
-    script:
-        # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
-        - docker ps  --filter "label=job=${CI_JOB_NAME}" | grep hours | cut -d " " -f1 | while read id; do docker stop -t 5 $id; done || true
-
-        - python3 -m playwright install
-
-        - docker run --rm --detach=true --tty=true --name ${CI_JOB_NAME}-${CI_JOB_ID} --label job=${CI_JOB_NAME} ${CI_REGISTRY_IMAGE} ./flask/src/app.py -d
-
-        - TARGET_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${CI_JOB_NAME}-${CI_JOB_ID})
-        - 'echo "Target: ${TARGET_IP}"'
-
-        - rye run pytest --tracing on --output tests/evidence/playwright tests/test_playwright.py --host $(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${CI_JOB_NAME}-${CI_JOB_ID})
-
-        - docker logs ${CI_JOB_NAME}-${CI_JOB_ID} > flask_log.txt
-        - docker stop ${CI_JOB_NAME}-${CI_JOB_ID}
-
-    cache:
-        key: "${CI_JOB_NAME}"
-        paths:
-            - .venv
-            - /root/.cache
-
-    artifacts:
-        when: always
-        paths:
-            - flask_log.txt
-            - tests/evidence/**
+    extends: .test-playwright-docker-base
 
 test-playwright-docker-demo:
-    stage: test
+    extends: .test-playwright-docker-base
+    variables:
+        JOB_TYPE: docker-demo
+        CONFIG_ARGS: "-d -c config.example.yaml"
 
-    needs:
-        - build-image
-        - test-prepare
-
-    script:
-        # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
-        - docker ps  --filter "label=job=${CI_JOB_NAME}" | grep hours | cut -d " " -f1 | while read id; do docker stop -t 5 $id; done || true
-
-        - python3 -m playwright install
-
-        - docker run --rm --detach=true --tty=true --name ${CI_JOB_NAME}-${CI_JOB_ID} --label job=${CI_JOB_NAME} ${CI_REGISTRY_IMAGE} ./flask/src/app.py -d -c config.example.yaml
-
-        - TARGET_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${CI_JOB_NAME}-${CI_JOB_ID})
-        - 'echo "Target: ${TARGET_IP}"'
-
-        - rye run pytest --tracing on --output tests/evidence/playwright tests/test_playwright.py --host $(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${CI_JOB_NAME}-${CI_JOB_ID})
-
-        - docker logs ${CI_JOB_NAME}-${CI_JOB_ID} > flask_log.txt
-        - docker stop ${CI_JOB_NAME}-${CI_JOB_ID}
-
-    cache:
-        key: "${CI_JOB_NAME}"
-        paths:
-            - .venv
-            - /root/.cache
-
-    artifacts:
-        when: always
-        paths:
-            - flask_log.txt
-            - tests/evidence/**
 
 test-healthz-docker:
     stage: test
 
     needs:
+        - generate-tag
         - build-image
-        - test-prepare
 
     script:
-        # NOTE: テストに失敗するとテスト用のコンテナが残るので削除する
-        - docker ps  --filter "label=job=${CI_JOB_NAME}" | grep hours | cut -d " " -f1 | while read id; do docker stop -t 5 $id; done || true
+        - docker ps --filter "label=job=${CI_JOB_NAME}" | grep hours | cut -d " " -f1 | while read id; do docker stop -t 5 $id; done || true
 
-        - docker pull ${CI_REGISTRY_IMAGE}
-        - docker run --rm --detach=true --tty=true --name ${CI_JOB_NAME}-${CI_JOB_ID} --label job=${CI_JOB_NAME} ${CI_REGISTRY_IMAGE} ./flask/src/app.py -d
+        - docker run --rm --detach=true --tty=true --name ${CI_JOB_NAME}-${CI_JOB_ID} --label job=${CI_JOB_NAME} ${CI_REGISTRY_IMAGE}:${TAG} ./flask/src/app.py -d
 
-        - sleep 10
-        - docker exec ${CI_JOB_NAME}-${CI_JOB_ID} ./flask/src/healthz.py
+        - sleep 30
 
         - docker logs ${CI_JOB_NAME}-${CI_JOB_ID} > flask_log.txt
+        - docker exec ${CI_JOB_NAME}-${CI_JOB_ID} ./flask/src/healthz.py
         - docker stop ${CI_JOB_NAME}-${CI_JOB_ID}
     artifacts:
         when: always
@@ -220,6 +250,34 @@ pages:
 
     only:
         - master
+
+
+tag-latest:
+    stage: tag-latest
+
+    needs:
+        - generate-tag
+        - job: test-walk-through
+          artifacts: false
+        - job: test-playwright
+          artifacts: false
+        - job: test-playwright-docker
+          artifacts: false
+        - job: test-playwright-docker-demo
+          artifacts: false
+        - job: test-healthz-docker
+          artifacts: false
+
+    script:
+        - 'echo "Tagging ${CI_REGISTRY_IMAGE}:${TAG} as latest"'
+        - docker pull ${CI_REGISTRY_IMAGE}:${TAG}
+        - docker tag ${CI_REGISTRY_IMAGE}:${TAG} ${CI_REGISTRY_IMAGE}:latest
+        - docker push ${CI_REGISTRY_IMAGE}:latest
+
+    rules:
+        - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+          when: never
+        - when: on_success
 
 deploy-webapp:
     stage: deploy
@@ -259,10 +317,22 @@ deploy-webapp-demo:
     image:
         name: bitnami/kubectl:latest
         entrypoint: [""]
+
     script:
+        - 'IMAGE="${CI_REGISTRY_IMAGE}:${TAG}"'
+        - 'echo "Deploying image: $IMAGE"'
+
         - kubectl config get-contexts
         - kubectl config use-context kimata/rasp-shutter:pod-rollout
-        - kubectl --insecure-skip-tls-verify=true rollout restart -n hems deployment rasp-shutter-demo
+
+        - kubectl --insecure-skip-tls-verify=true -n hems set image deployment/rasp-shutter rasp-shutter=${IMAGE} --record
+        - kubectl --insecure-skip-tls-verify=true -n hems set image deployment/rasp-shutter-demo rasp-shutter-demo=${IMAGE} --record
+
+        - kubectl --insecure-skip-tls-verify=true -n hems rollout status deployment/rasp-shutter --timeout=120s
+        - kubectl --insecure-skip-tls-verify=true -n hems rollout status deployment/rasp-shutter-demo --timeout=120s
+
+        - 'echo "✓ All deployments updated successfully to $TAG"'
+
     rules:
         # NOTE: 自動実行ではデプロイしない
         - if: $CI_PIPELINE_SOURCE == "schedule"

@@ -1184,6 +1184,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
+    time.sleep(10.5)  # Wait for scheduler to run auto control (runs every 10s)
 
     # OPEN
     ctrl_log_check(
@@ -1215,6 +1216,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):
     )
 
     move_to(time_machine, time_morning(10))
+    time.sleep(10.5)  # Wait for scheduler to run auto control (runs every 10s)
 
     # CLOSE
     ctrl_log_check(
@@ -1269,6 +1271,7 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(20))
+    time.sleep(10.5)  # Wait for scheduler to run auto control (runs every 10s)
 
     # OPEN
 
@@ -1413,6 +1416,7 @@ def test_schedule_ctrl_pending_open(client, mocker, time_machine):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
+    time.sleep(10.5)  # Wait for scheduler to run auto control (runs every 10s)
 
     ctrl_log_check(
         client,
@@ -1726,21 +1730,31 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_morning(2))
+    time.sleep(1)  # Restored to 1s for scheduler job
 
-    ctrl_log_check(
-        client,
-        [
-            {"index": 0, "state": "close"},
-            {"index": 1, "state": "close"},
-            {"index": 1, "state": "open"},
-            {"cmd": "pending", "state": "open"},
-        ],
-    )
+    # Check for pending open with enhanced retry logic for parallel execution
+    expected_log = [
+        {"index": 0, "state": "close"},
+        {"index": 1, "state": "close"},
+        {"index": 1, "state": "open"},
+        {"cmd": "pending", "state": "open"},
+    ]
+
+    start_time = time.time()
+    while time.time() - start_time < 5.0:  # 5 second timeout
+        try:
+            ctrl_log_check(client, expected_log)
+            break
+        except AssertionError:
+            time.sleep(0.5)
+    else:
+        # Final check with detailed error
+        ctrl_log_check(client, expected_log)
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1)  # Restored to 1s for scheduler job
+    time.sleep(10.5)  # Wait for scheduler to run auto control (runs every 10s)
 
     move_to(time_machine, time_morning(4))
 
