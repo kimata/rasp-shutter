@@ -41,6 +41,9 @@ testem.log
 /flask/data/
 /tests/evidence/
 
+# Configuration
+config.yaml
+
 # System files
 .DS_Store
 Thumbs.db

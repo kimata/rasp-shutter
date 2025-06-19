@@ -53,6 +53,9 @@ def _clear(config):
     import my_lib.footprint
     import my_lib.notify.slack
     import my_lib.webapp.config
+
+    my_lib.webapp.config.init(config)
+
     import rasp_shutter.config
 
     my_lib.footprint.clear(rasp_shutter.config.STAT_AUTO_CLOSE)
@@ -930,6 +933,10 @@ def test_schedule_ctrl_execute(client, mocker, time_machine):
 def test_schedule_ctrl_auto_close(client, mocker, time_machine):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     move_to(time_machine, time_evening(0))
     time.sleep(0.1)  # Optimized for non-scheduler test
@@ -1347,6 +1354,11 @@ def test_schedule_ctrl_auto_reopen(client, mocker, time_machine):
 
 def test_schedule_ctrl_auto_inactive(client, mocker, time_machine):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
+    sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     move_to(time_machine, time_morning(0))
     time.sleep(0.1)  # Optimized for non-scheduler test
@@ -1565,6 +1577,10 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, time_machine):
 
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     move_to(time_machine, time_morning(0))
     time.sleep(0.1)  # Optimized for non-scheduler test
@@ -1637,7 +1653,13 @@ def test_schedule_ctrl_pending_open_fail(client, mocker, time_machine):
 def test_schedule_ctrl_open_dup(client, mocker, time_machine):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
-    mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT)
+    sensor_data_mock = mocker.patch(
+        "rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_BRIGHT
+    )
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     move_to(time_machine, time_morning(0))
     time.sleep(0.1)  # Optimized for non-scheduler test
@@ -1693,7 +1715,17 @@ def test_schedule_ctrl_open_dup(client, mocker, time_machine):
     check_notify_slack(None)
 
 
-def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
+def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):  # noqa: PLR0915
+    """
+    pending open状態での重複防止機能をテストする
+
+    テストシナリオ:to
+    1. シャッター0,1を閉じ、その後シャッター1のみを開く
+    2. センサーを暗い状態にして、morning(3)に開くスケジュールを設定
+    3. morning(3)になってもセンサーが暗いため、pending open状態になる
+    4. センサーを明るい状態に変更し、時刻を再度morning(3)に設定
+    5. pending状態が解除され、シャッター0のみが開く（シャッター1は既に開いているため）
+    """
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
@@ -1739,6 +1771,7 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     schedule_data = gen_schedule_data()
+    schedule_data["open"]["time"] = time_str(time_morning(3))  # Set schedule for future time
     schedule_data["close"]["is_active"] = False
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/schedule_ctrl",
@@ -1746,15 +1779,19 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     )
     assert response.status_code == 200
 
-    time.sleep(0.2)  # Optimized for non-scheduler test
+    time.sleep(1)  # Wait for schedule to be set
 
-    move_to(time_machine, time_morning(1))
-    time.sleep(1)
+    move_to(time_machine, time_morning(3))
+    time.sleep(2)  # Wait for scheduler to execute and log pending open
 
-    move_to(time_machine, time_morning(2))
+    move_to(time_machine, time_morning(4))
     time.sleep(1)  # Restored to 1s for scheduler job
 
     # Check for pending open with enhanced retry logic for parallel execution
+    # リトライロジックの理由:
+    # - スケジューラーは別スレッドで非同期に動作するため、ログ記録のタイミングが不確定
+    # - 並列テスト実行時は特に、他のテストによるCPU負荷でタイミングがずれやすい
+    # - 単純なsleepだけでは不十分なため、実際にログが記録されるまでポーリングする
     expected_log = [
         {"index": 0, "state": "close"},
         {"index": 1, "state": "close"},
@@ -1766,30 +1803,49 @@ def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):
     while time.time() - start_time < 10:  # 10 second timeout for parallel execution
         try:
             ctrl_log_check(client, expected_log)
-            break
+            break  # ログが見つかったらループを抜ける
         except AssertionError:
-            time.sleep(0.5)
+            time.sleep(0.5)  # 0.5秒待って再試行
     else:
-        # Final check with detailed error
+        # タイムアウトした場合は最後に詳細なエラーを出力
         ctrl_log_check(client, expected_log)
 
+    # センサーデータを明るい状態に変更する前に少し待機
+    # これにより、前の状態（pending open）が確実に記録されることを保証
+    time.sleep(2)
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
+    # 時刻を再度morning(3)に設定してスケジューラーを再実行
+    # この時点でセンサーが明るいため、pending状態のシャッターが開く
     move_to(time_machine, time_morning(3))
-    time.sleep(10.5)  # Wait for scheduler to run auto control (runs every 10s)
+    time.sleep(25)  # スケジューラーがセンサー状態を確認してシャッターを開くまで待機
 
     move_to(time_machine, time_morning(4))
+    time.sleep(8)  # ログ処理の完了を待つ追加の待機時間
 
-    ctrl_log_check(
-        client,
-        [
-            {"index": 0, "state": "close"},
-            {"index": 1, "state": "close"},
-            {"index": 1, "state": "open"},
-            {"cmd": "pending", "state": "open"},
-            {"index": 0, "state": "open"},
-        ],
-    )
+    # 最終的な状態を確認（シャッター0が開いた状態）
+    # リトライロジックの理由:
+    # - pending openからの自動実行は複数のスレッド間の協調動作が必要
+    # - センサーチェック → 条件判定 → シャッター制御 → ログ記録の一連の流れに時間がかかる
+    # - 並列実行時は特に処理時間のばらつきが大きいため、長めのタイムアウトを設定
+    expected_final_log = [
+        {"index": 0, "state": "close"},
+        {"index": 1, "state": "close"},
+        {"index": 1, "state": "open"},
+        {"cmd": "pending", "state": "open"},
+        {"index": 0, "state": "open"},  # シャッター1は既に開いているため、重複防止によりシャッター0のみ開く
+    ]
+
+    start_time = time.time()
+    while time.time() - start_time < 30:  # 30秒のタイムアウト（長めに設定）
+        try:
+            ctrl_log_check(client, expected_final_log)
+            break  # 期待するログが全て揃ったらループを抜ける
+        except AssertionError:
+            time.sleep(2)  # 2秒待って再試行（処理が重いため長めの間隔）
+    else:
+        # タイムアウトした場合は最後に詳細なエラーを出力
+        ctrl_log_check(client, expected_final_log)
     app_log_check(
         client,
         [
@@ -1811,7 +1867,13 @@ def test_schedule_ctrl_control_fail_1(client, mocker, time_machine):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
     mocker.patch("rasp_shutter.scheduler.exec_shutter_control_impl", return_value=False)
-    mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
+    sensor_data_mock = mocker.patch(
+        "rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK
+    )
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     move_to(time_machine, time_evening(0))
     time.sleep(0.1)  # Optimized for non-scheduler test
@@ -1874,7 +1936,13 @@ def test_schedule_ctrl_control_fail_1(client, mocker, time_machine):
 def test_schedule_ctrl_control_fail_2(client, mocker, time_machine):
     mocker.patch.dict("os.environ", {"FROZEN": "true"})
 
-    mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK)
+    sensor_data_mock = mocker.patch(
+        "rasp_shutter.webapp_sensor.get_sensor_data", return_value=SENSOR_DATA_DARK
+    )
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
@@ -1932,6 +2000,10 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, time_machine):
 
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     move_to(time_machine, time_morning(0))
     time.sleep(0.1)  # Optimized for non-scheduler test
@@ -1964,6 +2036,10 @@ def test_schedule_ctrl_invalid_sensor_2(client, mocker, time_machine):
 
     mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
     sensor_data_mock = mocker.patch("rasp_shutter.webapp_sensor.get_sensor_data")
+    mocker.patch(
+        "rasp_shutter.scheduler.rasp_shutter.webapp_sensor.get_sensor_data",
+        side_effect=lambda _: sensor_data_mock.return_value,
+    )
 
     move_to(time_machine, time_morning(0))
     time.sleep(0.1)  # Optimized for non-scheduler test
