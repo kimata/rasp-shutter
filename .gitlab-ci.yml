@@ -303,6 +303,7 @@ deploy-webapp:
     stage: deploy
 
     needs:
+        - generate-tag
         - job: test-walk-through
           artifacts: false
         - job: test-playwright
@@ -325,8 +326,8 @@ deploy-webapp:
         - kubectl config get-contexts
         - kubectl config use-context kimata/rasp-shutter:pod-rollout
 
-        - kubectl --insecure-skip-tls-verify=true -n hems set image deployment/rasp-shutter rasp-shutter=${IMAGE} --record
-        - kubectl --insecure-skip-tls-verify=true -n hems set image deployment/rasp-shutter-demo rasp-shutter-demo=${IMAGE} --record
+        - kubectl --insecure-skip-tls-verify=true -n hems set image deployment/rasp-shutter rasp-shutter=${IMAGE}
+        - kubectl --insecure-skip-tls-verify=true -n hems set image deployment/rasp-shutter-demo rasp-shutter-demo=${IMAGE}
 
         - kubectl --insecure-skip-tls-verify=true -n hems rollout status deployment/rasp-shutter --timeout=120s
         - kubectl --insecure-skip-tls-verify=true -n hems rollout status deployment/rasp-shutter-demo --timeout=120s
