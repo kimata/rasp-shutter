@@ -44,7 +44,7 @@ ENV TZ=Asia/Tokyo
 
 COPY --from=deps-cleanup /usr/local/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
 
-WORKDIR /opt/rasp-water
+WORKDIR /opt/rasp-shutter
 
 COPY . .
 
