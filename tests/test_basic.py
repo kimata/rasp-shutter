@@ -86,7 +86,7 @@ def app(config):
         test_terminate()
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(app):
     test_client = app.test_client()
 
@@ -1717,7 +1717,7 @@ def test_schedule_ctrl_open_dup(client, mocker, time_machine):
 
 def test_schedule_ctrl_pending_open_dup(client, mocker, time_machine):  # noqa: PLR0915
     """
-    pending open状態での重複防止機能をテストする
+    Pending open状態での重複防止機能をテストする
 
     テストシナリオ:to
     1. シャッター0,1を閉じ、その後シャッター1のみを開く

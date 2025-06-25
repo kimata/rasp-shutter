@@ -17,6 +17,7 @@ This is a Japanese electric shutter automation application (`rasp-shutter`) that
 ## Key Development Commands
 
 ### Frontend (Vue.js)
+
 ```bash
 npm ci                    # Install dependencies
 npm run dev              # Development server
@@ -26,18 +27,21 @@ npm run format           # Prettier formatting
 ```
 
 ### Backend (Python)
+
 ```bash
 rye sync                 # Install Python dependencies with Rye
 rye run python flask/src/app.py    # Run Flask server directly
 ```
 
 ### Testing
+
 ```bash
 rye run pytest          # Run all tests with coverage
 rye run pytest tests/test_basic.py    # Run specific test file
 ```
 
 ### Docker
+
 ```bash
 docker compose run --build --rm --publish 5000:5000 rasp-shutter
 ```
@@ -45,6 +49,7 @@ docker compose run --build --rm --publish 5000:5000 rasp-shutter
 ## Flask Application Structure
 
 The Flask app uses a modular blueprint architecture:
+
 - `rasp_shutter.webapp_control` - Manual shutter control
 - `rasp_shutter.webapp_schedule` - Schedule management
 - `rasp_shutter.webapp_sensor` - Sensor data handling
@@ -61,6 +66,7 @@ All routes are prefixed with `/rasp-shutter` (configured in `my_lib.webapp.confi
 ## Test Configuration
 
 Tests use pytest with:
+
 - HTML reports generated in `tests/evidence/`
 - Coverage reports in `tests/evidence/coverage/`
 - Playwright for browser automation tests
