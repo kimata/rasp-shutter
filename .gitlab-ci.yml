@@ -35,7 +35,7 @@ build-vue:
 
     needs: []
 
-    image: node:22.6
+    image: node:22.15
     script:
         - npm ci --cache .npm --prefer-offline
         - npm run build
