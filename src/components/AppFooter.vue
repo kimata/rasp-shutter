@@ -8,6 +8,9 @@
                 <small>Vueビルド: {{ build.date }} [{{ build.dateFrom }}]</small>
             </p>
             <p class="text-muted m-0">
+                <small>Vue バージョン: {{ vueVersion }}</small>
+            </p>
+            <p class="text-muted m-0">
                 <small>起動日時: {{ sysinfo.uptime }} [{{ sysinfo.uptimeFrom }}]</small>
             </p>
             <p class="text-muted m-0">
@@ -36,12 +39,14 @@ dayjs.extend(relativeTime);
 dayjs.extend(localizedFormat);
 
 import AppConfig from "../mixins/AppConfig.js";
+import { version } from "vue";
 
 export default {
     name: "app-footer",
     mixins: [AppConfig],
     data() {
         return {
+            vueVersion: version,
             build: {
                 date: dayjs(document.documentElement.dataset.buildDate).format("llll"),
                 dateFrom: dayjs(document.documentElement.dataset.buildDate).fromNow(),
