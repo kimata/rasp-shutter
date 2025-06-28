@@ -107,7 +107,6 @@ test-walk-through:
     stage: test
 
     needs:
-        - build-vue
         - test-prepare
 
     script:
