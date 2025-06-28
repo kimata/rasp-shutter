@@ -15,7 +15,7 @@ dependencies = [
     "fluent-logger>=0.11.1",
     "influxdb-client[ciso]>=1.44.0",
     "schedule==1.2.2",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@8d62ee7f13ee0c744a8a451a7ee9abf21339b1aa",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@abd9aee1eadcdd0915d73d8c8c49d1f289ed14e7",
     "pysolar>=0.13",
 ]
 
@@ -53,7 +53,7 @@ allow-direct-references = true
 [tool.pytest.ini_options]
 minversion = "6.0"
 
-addopts = "--verbose --timeout=300 --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys --html=tests/evidence/index.htm --self-contained-html --cov=flask --cov-report=html"
+addopts = "--verbose --timeout=300 --durations=10 --log-file-level=DEBUG --log-format=\"%(asctime)s %(levelname)s %(message)s\" --log-format=\"%(asctime)s %(levelname)s [%(filename)s:%(lineno)s %(funcName)s] %(message)s\" --capture=sys --html=tests/evidence/index.htm --self-contained-html --cov=flask --cov-report=html"
 
 testpaths = [
     "tests",

@@ -7,7 +7,7 @@
                     <thead>
                         <tr className="row">
                             <th className="col-2">センサー</th>
-                            <th colSpan="2" className="col-4">値</th>
+                            <th colSpan="2" className="col-4 text-center">値</th>
                             <th colSpan="2" className="col-6">最新更新日時</th>
                         </tr>
                     </thead>
@@ -74,6 +74,8 @@ export default {
                 lux: { valid: false },
                 solar_rad: { valid: false },
             },
+            animatingValues: {},
+            displayValues: {},
             interval: null,
         };
     },
@@ -96,10 +98,24 @@ export default {
             axios
                 .get(this.AppConfig["apiEndpoint"] + "sensor")
                 .then((response) => {
+                    const oldSensor = { ...this.sensor };
                     this.sensor = response.data;
 
                     ["solar_rad", "lux", "altitude"].forEach((name) => {
                         this.sensor[name].time = dayjs(this.sensor[name].time);
+
+                        // アニメーション処理
+                        if (this.sensor[name].valid && oldSensor[name] && oldSensor[name].valid) {
+                            const oldValue = Number(oldSensor[name].value);
+                            const newValue = Number(this.sensor[name].value);
+
+                            if (oldValue !== newValue) {
+                                this.animateValue(name, oldValue, newValue);
+                            }
+                        } else if (this.sensor[name].valid) {
+                            // 初回または無効から有効になった場合
+                            this.displayValues[name] = Number(this.sensor[name].value);
+                        }
                     });
                 })
                 .catch(() => {
@@ -111,11 +127,38 @@ export default {
                 });
         },
         sensorValue: function (name) {
+            if (this.displayValues[name] !== undefined) {
+                return Math.round(this.displayValues[name]).toLocaleString();
+            }
             if (this.sensor[name].valid) {
                 return Math.round(Number(this.sensor[name].value)).toLocaleString();
             } else {
                 return "-";
             }
+        },
+        animateValue: function (name, fromValue, toValue, duration = 1000) {
+            if (this.animatingValues[name]) {
+                clearInterval(this.animatingValues[name]);
+            }
+
+            const startTime = Date.now();
+            const valueDiff = toValue - fromValue;
+
+            this.animatingValues[name] = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // easeOutQuart for smoother animation
+                const easeProgress = 1 - Math.pow(1 - progress, 4);
+
+                this.displayValues[name] = fromValue + (valueDiff * easeProgress);
+
+                if (progress >= 1) {
+                    clearInterval(this.animatingValues[name]);
+                    delete this.animatingValues[name];
+                    this.displayValues[name] = toValue;
+                }
+            }, 16); // ~60fps
         },
     },
 };
