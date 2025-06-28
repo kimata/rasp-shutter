@@ -31,8 +31,9 @@ schedule_lock = None
 schedule_data = None
 should_terminate = threading.Event()
 
-# Worker-specific scheduler instance for pytest-xdist parallel execution
+# Worker-specific instances for pytest-xdist parallel execution
 _scheduler_instances = {}
+_schedule_data_instances = {}
 
 
 def get_scheduler():
@@ -44,6 +45,22 @@ def get_scheduler():
         _scheduler_instances[worker_id] = schedule.Scheduler()
 
     return _scheduler_instances[worker_id]
+
+
+def get_schedule_data():
+    """Get worker-specific schedule data for pytest-xdist parallel execution"""
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+
+    if worker_id not in _schedule_data_instances:
+        _schedule_data_instances[worker_id] = None
+
+    return _schedule_data_instances[worker_id]
+
+
+def set_schedule_data(data):
+    """Set worker-specific schedule data for pytest-xdist parallel execution"""
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    _schedule_data_instances[worker_id] = data
 
 
 def init():
@@ -79,6 +96,8 @@ def brightness_text(sense_data, cur_schedule_data):
 def check_brightness(sense_data, action):
     if (not sense_data["lux"]["valid"]) or (not sense_data["solar_rad"]["valid"]):
         return BRIGHTNESS_STATE.UNKNOWN
+
+    schedule_data = get_schedule_data()
 
     if action == "close":
         if (
@@ -129,6 +148,7 @@ def exec_shutter_control(config, state, mode, sense_data, user):
 def shutter_auto_open(config):
     logging.debug("try auto open")
 
+    schedule_data = get_schedule_data()
     if not schedule_data["open"]["is_active"]:
         logging.debug("inactive")
         return
@@ -186,6 +206,7 @@ def conv_schedule_time_to_datetime(schedule_time):
 def shutter_auto_close(config):
     logging.debug("try auto close")
 
+    schedule_data = get_schedule_data()
     if not schedule_data["close"]["is_active"]:
         logging.debug("inactive")
         return
@@ -458,7 +479,6 @@ def set_schedule(config, schedule_data):  # noqa: C901
 
 def schedule_worker(config, queue):
     global should_terminate
-    global schedule_data  # noqa: PLW0603
 
     sleep_sec = 0.5
     scheduler = get_scheduler()
@@ -467,6 +487,7 @@ def schedule_worker(config, queue):
 
     logging.info("Load schedule")
     schedule_data = schedule_load()
+    set_schedule_data(schedule_data)
 
     set_schedule(config, schedule_data)
 
@@ -481,6 +502,7 @@ def schedule_worker(config, queue):
         try:
             if not queue.empty():
                 schedule_data = queue.get()
+                set_schedule_data(schedule_data)
                 set_schedule(config, schedule_data)
                 schedule_store(schedule_data)
 

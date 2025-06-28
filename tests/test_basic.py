@@ -62,6 +62,16 @@ def _clear(config):
     my_lib.footprint.clear(rasp_shutter.config.STAT_PENDING_OPEN)
     my_lib.footprint.clear(pathlib.Path(config["liveness"]["file"]["scheduler"]))
 
+    # Clear schedule file to ensure clean state for each test
+    # Use worker-specific schedule file paths for parallel execution
+    import os
+
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    original_schedule_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
+    worker_schedule_path = original_schedule_path.parent / f"schedule_{worker_id}.dat"
+    my_lib.webapp.config.SCHEDULE_FILE_PATH = worker_schedule_path
+    worker_schedule_path.unlink(missing_ok=True)
+
     my_lib.notify.slack.interval_clear()
     my_lib.notify.slack.hist_clear()
 
@@ -942,6 +952,7 @@ def test_schedule_ctrl_auto_close_dup(client, time_machine, mock_sensor_data):
     time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(2))
+    time.sleep(1)  # Wait for scheduler to complete any pending operations
 
     ctrl_log_check(
         client,
@@ -955,9 +966,10 @@ def test_schedule_ctrl_auto_close_dup(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     move_to(time_machine, time_evening(3))
-    time.sleep(5)  # Extended wait time for parallel execution stability
+    time.sleep(7)  # Increased wait time to ensure auto control completes
 
     move_to(time_machine, time_evening(4))
+    time.sleep(2)  # Wait for schedule control to execute
 
     ctrl_log_check(
         client,
