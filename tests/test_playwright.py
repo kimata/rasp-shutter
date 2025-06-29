@@ -295,7 +295,7 @@ def test_schedule_run(page, host, port):
     time.sleep(5)  # スケジューラの実行を待つ
 
     logging.info("DEBUG: About to check for '閉めました' message")
-    check_log(page, "閉めました", 10)
+    check_log(page, "スケジューラで閉めました", 10)
     # テスト終了時にモック時刻をリセット
     reset_mock_time(host, port)
 

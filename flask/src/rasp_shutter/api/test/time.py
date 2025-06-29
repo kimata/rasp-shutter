@@ -20,6 +20,45 @@ _schedule_patcher = None
 _datetime_patcher = None
 
 
+def _force_reset_patchers():
+    """モジュール読み込み時に既存のパッチャーをリセット"""
+    global _mock_time, _time_patcher, _schedule_patcher, _datetime_patcher
+    _mock_time = None
+    _time_patcher = None
+    _schedule_patcher = None
+    _datetime_patcher = None
+
+
+# モジュール読み込み時にリセット
+_force_reset_patchers()
+
+
+def _stop_patchers_safely():
+    """パッチャーを安全に停止する"""
+    global _time_patcher, _schedule_patcher, _datetime_patcher
+
+    if _time_patcher:
+        try:
+            _time_patcher.stop()
+        except (TypeError, AttributeError):
+            pass
+        _time_patcher = None
+
+    if _schedule_patcher:
+        try:
+            _schedule_patcher.stop()
+        except (TypeError, AttributeError):
+            pass
+        _schedule_patcher = None
+
+    if _datetime_patcher:
+        try:
+            _datetime_patcher.stop()
+        except (TypeError, AttributeError):
+            pass
+        _datetime_patcher = None
+
+
 @blueprint.route("/api/test/time/set/<timestamp>", methods=["POST"])
 def set_mock_time(timestamp):
     """
@@ -50,21 +89,24 @@ def set_mock_time(timestamp):
 
         _mock_time = mock_datetime
 
-        # 既存のパッチャーがあれば停止
-        if _time_patcher:
-            _time_patcher.stop()
-        if _schedule_patcher:
-            _schedule_patcher.stop()
-        if _datetime_patcher:
-            _datetime_patcher.stop()
+        # 既存のパッチャーを安全に停止
+        _stop_patchers_safely()
 
         # my_lib.time.now() を全体的にモック
-        _time_patcher = patch("my_lib.time.now", return_value=_mock_time)
-        _time_patcher.start()
+        try:
+            _time_patcher = patch("my_lib.time.now", return_value=_mock_time)
+            _time_patcher.start()
+        except (TypeError, AttributeError) as e:
+            logging.warning("Failed to patch my_lib.time.now: %s", e)
+            _time_patcher = None
 
         # スケジューラーモジュールでもパッチ
-        _schedule_patcher = patch("rasp_shutter.scheduler.my_lib.time.now", return_value=_mock_time)
-        _schedule_patcher.start()
+        try:
+            _schedule_patcher = patch("rasp_shutter.scheduler.my_lib.time.now", return_value=_mock_time)
+            _schedule_patcher.start()
+        except (TypeError, AttributeError) as e:
+            logging.warning("Failed to patch rasp_shutter.scheduler.my_lib.time.now: %s", e)
+            _schedule_patcher = None
 
         # scheduleライブラリのdatetime.datetime.nowもパッチ（タイムゾーン対応）
         def mock_datetime_now(tz=None):
@@ -73,8 +115,12 @@ def set_mock_time(timestamp):
             else:
                 return _mock_time.astimezone(tz)
 
-        _datetime_patcher = patch("datetime.datetime.now", side_effect=mock_datetime_now)
-        _datetime_patcher.start()
+        try:
+            _datetime_patcher = patch("schedule.datetime.datetime.now", side_effect=mock_datetime_now)
+            _datetime_patcher.start()
+        except (TypeError, AttributeError) as e:
+            logging.warning("Failed to patch schedule.datetime.datetime.now: %s", e)
+            _datetime_patcher = None
 
         logging.info("Mock time set to: %s", _mock_time)
 
@@ -111,19 +157,22 @@ def advance_mock_time(seconds):
 
     _mock_time = _mock_time + datetime.timedelta(seconds=seconds)
 
-    # パッチャーを更新
-    if _time_patcher:
-        _time_patcher.stop()
-    if _schedule_patcher:
-        _schedule_patcher.stop()
-    if _datetime_patcher:
-        _datetime_patcher.stop()
+    # パッチャーを安全に停止
+    _stop_patchers_safely()
 
-    _time_patcher = patch("my_lib.time.now", return_value=_mock_time)
-    _time_patcher.start()
+    try:
+        _time_patcher = patch("my_lib.time.now", return_value=_mock_time)
+        _time_patcher.start()
+    except (TypeError, AttributeError) as e:
+        logging.warning("Failed to patch my_lib.time.now: %s", e)
+        _time_patcher = None
 
-    _schedule_patcher = patch("rasp_shutter.scheduler.my_lib.time.now", return_value=_mock_time)
-    _schedule_patcher.start()
+    try:
+        _schedule_patcher = patch("rasp_shutter.scheduler.my_lib.time.now", return_value=_mock_time)
+        _schedule_patcher.start()
+    except (TypeError, AttributeError) as e:
+        logging.warning("Failed to patch rasp_shutter.scheduler.my_lib.time.now: %s", e)
+        _schedule_patcher = None
 
     def mock_datetime_now(tz=None):
         if tz is None:
@@ -131,8 +180,12 @@ def advance_mock_time(seconds):
         else:
             return _mock_time.astimezone(tz)
 
-    _datetime_patcher = patch("datetime.datetime.now", side_effect=mock_datetime_now)
-    _datetime_patcher.start()
+    try:
+        _datetime_patcher = patch("schedule.datetime.datetime.now", side_effect=mock_datetime_now)
+        _datetime_patcher.start()
+    except (TypeError, AttributeError) as e:
+        logging.warning("Failed to patch schedule.datetime.datetime.now: %s", e)
+        _datetime_patcher = None
 
     # スケジューラーに現在のスケジュールを再読み込みさせる
     try:
@@ -169,17 +222,7 @@ def reset_mock_time():
     if os.environ.get("DUMMY_MODE", "false") != "true":
         return {"error": "Test API is only available in DUMMY_MODE"}, 403
 
-    if _time_patcher:
-        _time_patcher.stop()
-        _time_patcher = None
-
-    if _schedule_patcher:
-        _schedule_patcher.stop()
-        _schedule_patcher = None
-
-    if _datetime_patcher:
-        _datetime_patcher.stop()
-        _datetime_patcher = None
+    _stop_patchers_safely()
 
     _mock_time = None
 
