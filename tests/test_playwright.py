@@ -278,7 +278,8 @@ def test_schedule_run(page, host, port):
 
     # NOTE: テスト用APIで時刻を進める
     advance_mock_time(host, port, SCHEDULE_AFTER_MIN * 60)
-    # API使用時は短いタイムアウトで確認
+    # スケジューラが実行されるまで少し待機
+    time.sleep(2)
     check_log(page, "閉めました", 10)
     # テスト終了時にモック時刻をリセット
     reset_mock_time(host, port)
