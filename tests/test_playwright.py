@@ -306,7 +306,7 @@ def test_schedule_run(page, host, port):
 
     # スケジューラが実行されるまで待機（最大10秒）
     logging.info("DEBUG: Waiting for scheduler to execute")
-    time.sleep(5)  # スケジューラの実行を待つ
+    time.sleep(10)  # スケジューラの実行を待つ
 
     logging.info("DEBUG: About to check for '閉めました' message")
     check_log(page, "スケジューラで閉めました", 10)
