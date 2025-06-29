@@ -157,6 +157,10 @@ def test_manual(page, host, port):
     init(page)
     page.goto(app_url(host, port))
 
+    # NOTE: テスト開始時に時刻をリセットして重複防止履歴をクリア
+    reset_mock_time(host, port)
+    time.sleep(0.5)
+
     page.get_by_test_id("clear").click()
     time.sleep(1)
     check_log(page, "ログがクリアされました")
