@@ -8,6 +8,7 @@ import time
 
 import my_lib.time
 import my_lib.webapp.config
+import requests
 from flaky import flaky
 from playwright.sync_api import expect
 
@@ -73,6 +74,36 @@ def check_schedule(page, enable_schedule_index, schedule_time, solar_rad, lux, e
 
 def app_url(server, port):
     return APP_URL_TMPL.format(host=server, port=port)
+
+
+def set_mock_time(host, port, target_time):
+    """テスト用APIを使用してモック時刻を設定"""
+    api_url = APP_URL_TMPL.format(host=host, port=port) + f"api/test/time/set/{target_time.isoformat()}"
+    try:
+        response = requests.post(api_url, timeout=5)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
+
+
+def advance_mock_time(host, port, seconds):
+    """テスト用APIを使用してモック時刻を進める"""
+    api_url = APP_URL_TMPL.format(host=host, port=port) + f"api/test/time/advance/{seconds}"
+    try:
+        response = requests.post(api_url, timeout=5)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
+
+
+def reset_mock_time(host, port):
+    """テスト用APIを使用してモック時刻をリセット"""
+    api_url = APP_URL_TMPL.format(host=host, port=port) + "api/test/time/reset"
+    try:
+        response = requests.post(api_url, timeout=5)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
 
 
 def init(page):
@@ -149,10 +180,16 @@ def test_manual(page, host, port):
     page.get_by_test_id("open-1").click()
     check_log(page, "手動で開けました")
 
-    time.sleep(60)
+    # NOTE: 60秒待機の代わりに時刻操作APIで時間を進める
+    advance_mock_time(host, port, 60)
+    time.sleep(0.1)  # 最小限の待機
+    logging.info("Time advanced by 60 seconds using API")
 
     page.get_by_test_id("open-1").click()
     check_log(page, "手動で開けました")
+
+    # テスト終了時にモック時刻をリセット
+    reset_mock_time(host, port)
 
 
 @flaky(max_runs=3, min_passes=1)
@@ -212,8 +249,10 @@ def test_schedule_run(page, host, port):
     time.sleep(1)
     check_log(page, "ログがクリアされました")
 
-    # NOTE: 次の「分」で実行させるにあたって、秒数を調整する
-    time.sleep((90 - my_lib.time.now().second) % 60)
+    # NOTE: テスト用APIで時刻を設定（秒を30に設定して次の分に実行されるようにする）
+    current_time = my_lib.time.now().replace(second=30, microsecond=0)
+    set_mock_time(host, port, current_time)
+    logging.info("Mock time set successfully")
 
     # NOTE: スケジュールに従って閉める評価をしたいので、一旦あけておく
     page.get_by_test_id("open-0").click()
@@ -237,7 +276,12 @@ def test_schedule_run(page, host, port):
     page.get_by_test_id("save").click()
     check_log(page, "スケジュールを更新")
 
-    check_log(page, "閉めました", (SCHEDULE_AFTER_MIN * 60) + 10)
+    # NOTE: テスト用APIで時刻を進める
+    advance_mock_time(host, port, SCHEDULE_AFTER_MIN * 60)
+    # API使用時は短いタイムアウトで確認
+    check_log(page, "閉めました", 10)
+    # テスト終了時にモック時刻をリセット
+    reset_mock_time(host, port)
 
 
 @flaky(max_runs=3, min_passes=1)
@@ -254,6 +298,11 @@ def test_schedule_disable(page, host, port):
     page.get_by_test_id("open-1").click()
     time.sleep(1)
 
+    # NOTE: テスト用APIで時刻を設定
+    current_time = my_lib.time.now().replace(second=30, microsecond=0)
+    set_mock_time(host, port, current_time)
+    logging.info("Mock time set for disable test")
+
     for state in ["open", "close"]:
         # NOTE: checkbox 自体は hidden にして、CSS で表示しているので、
         # 通常の locator では操作できない
@@ -261,7 +310,7 @@ def test_schedule_disable(page, host, port):
         enable_checkbox.evaluate("node => node.checked = false")
         enable_checkbox.evaluate("node => node.click()")
 
-        # NOET: 1分後にスケジュール設定
+        # NOTE: 1分後にスケジュール設定
         page.locator(f'//div[contains(@id,"{state}-schedule-entry-time")]/input').fill(time_str_after(1))
 
         # NOTE: 曜日は全てチェック
@@ -275,6 +324,10 @@ def test_schedule_disable(page, host, port):
     page.get_by_test_id("save").click()
     check_log(page, "スケジュールを更新")
 
-    # NOET: 何も実行されていないことを確認
-    time.sleep(60)
+    # NOTE: 何も実行されていないことを確認
+    advance_mock_time(host, port, 60)
+    # API使用時は短時間で確認
+    time.sleep(0.5)  # さらに短縮
     check_log(page, "スケジュールを更新")
+    # テスト終了時にモック時刻をリセット
+    reset_mock_time(host, port)

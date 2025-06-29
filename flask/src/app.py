@@ -40,9 +40,12 @@ def create_app(config, dummy_mode=False):
     import my_lib.webapp.event
     import my_lib.webapp.log
     import my_lib.webapp.util
-    import rasp_shutter.webapp_control
-    import rasp_shutter.webapp_schedule
-    import rasp_shutter.webapp_sensor
+    import rasp_shutter.api.control
+    import rasp_shutter.api.schedule
+    import rasp_shutter.api.sensor
+
+    if dummy_mode:
+        import rasp_shutter.api.test.time
 
     app = flask.Flask("rasp-shutter")
 
@@ -55,8 +58,8 @@ def create_app(config, dummy_mode=False):
         else:  # pragma: no cover
             pass
 
-        rasp_shutter.webapp_control.init()
-        rasp_shutter.webapp_schedule.init(config)
+        rasp_shutter.api.control.init()
+        rasp_shutter.api.schedule.init(config)
         my_lib.webapp.log.init(config)
 
         def notify_terminate():  # pragma: no cover
@@ -74,9 +77,12 @@ def create_app(config, dummy_mode=False):
 
     app.json.compat = True
 
-    app.register_blueprint(rasp_shutter.webapp_control.blueprint)
-    app.register_blueprint(rasp_shutter.webapp_schedule.blueprint)
-    app.register_blueprint(rasp_shutter.webapp_sensor.blueprint)
+    app.register_blueprint(rasp_shutter.api.control.blueprint)
+    app.register_blueprint(rasp_shutter.api.schedule.blueprint)
+    app.register_blueprint(rasp_shutter.api.sensor.blueprint)
+
+    if dummy_mode:
+        app.register_blueprint(rasp_shutter.api.test.time.blueprint)
 
     app.register_blueprint(my_lib.webapp.base.blueprint_default)
     app.register_blueprint(my_lib.webapp.base.blueprint)

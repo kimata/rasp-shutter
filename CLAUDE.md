@@ -50,9 +50,9 @@ docker compose run --build --rm --publish 5000:5000 rasp-shutter
 
 The Flask app uses a modular blueprint architecture:
 
-- `rasp_shutter.webapp_control` - Manual shutter control
-- `rasp_shutter.webapp_schedule` - Schedule management
-- `rasp_shutter.webapp_sensor` - Sensor data handling
+- `rasp_shutter.api.control` - Manual shutter control
+- `rasp_shutter.api.schedule` - Schedule management
+- `rasp_shutter.api.sensor` - Sensor data handling
 - `my_lib.webapp.*` - Shared library modules (logging, events, utilities)
 
 All routes are prefixed with `/rasp-shutter` (configured in `my_lib.webapp.config.URL_PREFIX`).
