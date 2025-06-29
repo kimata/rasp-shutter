@@ -305,15 +305,16 @@ def api_shutter_list():
     return flask.jsonify([shutter["name"] for shutter in config["shutter"]])
 
 
-@blueprint.route("/api/dummy/open", methods=["GET"])
-@my_lib.flask_util.support_jsonp
-def api_dummy_open():
-    logging.info("ダミーのシャッターが開きました。")
-    return flask.jsonify({"status": "OK"})
+if os.environ.get("DUMMY_MODE", "false") == "true":
 
+    @blueprint.route("/api/dummy/open", methods=["GET"])
+    @my_lib.flask_util.support_jsonp
+    def api_dummy_open():
+        logging.info("ダミーのシャッターが開きました。")
+        return flask.jsonify({"status": "OK"})
 
-@blueprint.route("/api/dummy/close", methods=["GET"])
-@my_lib.flask_util.support_jsonp
-def api_dummy_close():
-    logging.info("ダミーのシャッターが閉じました。")
-    return flask.jsonify({"status": "OK"})
+    @blueprint.route("/api/dummy/close", methods=["GET"])
+    @my_lib.flask_util.support_jsonp
+    def api_dummy_close():
+        logging.info("ダミーのシャッターが閉じました。")
+        return flask.jsonify({"status": "OK"})

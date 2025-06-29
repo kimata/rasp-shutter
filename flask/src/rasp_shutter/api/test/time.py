@@ -33,7 +33,7 @@ def set_mock_time(timestamp):
     global _mock_time, _time_patcher, _schedule_patcher  # noqa: PLW0603
 
     # DUMMY_MODE でない場合は拒否
-    if not os.environ.get("DUMMY_MODE"):
+    if os.environ.get("DUMMY_MODE", "false") != "true":
         return {"error": "Test API is only available in DUMMY_MODE"}, 403
 
     try:
@@ -89,7 +89,7 @@ def advance_mock_time(seconds):
     global _mock_time, _time_patcher, _schedule_patcher  # noqa: PLW0603
 
     # DUMMY_MODE でない場合は拒否
-    if not os.environ.get("DUMMY_MODE"):
+    if os.environ.get("DUMMY_MODE", "false") != "true":
         return {"error": "Test API is only available in DUMMY_MODE"}, 403
 
     if _mock_time is None:
@@ -131,7 +131,7 @@ def reset_mock_time():
     global _mock_time, _time_patcher, _schedule_patcher  # noqa: PLW0603
 
     # DUMMY_MODE でない場合は拒否
-    if not os.environ.get("DUMMY_MODE"):
+    if os.environ.get("DUMMY_MODE", "false") != "true":
         return {"error": "Test API is only available in DUMMY_MODE"}, 403
 
     if _time_patcher:
@@ -159,7 +159,7 @@ def get_current_time():
 
     """
     # DUMMY_MODE でない場合は拒否
-    if not os.environ.get("DUMMY_MODE"):
+    if os.environ.get("DUMMY_MODE", "false") != "true":
         return {"error": "Test API is only available in DUMMY_MODE"}, 403
 
     current_time = my_lib.time.now()

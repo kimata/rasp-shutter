@@ -18,6 +18,15 @@ SCHEDULE_AFTER_MIN = 1
 
 
 def check_log(page, message, timeout_sec=2):
+    # DEBUG: ログの内容を詳細に確認
+    log_list = page.locator('//div[contains(@class,"log")]/div/div[2]')
+    log_count = log_list.count()
+    logging.info("DEBUG: Total log count: %d", log_count)
+
+    for i in range(min(log_count, 5)):  # 最初の5件を表示
+        log_text = log_list.nth(i).text_content()
+        logging.info("DEBUG: Log[%d]: %s", i, log_text)
+
     expect(page.locator('//div[contains(@class,"log")]/div/div[2]').first).to_contain_text(
         message, timeout=timeout_sec * 1000
     )
@@ -277,9 +286,15 @@ def test_schedule_run(page, host, port):
     check_log(page, "スケジュールを更新")
 
     # NOTE: テスト用APIで時刻を進める
-    advance_mock_time(host, port, SCHEDULE_AFTER_MIN * 60)
-    # スケジューラが実行されるまで少し待機
-    time.sleep(2)
+    logging.info("DEBUG: About to advance mock time by %d seconds", SCHEDULE_AFTER_MIN * 60)
+    advance_result = advance_mock_time(host, port, SCHEDULE_AFTER_MIN * 60)
+    logging.info("DEBUG: Advance mock time result: %s", advance_result)
+
+    # スケジューラが実行されるまで待機（最大10秒）
+    logging.info("DEBUG: Waiting for scheduler to execute")
+    time.sleep(5)  # スケジューラの実行を待つ
+
+    logging.info("DEBUG: About to check for '閉めました' message")
     check_log(page, "閉めました", 10)
     # テスト終了時にモック時刻をリセット
     reset_mock_time(host, port)

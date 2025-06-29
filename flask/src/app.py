@@ -15,12 +15,34 @@ Options:
 import atexit
 import logging
 import os
+import signal
 
 import flask_cors
+import my_lib.proc_util
 
 import flask
 
 SCHEMA_CONFIG = "config.schema"
+
+
+def term():
+    import rasp_shutter.scheduler
+
+    rasp_shutter.scheduler.term()
+
+    # 子プロセスを終了
+    my_lib.proc_util.kill_child()
+
+    # プロセス終了
+    logging.info("Graceful shutdown completed")
+    os._exit(0)
+
+
+def signal_handler(signum, _frame):
+    """シグナルハンドラー: CTRL-Cや終了シグナルを受け取った際の処理"""
+    logging.info("Received signal %d, shutting down gracefully...", signum)
+
+    term()
 
 
 def create_app(config, dummy_mode=False):
@@ -63,6 +85,7 @@ def create_app(config, dummy_mode=False):
         my_lib.webapp.log.init(config)
 
         def notify_terminate():  # pragma: no cover
+            term()
             my_lib.webapp.log.info("🏃 アプリを再起動します。")
             my_lib.webapp.log.term()
 
@@ -115,5 +138,12 @@ if __name__ == "__main__":
 
     app = create_app(config, dummy_mode)
 
-    # NOTE: スクリプトの自動リロード停止したい場合は use_reloader=False にする
-    app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=True)  # noqa: S104
+    # Flaskアプリケーションを実行
+    try:
+        # NOTE: スクリプトの自動リロード停止したい場合は use_reloader=False にする
+        app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=True)  # noqa: S104
+    except KeyboardInterrupt:
+        logging.info("Received KeyboardInterrupt, shutting down...")
+        signal_handler(signal.SIGINT, None)
+    finally:
+        term()
