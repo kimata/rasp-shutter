@@ -8,6 +8,7 @@ import time
 
 import my_lib.time
 import my_lib.webapp.config
+import pytest
 import requests
 from flaky import flaky
 from playwright.sync_api import expect
@@ -115,9 +116,21 @@ def reset_mock_time(host, port):
         return False
 
 
-def init(page):
+def clear_control_history(host, port):
+    """テスト用APIを使用して制御履歴をクリア"""
+    api_url = APP_URL_TMPL.format(host=host, port=port) + "api/ctrl/clear"
+    try:
+        response = requests.post(api_url, timeout=5)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
+
+
+@pytest.fixture(autouse=True)
+def _init_page(page, host, port):
     page.on("console", lambda msg: msg.text)
     page.set_viewport_size({"width": 2400, "height": 1600})
+    clear_control_history(host, port)
 
 
 ######################################################################
@@ -154,10 +167,9 @@ def test_time():
 
 @flaky(max_runs=3, min_passes=1)
 def test_manual(page, host, port):
-    init(page)
     page.goto(app_url(host, port))
 
-    # NOTE: テスト開始時に時刻をリセットして重複防止履歴をクリア
+    # NOTE: テスト開始時に時刻をリセット
     reset_mock_time(host, port)
     time.sleep(0.5)
 
@@ -207,7 +219,6 @@ def test_manual(page, host, port):
 
 @flaky(max_runs=3, min_passes=1)
 def test_schedule(page, host, port):
-    init(page)
     page.goto(app_url(host, port))
 
     page.get_by_test_id("clear").click()
@@ -255,7 +266,6 @@ def test_schedule(page, host, port):
 
 @flaky(max_runs=3, min_passes=1)
 def test_schedule_run(page, host, port):
-    init(page)
     page.goto(app_url(host, port))
 
     page.get_by_test_id("clear").click()
@@ -306,7 +316,6 @@ def test_schedule_run(page, host, port):
 
 @flaky(max_runs=3, min_passes=1)
 def test_schedule_disable(page, host, port):
-    init(page)
     page.goto(app_url(host, port))
 
     page.get_by_test_id("clear").click()

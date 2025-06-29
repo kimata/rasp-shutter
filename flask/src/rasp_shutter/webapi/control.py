@@ -318,3 +318,11 @@ if os.environ.get("DUMMY_MODE", "false") == "true":
     def api_dummy_close():
         logging.info("ダミーのシャッターが閉じました。")
         return flask.jsonify({"status": "OK"})
+
+    @blueprint.route("/api/ctrl/clear", methods=["POST"])
+    @my_lib.flask_util.support_jsonp
+    def api_test_control_clear():
+        """テスト用: 制御履歴をクリア"""
+        config = flask.current_app.config["CONFIG"]
+        clean_stat_exec(config)
+        return flask.jsonify({"status": "OK"})
