@@ -1,43 +1,60 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+このファイルは、Claude Code（claude.ai/code）がこのリポジトリでコードを扱う際のガイダンスを提供します。
 
-## Project Overview
+## プロジェクト概要
 
-This is a Japanese electric shutter automation application (`rasp-shutter`) that controls electric shutters automatically based on schedules and light sensors. The system consists of a Vue.js frontend and Flask backend that communicates with ESP32 devices via REST API.
+これは日本の電動シャッター自動化アプリケーション（`rasp-shutter`）で、スケジュールや照度センサーに基づいて電動シャッターを自動制御します。システムはVue.jsフロントエンドとFlaskバックエンドで構成され、ESP32デバイスとREST APIで通信します。
 
-## Architecture
+## アーキテクチャ
 
-- **Frontend**: Vue 3 with Bootstrap Vue Next, served from `/rasp-shutter/` base path
-- **Backend**: Flask app with modular blueprints (control, schedule, sensor, logging)
-- **Data**: SQLite database for logs, YAML configuration files
-- **Hardware Interface**: REST API communication with ESP32 devices
-- **Deployment**: Docker containers and Kubernetes support
+- **フロントエンド**: Vue 3 with Bootstrap Vue Next、`/rasp-shutter/`ベースパスで提供
+- **バックエンド**: モジュラーブループリントを使用したFlaskアプリ（control、schedule、sensor、logging）
+- **データ**: ログ用SQLiteデータベース、YAML設定ファイル
+- **ハードウェアインターフェース**: ESP32デバイスとのREST API通信
+- **デプロイメント**: DockerコンテナとKubernetesサポート
 
-## Key Development Commands
+## 主要な開発コマンド
 
-### Frontend (Vue.js)
+### パッケージ管理
+
+このプロジェクトは**uv**（ryeではない）をPython依存関係管理に使用しています：
 
 ```bash
-npm ci                    # Install dependencies
-npm run dev              # Development server
-npm run build            # Production build
-npm run lint             # ESLint with auto-fix
-npm run format           # Prettier formatting
+uv sync                  # Python依存関係をインストール
+uv sync --upgrade        # 依存関係を最新バージョンにアップグレード
+uv run python flask/src/app.py    # Flaskサーバーを直接実行
 ```
 
-### Backend (Python)
+### フロントエンド（Vue.js）
 
 ```bash
-rye sync                 # Install Python dependencies with Rye
-rye run python flask/src/app.py    # Run Flask server directly
+npm ci                   # 依存関係をインストール
+npm run dev             # 開発サーバー
+npm run build           # 本番ビルド
+npm run lint            # ESLintと自動修正
+npm run format          # Prettierフォーマット
 ```
 
-### Testing
+### バックエンド（Python）
 
 ```bash
-rye run pytest          # Run all tests with coverage
-rye run pytest tests/test_basic.py    # Run specific test file
+# 開発モード
+uv run python flask/src/app.py -D    # デバッグモード
+uv run python flask/src/app.py -d    # ダミーモード（ハードウェアなしでCI/テスト用）
+uv run python flask/src/app.py -p 8080    # カスタムポート
+```
+
+### テスト
+
+```bash
+uv run pytest                        # カバレッジ付きで全テストを実行
+uv run pytest tests/test_basic.py    # 特定のテストファイルを実行
+uv run pytest tests/test_playwright.py    # E2Eブラウザテスト
+
+# Playwrightテストの場合、Flaskサーバーをダミーモードで起動する必要があります：
+DUMMY_MODE=true uv run python flask/src/app.py -d -p 5000 &
+uv run pytest tests/test_playwright.py
 ```
 
 ### Docker
@@ -46,28 +63,51 @@ rye run pytest tests/test_basic.py    # Run specific test file
 docker compose run --build --rm --publish 5000:5000 rasp-shutter
 ```
 
-## Flask Application Structure
+## Flaskアプリケーション構造
 
-The Flask app uses a modular blueprint architecture:
+Flaskアプリはモジュラーブループリントアーキテクチャを使用しています：
 
-- `rasp_shutter.api.control` - Manual shutter control
-- `rasp_shutter.api.schedule` - Schedule management
-- `rasp_shutter.api.sensor` - Sensor data handling
-- `my_lib.webapp.*` - Shared library modules (logging, events, utilities)
+- `rasp_shutter.api.control` - 手動シャッター制御とESP32通信
+- `rasp_shutter.api.schedule` - スケジュール管理と自動化ロジック
+- `rasp_shutter.api.sensor` - センサーデータ処理（照度、温度）
+- `rasp_shutter.api.test.time` - 時間モック用テストAPI（DUMMY_MODEのみ）
+- `my_lib.webapp.*` - 共有ライブラリモジュール（ログ、イベント、ユーティリティ）
 
-All routes are prefixed with `/rasp-shutter` (configured in `my_lib.webapp.config.URL_PREFIX`).
+すべてのルートは`/rasp-shutter`でプレフィックスされます（`my_lib.webapp.config.URL_PREFIX`で設定）。
 
-## Configuration
+## 主要コンポーネント
 
-- Main config: `config.yaml` (copy from `config.example.yaml`)
-- Schema validation: `config.schema`
-- Environment variable `DUMMY_MODE` controls test/simulation mode
+### スケジューラシステム
 
-## Test Configuration
+- `rasp_shutter.scheduler` - 並列テスト実行用のワーカー固有インスタンスを持つコアスケジューリングロジック
+- カスタムリトライロジックと明度状態管理を伴うPython `schedule`ライブラリを使用
+- 信頼性の高いテスト用のテストAPIを通じた時間モックをサポート
 
-Tests use pytest with:
+### DUMMY_MODEテスト
 
-- HTML reports generated in `tests/evidence/`
-- Coverage reports in `tests/evidence/coverage/`
-- Playwright for browser automation tests
-- Time-machine for date/time mocking
+- 環境変数`DUMMY_MODE=true`でハードウェアなしでのテストを有効化
+- モックESP32エンドポイントと時間操作APIを提供
+- Playwrightブラウザ自動化テストに必要
+
+### フロントエンドコンポーネント
+
+- `ManualControl.vue` - 手動シャッター操作インターフェース
+- `ScheduleSetting.vue` - スケジュール設定UI
+- `SensorData.vue` - リアルタイムセンサー監視
+- `AppLog.vue` - 操作履歴表示
+
+## 設定
+
+- メイン設定: `config.yaml` （`config.example.yaml`からコピー）
+- スキーマ検証: `config.schema`
+- 環境変数`DUMMY_MODE`でテスト/シミュレーションモードを制御
+
+## テスト設定
+
+pytestを使用したテスト：
+
+- HTMLレポートは`tests/evidence/`に生成
+- カバレッジレポートは`tests/evidence/coverage/`に生成
+- ブラウザ自動化テスト用Playwright（Flaskサーバーの実行が必要）
+- 日付/時間モック用time-machine
+- 並列実行用のワーカー固有スケジューラインスタンス（pytest-xdist）
