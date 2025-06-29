@@ -6,6 +6,7 @@ import os
 from unittest.mock import patch
 
 import my_lib.time
+import rasp_shutter.scheduler
 
 import flask
 
@@ -16,6 +17,7 @@ blueprint = flask.Blueprint("rasp-shutter-test-time", __name__, url_prefix=my_li
 _mock_time = None
 _time_patcher = None
 _schedule_patcher = None
+_datetime_patcher = None
 
 
 @blueprint.route("/api/test/time/set/<timestamp>", methods=["POST"])
@@ -30,7 +32,7 @@ def set_mock_time(timestamp):
         JSON: 設定された時刻情報
 
     """
-    global _mock_time, _time_patcher, _schedule_patcher  # noqa: PLW0603
+    global _mock_time, _time_patcher, _schedule_patcher, _datetime_patcher  # noqa: PLW0603
 
     # DUMMY_MODE でない場合は拒否
     if os.environ.get("DUMMY_MODE", "false") != "true":
@@ -53,6 +55,8 @@ def set_mock_time(timestamp):
             _time_patcher.stop()
         if _schedule_patcher:
             _schedule_patcher.stop()
+        if _datetime_patcher:
+            _datetime_patcher.stop()
 
         # my_lib.time.now() を全体的にモック
         _time_patcher = patch("my_lib.time.now", return_value=_mock_time)
@@ -61,6 +65,16 @@ def set_mock_time(timestamp):
         # スケジューラーモジュールでもパッチ
         _schedule_patcher = patch("rasp_shutter.scheduler.my_lib.time.now", return_value=_mock_time)
         _schedule_patcher.start()
+
+        # scheduleライブラリのdatetime.datetime.nowもパッチ（タイムゾーン対応）
+        def mock_datetime_now(tz=None):
+            if tz is None:
+                return _mock_time.replace(tzinfo=None)
+            else:
+                return _mock_time.astimezone(tz)
+
+        _datetime_patcher = patch("datetime.datetime.now", side_effect=mock_datetime_now)
+        _datetime_patcher.start()
 
         logging.info("Mock time set to: %s", _mock_time)
 
@@ -86,7 +100,7 @@ def advance_mock_time(seconds):
         JSON: 更新された時刻情報
 
     """
-    global _mock_time, _time_patcher, _schedule_patcher  # noqa: PLW0603
+    global _mock_time, _time_patcher, _schedule_patcher, _datetime_patcher  # noqa: PLW0603
 
     # DUMMY_MODE でない場合は拒否
     if os.environ.get("DUMMY_MODE", "false") != "true":
@@ -102,12 +116,33 @@ def advance_mock_time(seconds):
         _time_patcher.stop()
     if _schedule_patcher:
         _schedule_patcher.stop()
+    if _datetime_patcher:
+        _datetime_patcher.stop()
 
     _time_patcher = patch("my_lib.time.now", return_value=_mock_time)
     _time_patcher.start()
 
     _schedule_patcher = patch("rasp_shutter.scheduler.my_lib.time.now", return_value=_mock_time)
     _schedule_patcher.start()
+
+    def mock_datetime_now(tz=None):
+        if tz is None:
+            return _mock_time.replace(tzinfo=None)
+        else:
+            return _mock_time.astimezone(tz)
+
+    _datetime_patcher = patch("datetime.datetime.now", side_effect=mock_datetime_now)
+    _datetime_patcher.start()
+
+    # スケジューラーに現在のスケジュールを再読み込みさせる
+    try:
+        from rasp_shutter.api.schedule import schedule_queue
+
+        current_schedule = rasp_shutter.scheduler.schedule_load()
+        schedule_queue.put(current_schedule)
+        logging.info("Forced scheduler reload with current schedule")
+    except Exception as e:
+        logging.warning("Failed to force scheduler reload: %s", e)
 
     logging.info("Mock time advanced to: %s", _mock_time)
 
@@ -128,7 +163,7 @@ def reset_mock_time():
         JSON: リセット結果
 
     """
-    global _mock_time, _time_patcher, _schedule_patcher  # noqa: PLW0603
+    global _mock_time, _time_patcher, _schedule_patcher, _datetime_patcher  # noqa: PLW0603
 
     # DUMMY_MODE でない場合は拒否
     if os.environ.get("DUMMY_MODE", "false") != "true":
@@ -141,6 +176,10 @@ def reset_mock_time():
     if _schedule_patcher:
         _schedule_patcher.stop()
         _schedule_patcher = None
+
+    if _datetime_patcher:
+        _datetime_patcher.stop()
+        _datetime_patcher = None
 
     _mock_time = None
 
