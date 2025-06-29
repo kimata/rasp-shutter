@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import contextlib
 import datetime
 import logging
 import os
@@ -22,7 +23,7 @@ _datetime_patcher = None
 
 def _force_reset_patchers():
     """モジュール読み込み時に既存のパッチャーをリセット"""
-    global _mock_time, _time_patcher, _schedule_patcher, _datetime_patcher
+    global _mock_time, _time_patcher, _schedule_patcher, _datetime_patcher  # noqa: PLW0603
     _mock_time = None
     _time_patcher = None
     _schedule_patcher = None
@@ -35,27 +36,21 @@ _force_reset_patchers()
 
 def _stop_patchers_safely():
     """パッチャーを安全に停止する"""
-    global _time_patcher, _schedule_patcher, _datetime_patcher
+    global _time_patcher, _schedule_patcher, _datetime_patcher  # noqa: PLW0603
 
     if _time_patcher:
-        try:
+        with contextlib.suppress(TypeError, AttributeError):
             _time_patcher.stop()
-        except (TypeError, AttributeError):
-            pass
         _time_patcher = None
 
     if _schedule_patcher:
-        try:
+        with contextlib.suppress(TypeError, AttributeError):
             _schedule_patcher.stop()
-        except (TypeError, AttributeError):
-            pass
         _schedule_patcher = None
 
     if _datetime_patcher:
-        try:
+        with contextlib.suppress(TypeError, AttributeError):
             _datetime_patcher.stop()
-        except (TypeError, AttributeError):
-            pass
         _datetime_patcher = None
 
 
@@ -189,7 +184,7 @@ def advance_mock_time(seconds):
 
     # スケジューラーに現在のスケジュールを再読み込みさせる
     try:
-        from rasp_shutter.api.schedule import schedule_queue
+        from rasp_shutter.webapi.schedule import schedule_queue
 
         current_schedule = rasp_shutter.scheduler.schedule_load()
         schedule_queue.put(current_schedule)

@@ -115,10 +115,10 @@ def mock_sensor_data(mocker):
     """センサーデータをモックするfixture"""
 
     def _mock(initial_value=SENSOR_DATA_BRIGHT):
-        sensor_mock = mocker.patch("rasp_shutter.api.sensor.get_sensor_data")
+        sensor_mock = mocker.patch("rasp_shutter.webapi.sensor.get_sensor_data")
         sensor_mock.return_value = initial_value
         mocker.patch(
-            "rasp_shutter.scheduler.rasp_shutter.api.sensor.get_sensor_data",
+            "rasp_shutter.scheduler.rasp_shutter.webapi.sensor.get_sensor_data",
             side_effect=lambda _: sensor_mock.return_value,
         )
         return sensor_mock
@@ -312,10 +312,10 @@ def ctrl_log_check(client, expect):
 
 
 def ctrl_stat_clear(config):
-    import rasp_shutter.api.control
     import rasp_shutter.config
+    import rasp_shutter.webapi.control
 
-    rasp_shutter.api.control.clean_stat_exec(config)
+    rasp_shutter.webapi.control.clean_stat_exec(config)
 
     rasp_shutter.config.STAT_AUTO_CLOSE.unlink(missing_ok=True)
 
@@ -485,35 +485,35 @@ def test_shutter_ctrl_read(client):
 
 def test_shutter_ctrl_inconsistent_read(client, config):
     import my_lib.footprint
-    import rasp_shutter.api.control
+    import rasp_shutter.webapi.control
 
     # NOTE: 本来ないはずの、oepn と close の両方のファイルが存在する場合 (close が後)
     ctrl_stat_clear(config)
-    my_lib.footprint.update(rasp_shutter.api.control.exec_stat_file("open", 0))
+    my_lib.footprint.update(rasp_shutter.webapi.control.exec_stat_file("open", 0))
     time.sleep(0.1)  # Optimized for non-scheduler test
-    my_lib.footprint.update(rasp_shutter.api.control.exec_stat_file("close", 0))
+    my_lib.footprint.update(rasp_shutter.webapi.control.exec_stat_file("close", 0))
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    assert response.json["state"][0]["state"] == rasp_shutter.api.control.SHUTTER_STATE.CLOSE
-    assert response.json["state"][1]["state"] == rasp_shutter.api.control.SHUTTER_STATE.UNKNOWN
+    assert response.json["state"][0]["state"] == rasp_shutter.webapi.control.SHUTTER_STATE.CLOSE
+    assert response.json["state"][1]["state"] == rasp_shutter.webapi.control.SHUTTER_STATE.UNKNOWN
 
     # NOTE: 本来ないはずの、oepn と close の両方のファイルが存在する場合 (open が後)
     ctrl_stat_clear(config)
-    my_lib.footprint.update(rasp_shutter.api.control.exec_stat_file("close", 1))
+    my_lib.footprint.update(rasp_shutter.webapi.control.exec_stat_file("close", 1))
     time.sleep(0.1)  # Optimized for non-scheduler test
-    my_lib.footprint.update(rasp_shutter.api.control.exec_stat_file("open", 1))
+    my_lib.footprint.update(rasp_shutter.webapi.control.exec_stat_file("open", 1))
 
     response = client.get(
         f"{my_lib.webapp.config.URL_PREFIX}/api/shutter_ctrl",
     )
     assert response.status_code == 200
     assert response.json["result"] == "success"
-    assert response.json["state"][1]["state"] == rasp_shutter.api.control.SHUTTER_STATE.OPEN
-    assert response.json["state"][0]["state"] == rasp_shutter.api.control.SHUTTER_STATE.UNKNOWN
+    assert response.json["state"][1]["state"] == rasp_shutter.webapi.control.SHUTTER_STATE.OPEN
+    assert response.json["state"][0]["state"] == rasp_shutter.webapi.control.SHUTTER_STATE.UNKNOWN
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR"])
@@ -646,7 +646,7 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     request_mock.i = 0
 
     mocker.patch.dict(os.environ, {"DUMMY_MODE": "false"})
-    mocker.patch("rasp_shutter.api.control.requests.get", side_effect=request_mock)
+    mocker.patch("rasp_shutter.webapi.control.requests.get", side_effect=request_mock)
 
     shutter_control(client, "open", index=1)
 
@@ -1685,7 +1685,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, time_machine, mock_sensor_
     )
 
     mocker.patch(
-        "rasp_shutter.scheduler.rasp_shutter.api.control.set_shutter_state",
+        "rasp_shutter.scheduler.rasp_shutter.webapi.control.set_shutter_state",
         side_effect=RuntimeError(),
     )
 
@@ -1959,19 +1959,19 @@ def test_memory(client):
 
 
 def test_second_str():
-    import rasp_shutter.api.control
+    import rasp_shutter.webapi.control
 
-    assert rasp_shutter.api.control.time_str(3600) == "1時間"
-    assert rasp_shutter.api.control.time_str(3660) == "1時間1分"
-    assert rasp_shutter.api.control.time_str(50) == "50秒"
+    assert rasp_shutter.webapi.control.time_str(3600) == "1時間"
+    assert rasp_shutter.webapi.control.time_str(3660) == "1時間1分"
+    assert rasp_shutter.webapi.control.time_str(50) == "50秒"
 
 
 def test_terminate():
     import my_lib.webapp.log
-    import rasp_shutter.api.schedule
+    import rasp_shutter.webapi.schedule
 
     my_lib.webapp.log.term()
-    rasp_shutter.api.schedule.term()
+    rasp_shutter.webapi.schedule.term()
     # NOTE: 二重に呼んでもエラーにならないことを確認
     my_lib.webapp.log.term()
-    rasp_shutter.api.schedule.term()
+    rasp_shutter.webapi.schedule.term()
