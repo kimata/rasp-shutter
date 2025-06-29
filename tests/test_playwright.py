@@ -262,8 +262,8 @@ def test_schedule_run(page, host, port):
     time.sleep(1)
     check_log(page, "ログがクリアされました")
 
-    # NOTE: テスト用APIで時刻を設定（秒を30に設定して次の分に実行されるようにする）
-    current_time = my_lib.time.now().replace(second=58, microsecond=0)
+    # NOTE: テスト用APIで時刻を設定（秒を55に設定して次の分に実行されるようにする）
+    current_time = my_lib.time.now().replace(second=55, microsecond=0)
     set_mock_time(host, port, current_time)
     logging.info("Mock time set successfully")
 
