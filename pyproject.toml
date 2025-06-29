@@ -15,7 +15,7 @@ dependencies = [
     "fluent-logger>=0.11.1",
     "influxdb-client[ciso]>=1.49.0",
     "schedule>=1.2.2",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@c32e04623cb2b3be3352152ac9951114f9c4b391",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@8537d966bb742933d7d3decacbc319da74d05a8a",
     "pysolar>=0.13",
 ]
 
