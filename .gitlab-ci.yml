@@ -163,6 +163,7 @@ test-playwright:
     artifacts:
         when: always
         paths:
+            - flask_log.txt
             - tests/evidence/**
         reports:
             junit: tests/evidence/playwright-junit.xml
