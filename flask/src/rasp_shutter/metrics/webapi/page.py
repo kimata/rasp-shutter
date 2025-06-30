@@ -228,9 +228,20 @@ def generate_metrics_html(stats: dict, raw_metrics: list[dict]) -> str:
     <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .metrics-card {{ margin-bottom: 1.5rem; }}
+        .metrics-card {{ margin-bottom: 1rem; }}
+        @media (max-width: 768px) {{
+            .metrics-card {{ margin-bottom: 0.75rem; }}
+        }}
         .stat-number {{ font-size: 2rem; font-weight: bold; }}
-        .chart-container {{ position: relative; height: 400px; margin: 1rem 0; }}
+        .chart-container {{ position: relative; height: 350px; margin: 0.5rem 0; }}
+        @media (max-width: 768px) {{
+            .chart-container {{ height: 300px; margin: 0.25rem 0; }}
+            .container.is-fluid {{ padding: 0.25rem !important; }}
+            .section {{ padding: 0.5rem 0.25rem !important; }}
+            .card {{ margin-bottom: 1rem !important; }}
+            .columns {{ margin: 0 !important; }}
+            .column {{ padding: 0.25rem !important; }}
+        }}
         .japanese-font {{
             font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN",
                          "Noto Sans CJK JP", "Yu Gothic", sans-serif;
@@ -238,9 +249,9 @@ def generate_metrics_html(stats: dict, raw_metrics: list[dict]) -> str:
     </style>
 </head>
 <body class="japanese-font">
-    <div class="container is-fluid">
-        <section class="section">
-            <div class="container">
+    <div class="container is-fluid" style="padding: 0.5rem;">
+        <section class="section" style="padding: 1rem 0.5rem;">
+            <div class="container" style="max-width: 100%; padding: 0;">
                 <h1 class="title is-2 has-text-centered">
                     <span class="icon is-large"><i class="fas fa-chart-line"></i></span>
                     シャッター メトリクス ダッシュボード
