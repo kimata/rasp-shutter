@@ -45,19 +45,35 @@ export default {
                     is_active: false,
                     time: "00:00",
                     wday: Array(7).fill(false),
+                    solar_rad: 0,
+                    lux: 0,
+                    altitude: 0,
                 },
                 close: {
                     is_active: false,
                     time: "00:00",
                     wday: Array(7).fill(false),
+                    solar_rad: 0,
+                    lux: 0,
+                    altitude: 0,
                 },
             },
             saved: {
                 open: {
                     is_active: false,
+                    time: "00:00",
+                    wday: Array(7).fill(false),
+                    solar_rad: 0,
+                    lux: 0,
+                    altitude: 0,
                 },
                 close: {
                     is_active: false,
+                    time: "00:00",
+                    wday: Array(7).fill(false),
+                    solar_rad: 0,
+                    lux: 0,
+                    altitude: 0,
                 },
             },
         };
@@ -111,6 +127,7 @@ export default {
         },
         isStateDiffer: function (a, b) {
             for (let mode in a) {
+                // Check all properties in a[mode]
                 for (let key in a[mode]) {
                     if (key == "wday") {
                         if (JSON.stringify(a[mode]["wday"]) !== JSON.stringify(b[mode]["wday"])) {
