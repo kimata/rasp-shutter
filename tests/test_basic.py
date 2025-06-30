@@ -1160,6 +1160,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_evening(1))
+    time.sleep(5)
 
     # CLOSE
 
