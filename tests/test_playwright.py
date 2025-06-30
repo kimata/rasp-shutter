@@ -304,14 +304,13 @@ def test_schedule_run(page, host, port):
 
     # NOTE: テスト用APIで時刻を設定（固定時刻で確実にテストできるようにする）
     # 12:00:55に設定して、12:01に閉めるスケジュールが実行されるようにする
-    current_time = my_lib.time.now().replace(hour=12, minute=0, second=40)
+    current_time = my_lib.time.now().replace(hour=12, minute=0, second=45)
     set_mock_time(host, port, current_time)
     get_current_server_time(host, port)
 
     # NOTE: スケジュールに従って閉める評価をしたいので、一旦あけておく
     page.get_by_test_id("open-0").click()
     page.get_by_test_id("open-1").click()
-    time.sleep(2)
 
     for state in ["open", "close"]:
         # NOTE: checkbox 自体は hidden にして、CSS で表示しているので、
@@ -350,7 +349,7 @@ def test_schedule_run(page, host, port):
     page.get_by_test_id("save").click()
     check_log(page, "スケジュールを更新")
 
-    time.sleep(15)
+    time.sleep(10)
 
     check_log(page, "スケジューラで閉めました", 10)
 
