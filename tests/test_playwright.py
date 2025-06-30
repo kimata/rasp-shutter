@@ -17,16 +17,19 @@ APP_URL_TMPL = "http://{host}:{port}/rasp-shutter/"
 
 SCHEDULE_AFTER_MIN = 1
 
+# urllib3のconnectionpoolログを抑制
+logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
+
 
 def check_log(page, message, timeout_sec=2):
     # DEBUG: ログの内容を詳細に確認
     log_list = page.locator('//div[contains(@class,"log")]/div/div[2]')
     log_count = log_list.count()
-    logging.info("DEBUG: Total log count: %d", log_count)
+    logging.debug("Total log count: %d", log_count)
 
     for i in range(min(log_count, 5)):  # 最初の5件を表示
         log_text = log_list.nth(i).text_content()
-        logging.info("DEBUG: Log[%d]: %s", i, log_text)
+        logging.debug("Log[%d]: %s", i, log_text)
 
     expect(page.locator('//div[contains(@class,"log")]/div/div[2]').first).to_contain_text(
         message, timeout=timeout_sec * 1000
@@ -88,6 +91,8 @@ def app_url(server, port):
 
 def set_mock_time(host, port, target_time):
     """テスト用APIを使用してモック時刻を設定"""
+    logging.info("set server time: %s", target_time)
+
     api_url = APP_URL_TMPL.format(host=host, port=port) + f"api/test/time/set/{target_time.isoformat()}"
     try:
         response = requests.post(api_url, timeout=5)
@@ -98,6 +103,8 @@ def set_mock_time(host, port, target_time):
 
 def advance_mock_time(host, port, seconds):
     """テスト用APIを使用してモック時刻を進める"""
+    logging.info("advance server time: %d sec", seconds)
+
     api_url = APP_URL_TMPL.format(host=host, port=port) + f"api/test/time/advance/{seconds}"
     try:
         response = requests.post(api_url, timeout=5)
@@ -108,12 +115,29 @@ def advance_mock_time(host, port, seconds):
 
 def reset_mock_time(host, port):
     """テスト用APIを使用してモック時刻をリセット"""
+    logging.info("reset server time")
+
     api_url = APP_URL_TMPL.format(host=host, port=port) + "api/test/time/reset"
     try:
         response = requests.post(api_url, timeout=5)
         return response.status_code == 200
     except requests.RequestException:
         return False
+
+
+def get_current_server_time(host, port):
+    """テスト用APIを使用してサーバーの現在時刻を取得"""
+    api_url = APP_URL_TMPL.format(host=host, port=port) + "api/test/time/current"
+    try:
+        response = requests.get(api_url, timeout=5)
+        if response.status_code == 200:
+            time_data = response.json()
+            current_time = datetime.datetime.fromisoformat(time_data["current_time"])
+            logging.info("server time: %s", current_time)
+            return current_time
+        return None
+    except requests.RequestException:
+        return None
 
 
 def clear_control_history(host, port):
@@ -270,7 +294,7 @@ def test_schedule(page, host, port):
     check_schedule(page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index)
 
 
-@flaky(max_runs=3, min_passes=1)
+# @flaky(max_runs=3, min_passes=1)
 def test_schedule_run(page, host, port):
     page.goto(app_url(host, port))
 
@@ -282,12 +306,12 @@ def test_schedule_run(page, host, port):
     # 12:00:55に設定して、12:01に閉めるスケジュールが実行されるようにする
     current_time = my_lib.time.now().replace(hour=12, minute=0, second=55, microsecond=0)
     set_mock_time(host, port, current_time)
-    logging.info("Mock time set successfully")
+    get_current_server_time(host, port)
 
     # NOTE: スケジュールに従って閉める評価をしたいので、一旦あけておく
     page.get_by_test_id("open-0").click()
     page.get_by_test_id("open-1").click()
-    time.sleep(2)  # 手動操作の間隔制限を回避するため待機
+    time.sleep(2)
 
     for state in ["open", "close"]:
         # NOTE: checkbox 自体は hidden にして、CSS で表示しているので、
@@ -301,26 +325,38 @@ def test_schedule_run(page, host, port):
             schedule_time = (current_time + datetime.timedelta(minutes=SCHEDULE_AFTER_MIN)).strftime("%H:%M")
         else:
             schedule_time = "08:00"
+
+        logging.info("Set schedule %s: %s", state, schedule_time)
+
         page.locator(f'//div[contains(@id,"{state}-schedule-entry-time")]/input').fill(schedule_time)
+
+        # solar_rad、lux、altitude の値をランダムに設定（確実に変更を検出させるため）
+        page.locator(f'//div[contains(@id,"{state}-schedule-entry-solar_rad")]/input').fill(
+            str(100 + int(100 * random.random()))  # noqa: S311
+        )
+        page.locator(f'//div[contains(@id,"{state}-schedule-entry-lux")]/input').fill(
+            str(500 + int(500 * random.random()))  # noqa: S311
+        )
+        page.locator(f'//div[contains(@id,"{state}-schedule-entry-altitude")]/input').fill(
+            str(10 + int(20 * random.random()))  # noqa: S311
+        )
 
         # NOTE: 曜日は全てチェック
         wday_checkbox = page.locator(f'//div[contains(@id,"{state}-schedule-entry-wday")]/span/input')
         for j in range(7):
             wday_checkbox.nth(j).check()
 
+    logging.info("Save shcedule")
     page.get_by_test_id("save").click()
     check_log(page, "スケジュールを更新")
 
+    time.sleep(3)
+
     # NOTE: テスト用APIで時刻を進める
-    logging.info("DEBUG: About to advance mock time by %d seconds", SCHEDULE_AFTER_MIN * 60)
-    advance_result = advance_mock_time(host, port, SCHEDULE_AFTER_MIN * 60)
-    logging.info("DEBUG: Advance mock time result: %s", advance_result)
+    advance_mock_time(host, port, 5 + (SCHEDULE_AFTER_MIN - 1) * 60)
+    get_current_server_time(host, port)
+    time.sleep(5)
 
-    # スケジューラが実行されるまで待機（最大15秒）
-    logging.info("DEBUG: Waiting for scheduler to execute")
-    time.sleep(15)  # スケジューラの実行を待つ
-
-    logging.info("DEBUG: About to check for '閉めました' message")
     check_log(page, "スケジューラで閉めました", 10)
 
 
