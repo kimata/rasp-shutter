@@ -77,7 +77,7 @@ def advance_mock_time(seconds):
         JSON: 更新された時刻情報
 
     """
-    global _traveler
+    global _traveler  # noqa: PLW0603
 
     # DUMMY_MODE でない場合は拒否
     if os.environ.get("DUMMY_MODE", "false") != "true":
@@ -86,8 +86,16 @@ def advance_mock_time(seconds):
     if _traveler is None:
         return {"error": "Mock time not set. Use /api/test/time/set first"}, 400
 
-    # time_machineのshiftを使用して時刻を進める
-    _traveler.shift(seconds)
+    # 現在の時刻を取得して、新しい時刻を計算
+    current_mock_time = my_lib.time.now()
+    new_mock_time = current_mock_time + datetime.timedelta(seconds=seconds)
+
+    # 既存のtravelerを停止
+    _traveler.stop()
+
+    # 新しい時刻でtravelerを再作成
+    _traveler = time_machine.travel(new_mock_time)
+    _traveler.start()
 
     # スケジューラーに現在のスケジュールを再読み込みさせる
     try:
