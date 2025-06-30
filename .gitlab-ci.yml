@@ -229,6 +229,9 @@ test-playwright:
 
 test-playwright-docker:
     extends: .test-playwright-docker-base
+    variables:
+        JOB_TYPE: docker
+        CONFIG_ARGS: "-d"
 
 test-playwright-docker-demo:
     extends: .test-playwright-docker-base
