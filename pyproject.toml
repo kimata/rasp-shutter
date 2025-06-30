@@ -17,6 +17,7 @@ dependencies = [
     "schedule>=1.2.2",
     "my-lib @ git+https://github.com/kimata/my-py-lib@19a226ec0e14e0c4e5900aae40029bfbdc9e01e4",
     "pysolar>=0.13",
+    "time-machine>=2.16.0", # NOTE: テスト用のモードでは時刻操作の API を提供するので、こちらに必要
 ]
 
 
@@ -30,7 +31,6 @@ dev = [
     "pytest-mock>=3.14.0",
     "pytest-playwright>=0.5.2",
     "pytest-xdist>=3.6.1",
-    "time-machine>=2.16.0",
     "pytest>=8.3.4",
     "pytest-timeout>=2.4.0",
 ]
