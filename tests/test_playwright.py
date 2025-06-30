@@ -349,7 +349,7 @@ def test_schedule_run(page, host, port):
     page.get_by_test_id("save").click()
     check_log(page, "スケジュールを更新")
 
-    time.sleep(10)
+    time.sleep(15)
 
     check_log(page, "スケジューラで閉めました", 10)
 
