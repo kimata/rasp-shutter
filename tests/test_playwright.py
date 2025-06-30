@@ -232,16 +232,10 @@ def test_manual(page, host, port):
     page.get_by_test_id("open-0").click()
     check_log(page, "開けるのを見合わせました")
 
-    # テスト終了時にモック時刻をリセット
-    reset_mock_time(host, port)
-
     page.get_by_test_id("open-1").click()
     check_log(page, "手動で開けました")
-
-    # NOTE: 60秒待機の代わりに時刻操作APIで時間を進める
-    advance_mock_time(host, port, 60)
-    time.sleep(2)
-    logging.info("Time advanced by 60 seconds using API")
+    # 手動操作間隔制限を回避するため時刻を進める
+    advance_mock_time(host, port, 70)
 
     page.get_by_test_id("open-1").click()
     check_log(page, "手動で開けました")
