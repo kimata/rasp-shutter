@@ -7,7 +7,8 @@ import os
 from unittest.mock import patch
 
 import my_lib.time
-import rasp_shutter.scheduler
+import my_lib.webapp.config
+import rasp_shutter.control.scheduler
 
 import flask
 
@@ -97,10 +98,12 @@ def set_mock_time(timestamp):
 
         # スケジューラーモジュールでもパッチ
         try:
-            _schedule_patcher = patch("rasp_shutter.scheduler.my_lib.time.now", return_value=_mock_time)
+            _schedule_patcher = patch(
+                "rasp_shutter.control.scheduler.my_lib.time.now", return_value=_mock_time
+            )
             _schedule_patcher.start()
         except (TypeError, AttributeError) as e:
-            logging.warning("Failed to patch rasp_shutter.scheduler.my_lib.time.now: %s", e)
+            logging.warning("Failed to patch rasp_shutter.control.scheduler.my_lib.time.now: %s", e)
             _schedule_patcher = None
 
         # scheduleライブラリのdatetime.datetime.nowもパッチ（タイムゾーン対応）
@@ -163,10 +166,10 @@ def advance_mock_time(seconds):
         _time_patcher = None
 
     try:
-        _schedule_patcher = patch("rasp_shutter.scheduler.my_lib.time.now", return_value=_mock_time)
+        _schedule_patcher = patch("rasp_shutter.control.scheduler.my_lib.time.now", return_value=_mock_time)
         _schedule_patcher.start()
     except (TypeError, AttributeError) as e:
-        logging.warning("Failed to patch rasp_shutter.scheduler.my_lib.time.now: %s", e)
+        logging.warning("Failed to patch rasp_shutter.control.scheduler.my_lib.time.now: %s", e)
         _schedule_patcher = None
 
     def mock_datetime_now(tz=None):
@@ -184,9 +187,9 @@ def advance_mock_time(seconds):
 
     # スケジューラーに現在のスケジュールを再読み込みさせる
     try:
-        from rasp_shutter.webapi.schedule import schedule_queue
+        from rasp_shutter.control.webapi.schedule import schedule_queue
 
-        current_schedule = rasp_shutter.scheduler.schedule_load()
+        current_schedule = rasp_shutter.control.scheduler.schedule_load()
         schedule_queue.put(current_schedule)
         logging.info("Forced scheduler reload with current schedule")
     except Exception as e:

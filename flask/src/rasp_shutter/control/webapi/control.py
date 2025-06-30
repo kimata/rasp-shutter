@@ -9,7 +9,8 @@ import my_lib.flask_util
 import my_lib.footprint
 import my_lib.webapp.config
 import my_lib.webapp.log
-import rasp_shutter.config
+import rasp_shutter.control.config
+import rasp_shutter.metrics.collector
 import requests
 
 import flask
@@ -89,7 +90,7 @@ def call_shutter_api(config, index, state):
 
 
 def exec_stat_file(state, index):
-    return pathlib.Path(str(rasp_shutter.config.STAT_EXEC_TMPL[state]).format(index=index))
+    return pathlib.Path(str(rasp_shutter.control.config.STAT_EXEC_TMPL[state]).format(index=index))
 
 
 def clean_stat_exec(config):
@@ -201,6 +202,19 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
                 by=f"\n(by {user})" if user != "" else "",
             )
         )
+
+        # メトリクス収集
+        try:
+            mode_str = (
+                "manual"
+                if mode == CONTROL_MODE.MANUAL
+                else "schedule"
+                if mode == CONTROL_MODE.SCHEDULE
+                else "auto"
+            )
+            rasp_shutter.metrics.collector.record_shutter_operation(state, mode_str, sense_data)
+        except Exception as e:
+            logging.warning("メトリクス記録に失敗しました: %s", e)
     else:
         my_lib.webapp.log.error(
             "{name}のシャッターを{mode}で{state}るのに失敗しました。{sensor_text}{by}".format(
@@ -212,17 +226,23 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
             )
         )
 
+        # 失敗メトリクス収集
+        try:
+            rasp_shutter.metrics.collector.record_failure()
+        except Exception as e:
+            logging.warning("失敗メトリクス記録に失敗しました: %s", e)
+
 
 def set_shutter_state(config, index_list, state, mode, sense_data=None, user=""):  # noqa: PLR0913
     if state == "open":
         if mode != CONTROL_MODE.MANUAL:
             # NOTE: 手動以外でシャッターを開けた場合は、
             # 自動で閉じた履歴を削除する。
-            my_lib.footprint.clear(rasp_shutter.config.STAT_AUTO_CLOSE)
+            my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE)
     else:
         # NOTE: シャッターを閉じる指示がされた場合は、
         # 暗くて延期されていた開ける制御を取り消す。
-        my_lib.footprint.clear(rasp_shutter.config.STAT_PENDING_OPEN)
+        my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN)
 
     with control_lock:
         for index in index_list:

@@ -26,9 +26,9 @@ SCHEMA_CONFIG = "config.schema"
 
 
 def term():
-    import rasp_shutter.scheduler
+    import rasp_shutter.control.scheduler
 
-    rasp_shutter.scheduler.term()
+    rasp_shutter.control.scheduler.term()
 
     # 子プロセスを終了
     my_lib.proc_util.kill_child()
@@ -62,12 +62,13 @@ def create_app(config, dummy_mode=False):
     import my_lib.webapp.event
     import my_lib.webapp.log
     import my_lib.webapp.util
-    import rasp_shutter.webapi.control
-    import rasp_shutter.webapi.schedule
-    import rasp_shutter.webapi.sensor
+    import rasp_shutter.control.webapi.control
+    import rasp_shutter.control.webapi.schedule
+    import rasp_shutter.control.webapi.sensor
+    import rasp_shutter.metrics.webapi.page
 
     if dummy_mode:
-        import rasp_shutter.webapi.test.time
+        import rasp_shutter.control.webapi.test.time
 
     app = flask.Flask("rasp-shutter")
 
@@ -80,8 +81,8 @@ def create_app(config, dummy_mode=False):
         else:  # pragma: no cover
             pass
 
-        rasp_shutter.webapi.control.init()
-        rasp_shutter.webapi.schedule.init(config)
+        rasp_shutter.control.webapi.control.init()
+        rasp_shutter.control.webapi.schedule.init(config)
         my_lib.webapp.log.init(config)
 
         def notify_terminate():  # pragma: no cover
@@ -100,12 +101,13 @@ def create_app(config, dummy_mode=False):
 
     app.json.compat = True
 
-    app.register_blueprint(rasp_shutter.webapi.control.blueprint)
-    app.register_blueprint(rasp_shutter.webapi.schedule.blueprint)
-    app.register_blueprint(rasp_shutter.webapi.sensor.blueprint)
+    app.register_blueprint(rasp_shutter.control.webapi.control.blueprint)
+    app.register_blueprint(rasp_shutter.control.webapi.schedule.blueprint)
+    app.register_blueprint(rasp_shutter.control.webapi.sensor.blueprint)
+    app.register_blueprint(rasp_shutter.metrics.webapi.page.blueprint)
 
     if dummy_mode:
-        app.register_blueprint(rasp_shutter.webapi.test.time.blueprint)
+        app.register_blueprint(rasp_shutter.control.webapi.test.time.blueprint)
 
     app.register_blueprint(my_lib.webapp.base.blueprint_default)
     app.register_blueprint(my_lib.webapp.base.blueprint)

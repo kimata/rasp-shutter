@@ -13,9 +13,9 @@ import my_lib.footprint
 import my_lib.serializer
 import my_lib.webapp.config
 import my_lib.webapp.log
-import rasp_shutter.config
-import rasp_shutter.webapi.control
-import rasp_shutter.webapi.sensor
+import rasp_shutter.control.config
+import rasp_shutter.control.webapi.control
+import rasp_shutter.control.webapi.sensor
 import schedule
 
 
@@ -122,7 +122,7 @@ def check_brightness(sense_data, action):
 def exec_shutter_control_impl(config, state, mode, sense_data, user):
     try:
         # NOTE: Web 経由だと認証つけた場合に困るので、直接関数を呼ぶ
-        rasp_shutter.webapi.control.set_shutter_state(
+        rasp_shutter.control.webapi.control.set_shutter_state(
             config, list(range(len(config["shutter"]))), state, mode, sense_data, user
         )
         return True
@@ -153,7 +153,7 @@ def shutter_auto_open(config):
         logging.debug("inactive")
         return
 
-    elapsed_pendiing_open = my_lib.footprint.elapsed(rasp_shutter.config.STAT_PENDING_OPEN)
+    elapsed_pendiing_open = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_PENDING_OPEN)
     if elapsed_pendiing_open > 6 * 60 * 60:
         # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない。
         logging.debug("NOT pending")
@@ -162,27 +162,29 @@ def shutter_auto_open(config):
         logging.debug("Elapsed time since pending open: %s", elapsed_pendiing_open)
 
     if (
-        my_lib.footprint.elapsed(rasp_shutter.config.STAT_AUTO_CLOSE)
-        < rasp_shutter.config.EXEC_INTERVAL_AUTO_MIN * 60
+        my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE)
+        < rasp_shutter.control.config.EXEC_INTERVAL_AUTO_MIN * 60
     ):
         # NOTE: 自動で閉めてから時間が経っていない場合は、処理を行わない。
-        logging.debug("just closed before %d", my_lib.footprint.elapsed(rasp_shutter.config.STAT_AUTO_CLOSE))
+        logging.debug(
+            "just closed before %d", my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE)
+        )
         return
 
-    sense_data = rasp_shutter.webapi.sensor.get_sensor_data(config)
+    sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
     if check_brightness(sense_data, "open") == BRIGHTNESS_STATE.BRIGHT:
-        sensor_text = rasp_shutter.webapi.control.sensor_text(sense_data)
+        sensor_text = rasp_shutter.control.webapi.control.sensor_text(sense_data)
         my_lib.webapp.log.info(f"📝 暗くて延期されていましたが、明るくなってきたので開けます。{sensor_text}")
 
         exec_shutter_control(
             config,
             "open",
-            rasp_shutter.webapi.control.CONTROL_MODE.AUTO,
+            rasp_shutter.control.webapi.control.CONTROL_MODE.AUTO,
             sense_data,
             "sensor",
         )
-        my_lib.footprint.clear(rasp_shutter.config.STAT_PENDING_OPEN)
-        my_lib.footprint.clear(rasp_shutter.config.STAT_AUTO_CLOSE)
+        my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN)
+        my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE)
     else:
         logging.debug(
             "Skip pendding open (solar_rad: %.1f W/m^2, lux: %.1f LUX)",
@@ -218,7 +220,7 @@ def shutter_auto_close(config):
         return
     elif (
         my_lib.time.now() <= conv_schedule_time_to_datetime(schedule_data["open"]["time"])
-    ) or my_lib.footprint.exists(rasp_shutter.config.STAT_PENDING_OPEN):
+    ) or my_lib.footprint.exists(rasp_shutter.control.config.STAT_PENDING_OPEN):
         # NOTE: 開ける時刻よりも早い場合は処理しない
         logging.debug("before open time")
         return
@@ -226,27 +228,27 @@ def shutter_auto_close(config):
         # NOTE: スケジュールで閉めていた場合は処理しない
         logging.debug("after close time")
         return
-    elif my_lib.footprint.elapsed(rasp_shutter.config.STAT_AUTO_CLOSE) <= 12 * 60 * 60:
+    elif my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE) <= 12 * 60 * 60:
         # NOTE: 12時間以内に自動で閉めていた場合は処理しない
         logging.debug("already close")
         return
 
     for index in range(len(config["shutter"])):
         if (
-            my_lib.footprint.elapsed(rasp_shutter.webapi.control.exec_stat_file("open", index))
-            < rasp_shutter.config.EXEC_INTERVAL_AUTO_MIN * 60
+            my_lib.footprint.elapsed(rasp_shutter.control.webapi.control.exec_stat_file("open", index))
+            < rasp_shutter.control.config.EXEC_INTERVAL_AUTO_MIN * 60
         ):
             # NOTE: 自動で開けてから時間が経っていない場合は、処理を行わない。
             logging.debug(
                 "just opened before %d sec (%d)",
-                my_lib.footprint.elapsed(rasp_shutter.webapi.control.exec_stat_file("open", index)),
+                my_lib.footprint.elapsed(rasp_shutter.control.webapi.control.exec_stat_file("open", index)),
                 index,
             )
             return
 
-    sense_data = rasp_shutter.webapi.sensor.get_sensor_data(config)
+    sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.DARK:
-        sensor_text = rasp_shutter.webapi.control.sensor_text(sense_data)
+        sensor_text = rasp_shutter.control.webapi.control.sensor_text(sense_data)
         my_lib.webapp.log.info(
             f"📝 予定より早いですが、暗くなってきたので閉めます。{sensor_text}",
         )
@@ -254,18 +256,18 @@ def shutter_auto_close(config):
         exec_shutter_control(
             config,
             "close",
-            rasp_shutter.webapi.control.CONTROL_MODE.AUTO,
+            rasp_shutter.control.webapi.control.CONTROL_MODE.AUTO,
             sense_data,
             "sensor",
         )
         logging.info("Set Auto CLOSE")
-        my_lib.footprint.update(rasp_shutter.config.STAT_AUTO_CLOSE)
+        my_lib.footprint.update(rasp_shutter.control.config.STAT_AUTO_CLOSE)
 
         # NOTE: まだ明るくなる可能性がある時間帯の場合、再度自動的に開けるようにする
         hour = my_lib.time.now().hour
         if (hour > 5) and (hour < 13):
             logging.info("Set Pending OPEN")
-            my_lib.footprint.update(rasp_shutter.config.STAT_PENDING_OPEN)
+            my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN)
 
     else:  # pragma: no cover
         # NOTE: pending close の制御は無いのでここには来ない。
@@ -290,7 +292,7 @@ def shutter_auto_control(config):
 def shutter_schedule_control(config, state):
     logging.info("Execute schedule control")
 
-    sense_data = rasp_shutter.webapi.sensor.get_sensor_data(config)
+    sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
 
     if check_brightness(sense_data, state) == BRIGHTNESS_STATE.UNKNOWN:
         error_sensor = []
@@ -310,10 +312,10 @@ def shutter_schedule_control(config, state):
 
     if state == "open":
         if check_brightness(sense_data, state) == BRIGHTNESS_STATE.DARK:
-            sensor_text = rasp_shutter.webapi.control.sensor_text(sense_data)
+            sensor_text = rasp_shutter.control.webapi.control.sensor_text(sense_data)
             my_lib.webapp.log.info(f"📝 まだ暗いので開けるのを見合わせました。{sensor_text}")
 
-            rasp_shutter.webapi.control.cmd_hist_push(
+            rasp_shutter.control.webapi.control.cmd_hist_push(
                 {
                     "cmd": "pending",
                     "state": state,
@@ -322,22 +324,22 @@ def shutter_schedule_control(config, state):
 
             # NOTE: 暗いので開けれなかったことを通知
             logging.info("Set Pending OPEN")
-            my_lib.footprint.update(rasp_shutter.config.STAT_PENDING_OPEN)
+            my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN)
         else:
             # NOTE: ここにきたときのみ、スケジュールに従って開ける
             exec_shutter_control(
                 config,
                 state,
-                rasp_shutter.webapi.control.CONTROL_MODE.SCHEDULE,
+                rasp_shutter.control.webapi.control.CONTROL_MODE.SCHEDULE,
                 sense_data,
                 "scheduler",
             )
     else:
-        my_lib.footprint.clear(rasp_shutter.config.STAT_PENDING_OPEN)
+        my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN)
         exec_shutter_control(
             config,
             state,
-            rasp_shutter.webapi.control.CONTROL_MODE.SCHEDULE,
+            rasp_shutter.control.webapi.control.CONTROL_MODE.SCHEDULE,
             sense_data,
             "scheduler",
         )
