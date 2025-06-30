@@ -21,6 +21,9 @@
             </p>
         </small>
         <p class="display-6">
+            <a :href="AppConfig['apiEndpoint'] + 'metrics'" class="text-secondary me-3">
+                <i class="bi bi-graph-up" />
+            </a>
             <a href="https://github.com/kimata/rasp-shutter/" class="text-secondary">
                 <i class="bi bi-github" />
             </a>
