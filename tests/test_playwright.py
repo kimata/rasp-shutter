@@ -304,7 +304,7 @@ def test_schedule_run(page, host, port):
 
     # NOTE: テスト用APIで時刻を設定（固定時刻で確実にテストできるようにする）
     # 12:00:55に設定して、12:01に閉めるスケジュールが実行されるようにする
-    current_time = my_lib.time.now().replace(hour=12, minute=0, second=55, microsecond=0)
+    current_time = my_lib.time.now().replace(hour=12, minute=0, second=55)
     set_mock_time(host, port, current_time)
     get_current_server_time(host, port)
 
@@ -350,11 +350,6 @@ def test_schedule_run(page, host, port):
     page.get_by_test_id("save").click()
     check_log(page, "スケジュールを更新")
 
-    time.sleep(3)
-
-    # NOTE: テスト用APIで時刻を進める
-    advance_mock_time(host, port, 5 + (SCHEDULE_AFTER_MIN - 1) * 60)
-    get_current_server_time(host, port)
     time.sleep(5)
 
     check_log(page, "スケジューラで閉めました", 10)
