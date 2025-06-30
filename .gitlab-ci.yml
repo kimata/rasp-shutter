@@ -194,12 +194,15 @@ test-playwright:
         - 'echo "Target: ${TARGET_IP}"'
 
         - uv run playwright install --with-deps chromium
+
+        - docker logs ${CONTAINER_NAME} > flask_log_1.txt
+
         - >
             uv run pytest --tracing on --output tests/evidence/playwright
             --junit-xml=tests/evidence/playwright-docker-junit.xml
             tests/test_playwright.py --host ${TARGET_IP}
 
-        - docker logs ${CONTAINER_NAME} > flask_log.txt
+        - docker logs ${CONTAINER_NAME} > flask_log_2.txt
         - docker stop ${CONTAINER_NAME}
 
     cache:
@@ -219,7 +222,7 @@ test-playwright:
     artifacts:
         when: always
         paths:
-            - flask_log.txt
+            - flask_log_*.txt
             - tests/evidence/**
         reports:
             junit: tests/evidence/playwright-docker-junit.xml
