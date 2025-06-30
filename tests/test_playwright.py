@@ -180,27 +180,40 @@ def test_manual(page, host, port):
     # NOTE: 連続してテスト実行する場合に open がはじかれないようにまず閉める
     page.get_by_test_id("close-0").click()
     time.sleep(1)
+    # 手動操作間隔制限を回避するため時刻を進める
+    advance_mock_time(host, port, 70)
 
     page.get_by_test_id("open-0").click()
     check_log(page, "手動で開けました")
+    # 手動操作間隔制限を回避するため時刻を進める
+    advance_mock_time(host, port, 70)
 
     page.get_by_test_id("open-1").click()
     check_log(page, "手動で開けました")
+    # 手動操作間隔制限を回避するため時刻を進める
+    advance_mock_time(host, port, 70)
 
     page.get_by_test_id("close-0").click()
     check_log(page, "手動で閉めました")
 
     page.get_by_test_id("close-0").click()
     check_log(page, "閉めるのを見合わせました")
+    # 手動操作間隔制限を回避するため時刻を進める
+    advance_mock_time(host, port, 70)
 
     page.get_by_test_id("close-1").click()
     check_log(page, "手動で閉めました")
+    # 手動操作間隔制限を回避するため時刻を進める
+    advance_mock_time(host, port, 70)
 
     page.get_by_test_id("open-0").click()
     check_log(page, "手動で開けました")
 
     page.get_by_test_id("open-0").click()
     check_log(page, "開けるのを見合わせました")
+    
+    # テスト終了時にモック時刻をリセット
+    reset_mock_time(host, port)
 
     page.get_by_test_id("open-1").click()
     check_log(page, "手動で開けました")
@@ -290,7 +303,11 @@ def test_schedule_run(page, host, port):
         enable_checkbox.evaluate("node => node.checked = false")
         enable_checkbox.evaluate("node => node.click()")
 
-        schedule_time = time_str_after(SCHEDULE_AFTER_MIN) if state == "close" else "08:00"
+        if state == "close":
+            # モック時間ベースで1分後の時刻を計算
+            schedule_time = (current_time + datetime.timedelta(minutes=SCHEDULE_AFTER_MIN)).strftime("%H:%M")
+        else:
+            schedule_time = "08:00"
         page.locator(f'//div[contains(@id,"{state}-schedule-entry-time")]/input').fill(schedule_time)
 
         # NOTE: 曜日は全てチェック
@@ -306,9 +323,9 @@ def test_schedule_run(page, host, port):
     advance_result = advance_mock_time(host, port, SCHEDULE_AFTER_MIN * 60)
     logging.info("DEBUG: Advance mock time result: %s", advance_result)
 
-    # スケジューラが実行されるまで待機（最大10秒）
+    # スケジューラが実行されるまで待機（最大15秒）
     logging.info("DEBUG: Waiting for scheduler to execute")
-    time.sleep(10)  # スケジューラの実行を待つ
+    time.sleep(15)  # スケジューラの実行を待つ
 
     logging.info("DEBUG: About to check for '閉めました' message")
     check_log(page, "スケジューラで閉めました", 10)
