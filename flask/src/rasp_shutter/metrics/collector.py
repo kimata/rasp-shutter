@@ -236,12 +236,15 @@ class MetricsCollector:
 _collector_instance: Optional[MetricsCollector] = None
 
 
-def get_collector() -> MetricsCollector:
+def get_collector(metrics_data_path=None) -> MetricsCollector:
     """メトリクス収集インスタンスを取得"""
     global _collector_instance
 
     if _collector_instance is None:
-        db_path = my_lib.webapp.config.DATA_DIR_PATH / "metrics.db"
+        if metrics_data_path:
+            db_path = Path(metrics_data_path)
+        else:
+            db_path = my_lib.webapp.config.DATA_DIR_PATH / "metrics.db"
         _collector_instance = MetricsCollector(db_path)
         logging.info("Metrics collector initialized: %s", db_path)
 
@@ -249,12 +252,16 @@ def get_collector() -> MetricsCollector:
 
 
 def record_shutter_operation(
-    action: str, mode: str, sensor_data: Optional[Dict] = None, timestamp: Optional[datetime.datetime] = None
+    action: str, 
+    mode: str, 
+    metrics_data_path=None,
+    sensor_data: Optional[Dict] = None, 
+    timestamp: Optional[datetime.datetime] = None
 ):
     """シャッター操作を記録（便利関数）"""
-    get_collector().record_shutter_operation(action, mode, sensor_data, timestamp)
+    get_collector(metrics_data_path).record_shutter_operation(action, mode, sensor_data, timestamp)
 
 
-def record_failure(timestamp: Optional[datetime.datetime] = None):
+def record_failure(metrics_data_path=None, timestamp: Optional[datetime.datetime] = None):
     """シャッター制御失敗を記録（便利関数）"""
-    get_collector().record_failure(timestamp)
+    get_collector(metrics_data_path).record_failure(timestamp)

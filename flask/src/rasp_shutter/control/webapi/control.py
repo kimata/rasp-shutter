@@ -212,7 +212,10 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
                 if mode == CONTROL_MODE.SCHEDULE
                 else "auto"
             )
-            rasp_shutter.metrics.collector.record_shutter_operation(state, mode_str, sense_data)
+            metrics_data_path = config.get("metrics", {}).get("data")
+            rasp_shutter.metrics.collector.record_shutter_operation(
+                state, mode_str, metrics_data_path, sense_data
+            )
         except Exception as e:
             logging.warning("メトリクス記録に失敗しました: %s", e)
     else:
@@ -228,7 +231,8 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
 
         # 失敗メトリクス収集
         try:
-            rasp_shutter.metrics.collector.record_failure()
+            metrics_data_path = config.get("metrics", {}).get("data")
+            rasp_shutter.metrics.collector.record_failure(metrics_data_path)
         except Exception as e:
             logging.warning("失敗メトリクス記録に失敗しました: %s", e)
 

@@ -23,8 +23,12 @@ blueprint = flask.Blueprint("metrics", __name__, url_prefix=my_lib.webapp.config
 def metrics_view():
     """メトリクスダッシュボードページを表示"""
     try:
+        # 設定からメトリクスデータパスを取得
+        config = flask.current_app.config["CONFIG"]
+        metrics_data_path = config.get("metrics", {}).get("data")
+        
         # メトリクス収集器を取得
-        collector = rasp_shutter.metrics.collector.get_collector()
+        collector = rasp_shutter.metrics.collector.get_collector(metrics_data_path)
 
         # 最近30日間のデータを取得
         recent_metrics = collector.get_recent_metrics(days=30)
