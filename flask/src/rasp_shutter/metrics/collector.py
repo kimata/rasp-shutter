@@ -15,8 +15,6 @@ import threading
 from pathlib import Path
 from typing import Dict, Optional
 
-import my_lib.webapp.config
-
 
 class MetricsCollector:
     """シャッターメトリクス収集クラス"""
@@ -236,15 +234,12 @@ class MetricsCollector:
 _collector_instance: Optional[MetricsCollector] = None
 
 
-def get_collector(metrics_data_path=None) -> MetricsCollector:
+def get_collector(metrics_data_path) -> MetricsCollector:
     """メトリクス収集インスタンスを取得"""
     global _collector_instance
 
     if _collector_instance is None:
-        if metrics_data_path:
-            db_path = Path(metrics_data_path)
-        else:
-            db_path = my_lib.webapp.config.DATA_DIR_PATH / "metrics.db"
+        db_path = Path(metrics_data_path)
         _collector_instance = MetricsCollector(db_path)
         logging.info("Metrics collector initialized: %s", db_path)
 
@@ -254,7 +249,7 @@ def get_collector(metrics_data_path=None) -> MetricsCollector:
 def record_shutter_operation(
     action: str, 
     mode: str, 
-    metrics_data_path=None,
+    metrics_data_path,
     sensor_data: Optional[Dict] = None, 
     timestamp: Optional[datetime.datetime] = None
 ):
@@ -262,6 +257,6 @@ def record_shutter_operation(
     get_collector(metrics_data_path).record_shutter_operation(action, mode, sensor_data, timestamp)
 
 
-def record_failure(metrics_data_path=None, timestamp: Optional[datetime.datetime] = None):
+def record_failure(metrics_data_path, timestamp: Optional[datetime.datetime] = None):
     """シャッター制御失敗を記録（便利関数）"""
     get_collector(metrics_data_path).record_failure(timestamp)
