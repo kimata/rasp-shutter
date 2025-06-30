@@ -8,11 +8,13 @@
 from __future__ import annotations
 
 import datetime
+import io
 import json
 import logging
 
 import my_lib.webapp.config
 import rasp_shutter.metrics.collector
+from PIL import Image, ImageDraw
 
 import flask
 
@@ -44,6 +46,76 @@ def metrics_view():
     except Exception as e:
         logging.exception("メトリクス表示の生成エラー")
         return flask.Response(f"エラー: {e!s}", mimetype="text/plain", status=500)
+
+
+@blueprint.route("/favicon.ico", methods=["GET"])
+def favicon():
+    """動的生成されたシャッターメトリクス用favicon.icoを返す"""
+    try:
+        # シャッターメトリクスアイコンを生成
+        img = generate_shutter_metrics_icon()
+
+        # ICO形式で出力
+        output = io.BytesIO()
+        img.save(output, format="ICO", sizes=[(32, 32)])
+        output.seek(0)
+
+        return flask.Response(
+            output.getvalue(),
+            mimetype="image/x-icon",
+            headers={
+                "Cache-Control": "public, max-age=3600",  # 1時間キャッシュ
+                "Content-Type": "image/x-icon",
+            },
+        )
+    except Exception:
+        logging.exception("favicon生成エラー")
+        return flask.Response("", status=500)
+
+
+def generate_shutter_metrics_icon():
+    """シャッターメトリクス用のアイコンを動的生成（アンチエイリアス対応）"""
+    # アンチエイリアスのため4倍サイズで描画してから縮小
+    scale = 4
+    size = 32
+    large_size = size * scale
+
+    # 大きなサイズで描画
+    img = Image.new("RGBA", (large_size, large_size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    # 背景円（シャッターらしい緑色）
+    margin = 2 * scale
+    draw.ellipse(
+        [margin, margin, large_size - margin, large_size - margin],
+        fill=(40, 167, 69, 255),
+        outline=(33, 136, 56, 255),
+        width=2 * scale,
+    )
+
+    # シャッターの横線を描画
+    line_width = 2 * scale
+    start_y = 8 * scale
+    for i in range(4):
+        y = start_y + i * 4 * scale
+        draw.rectangle(
+            [6 * scale, y, 26 * scale, y + line_width],
+            fill=(255, 255, 255, 255),
+        )
+
+    # グラフっぽい小さな線を右下に追加
+    graph_points = [
+        (18 * scale, 22 * scale),
+        (20 * scale, 20 * scale),
+        (22 * scale, 18 * scale),
+        (24 * scale, 16 * scale),
+        (26 * scale, 14 * scale),
+    ]
+    for i in range(len(graph_points) - 1):
+        draw.line([graph_points[i], graph_points[i + 1]], fill=(255, 255, 255, 255), width=scale)
+
+    # アンチエイリアスのため縮小
+    return img.resize((size, size), Image.LANCZOS)
 
 
 def _extract_time_data(day_data: dict, key: str) -> float | None:
