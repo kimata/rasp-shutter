@@ -240,7 +240,7 @@ def test_manual(page, host, port):
 
     # NOTE: 60秒待機の代わりに時刻操作APIで時間を進める
     advance_mock_time(host, port, 60)
-    time.sleep(0.1)  # 最小限の待機
+    time.sleep(2)
     logging.info("Time advanced by 60 seconds using API")
 
     page.get_by_test_id("open-1").click()
