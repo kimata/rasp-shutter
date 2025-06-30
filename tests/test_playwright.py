@@ -272,14 +272,16 @@ def test_schedule_run(page, host, port):
     time.sleep(1)
     check_log(page, "ログがクリアされました")
 
-    # NOTE: テスト用APIで時刻を設定（秒を55に設定して次の分に実行されるようにする）
-    current_time = my_lib.time.now().replace(second=55, microsecond=0)
+    # NOTE: テスト用APIで時刻を設定（固定時刻で確実にテストできるようにする）
+    # 12:00:55に設定して、12:01に閉めるスケジュールが実行されるようにする
+    current_time = datetime.datetime.now().replace(hour=12, minute=0, second=55, microsecond=0)
     set_mock_time(host, port, current_time)
     logging.info("Mock time set successfully")
 
     # NOTE: スケジュールに従って閉める評価をしたいので、一旦あけておく
     page.get_by_test_id("open-0").click()
     page.get_by_test_id("open-1").click()
+    time.sleep(2)  # 手動操作の間隔制限を回避するため待機
 
     for state in ["open", "close"]:
         # NOTE: checkbox 自体は hidden にして、CSS で表示しているので、
@@ -288,7 +290,7 @@ def test_schedule_run(page, host, port):
         enable_checkbox.evaluate("node => node.checked = false")
         enable_checkbox.evaluate("node => node.click()")
 
-        schedule_time = time_str_after(SCHEDULE_AFTER_MIN) if state == "close" else time_str_random()
+        schedule_time = time_str_after(SCHEDULE_AFTER_MIN) if state == "close" else "08:00"
         page.locator(f'//div[contains(@id,"{state}-schedule-entry-time")]/input').fill(schedule_time)
 
         # NOTE: 曜日は全てチェック
