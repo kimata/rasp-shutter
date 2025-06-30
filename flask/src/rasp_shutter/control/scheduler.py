@@ -513,14 +513,6 @@ def schedule_worker(config, queue):
                 hours, remainder = divmod(idle_sec, 3600)
                 minutes, seconds = divmod(remainder, 60)
 
-            logging.info(
-                "Now is %s, time to next jobs is %d hour(s) %d minute(s) %d second(s)",
-                my_lib.time.now().strftime("%Y-%m-%d %H:%M"),
-                hours,
-                minutes,
-                seconds,
-            )
-
             scheduler.run_pending()
 
             logging.debug("Sleep %.1f sec...", sleep_sec)
