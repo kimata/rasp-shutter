@@ -1790,6 +1790,7 @@ dependencies = [
     { name = "my-lib" },
     { name = "pysolar" },
     { name = "schedule" },
+    { name = "time-machine" },
 ]
 
 [package.dev-dependencies]
@@ -1804,7 +1805,6 @@ dev = [
     { name = "pytest-playwright" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
-    { name = "time-machine" },
 ]
 
 [package.metadata]
@@ -1817,6 +1817,7 @@ requires-dist = [
     { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=19a226ec0e14e0c4e5900aae40029bfbdc9e01e4" },
     { name = "pysolar", specifier = ">=0.13" },
     { name = "schedule", specifier = ">=1.2.2" },
+    { name = "time-machine", specifier = ">=2.16.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -1831,7 +1832,6 @@ dev = [
     { name = "pytest-playwright", specifier = ">=0.5.2" },
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "pytest-xdist", specifier = ">=3.6.1" },
-    { name = "time-machine", specifier = ">=2.16.0" },
 ]
 
 [[package]]
