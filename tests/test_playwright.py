@@ -303,6 +303,11 @@ def test_schedule_run(page, host, port):
             schedule_time = "08:00"
         page.locator(f'//div[contains(@id,"{state}-schedule-entry-time")]/input').fill(schedule_time)
 
+        # 必須フィールドを設定
+        page.locator(f'//div[contains(@id,"{state}-schedule-entry-solar_rad")]/input').fill("150")
+        page.locator(f'//div[contains(@id,"{state}-schedule-entry-lux")]/input').fill("1000")
+        page.locator(f'//div[contains(@id,"{state}-schedule-entry-altitude")]/input').fill("30")
+
         # NOTE: 曜日は全てチェック
         wday_checkbox = page.locator(f'//div[contains(@id,"{state}-schedule-entry-wday")]/span/input')
         for j in range(7):
