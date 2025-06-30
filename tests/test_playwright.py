@@ -169,10 +169,6 @@ def test_time():
 def test_manual(page, host, port):
     page.goto(app_url(host, port))
 
-    # NOTE: テスト開始時に時刻をリセット
-    reset_mock_time(host, port)
-    time.sleep(0.5)
-
     page.get_by_test_id("clear").click()
     time.sleep(1)
     check_log(page, "ログがクリアされました")
@@ -211,7 +207,7 @@ def test_manual(page, host, port):
 
     page.get_by_test_id("open-0").click()
     check_log(page, "開けるのを見合わせました")
-    
+
     # テスト終了時にモック時刻をリセット
     reset_mock_time(host, port)
 
@@ -225,9 +221,6 @@ def test_manual(page, host, port):
 
     page.get_by_test_id("open-1").click()
     check_log(page, "手動で開けました")
-
-    # テスト終了時にモック時刻をリセット
-    reset_mock_time(host, port)
 
 
 @flaky(max_runs=3, min_passes=1)
@@ -287,7 +280,7 @@ def test_schedule_run(page, host, port):
 
     # NOTE: テスト用APIで時刻を設定（固定時刻で確実にテストできるようにする）
     # 12:00:55に設定して、12:01に閉めるスケジュールが実行されるようにする
-    current_time = datetime.datetime.now().replace(hour=12, minute=0, second=55, microsecond=0)
+    current_time = my_lib.time.now().replace(hour=12, minute=0, second=55, microsecond=0)
     set_mock_time(host, port, current_time)
     logging.info("Mock time set successfully")
 
@@ -329,8 +322,6 @@ def test_schedule_run(page, host, port):
 
     logging.info("DEBUG: About to check for '閉めました' message")
     check_log(page, "スケジューラで閉めました", 10)
-    # テスト終了時にモック時刻をリセット
-    reset_mock_time(host, port)
 
 
 @flaky(max_runs=3, min_passes=1)
@@ -377,5 +368,3 @@ def test_schedule_disable(page, host, port):
     # API使用時は短時間で確認
     time.sleep(0.5)  # さらに短縮
     check_log(page, "スケジュールを更新")
-    # テスト終了時にモック時刻をリセット
-    reset_mock_time(host, port)

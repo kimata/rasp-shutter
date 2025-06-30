@@ -1,29 +1,10 @@
 {
-    "$schema": "http://json-schema.org/schema#",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "properties": {
         "webapp": {
             "type": "object",
             "properties": {
-                "timezone": {
-                    "type": "object",
-                    "properties": {
-                        "offset": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "zone": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "offset",
-                        "zone"
-                    ]
-                },
                 "static_dir_path": {
                     "type": "string"
                 },
@@ -123,6 +104,32 @@
                 "solar_rad"
             ]
         },
+        "location": {
+            "type": "object",
+            "properties": {
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                }
+            },
+            "required": [
+                "latitude",
+                "longitude"
+            ]
+        },
+        "metrics": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "data"
+            ]
+        },
         "slack": {
             "type": "object",
             "properties": {
@@ -219,6 +226,8 @@
     },
     "required": [
         "liveness",
+        "location",
+        "metrics",
         "sensor",
         "shutter",
         "webapp"
