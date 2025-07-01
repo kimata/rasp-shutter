@@ -29,6 +29,27 @@ def metrics_view():
         config = flask.current_app.config["CONFIG"]
         metrics_data_path = config.get("metrics", {}).get("data")
 
+        # データベースファイルの存在確認
+        if not metrics_data_path:
+            return flask.Response(
+                "<html><body><h1>メトリクス設定が見つかりません</h1>"
+                "<p>config.yamlでmetricsセクションが設定されていません。</p></body></html>",
+                mimetype="text/html",
+                status=503,
+            )
+
+        from pathlib import Path
+
+        db_path = Path(metrics_data_path)
+        if not db_path.exists():
+            return flask.Response(
+                f"<html><body><h1>メトリクスデータベースが見つかりません</h1>"
+                f"<p>データベースファイル: {db_path}</p>"
+                f"<p>システムが十分に動作してからメトリクスが生成されます。</p></body></html>",
+                mimetype="text/html",
+                status=503,
+            )
+
         # メトリクス収集器を取得
         collector = rasp_shutter.metrics.collector.get_collector(metrics_data_path)
 
@@ -199,12 +220,16 @@ def generate_statistics(operation_metrics: list[dict], failure_metrics: list[dic
     close_times = []
 
     for key, timestamp in daily_last_operations.items():
-        if key.endswith("_open"):
-            if (t := _extract_time_data({"timestamp": timestamp}, "timestamp")) is not None:
-                open_times.append(t)
-        elif key.endswith("_close"):
-            if (t := _extract_time_data({"timestamp": timestamp}, "timestamp")) is not None:
-                close_times.append(t)
+        if (
+            key.endswith("_open")
+            and (t := _extract_time_data({"timestamp": timestamp}, "timestamp")) is not None
+        ):
+            open_times.append(t)
+        elif (
+            key.endswith("_close")
+            and (t := _extract_time_data({"timestamp": timestamp}, "timestamp")) is not None
+        ):
+            close_times.append(t)
 
     # センサーデータを操作タイプ別に収集
     auto_sensor_data = _collect_sensor_data_by_type(operation_metrics, "auto")
