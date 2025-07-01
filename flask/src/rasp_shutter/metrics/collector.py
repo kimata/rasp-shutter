@@ -8,20 +8,24 @@
 - シャッター制御に失敗した回数
 """
 
+from __future__ import annotations
+
 import datetime
 import logging
 import sqlite3
 import threading
 from pathlib import Path
-from typing import Optional
 
 
 class MetricsCollector:
+
     """シャッターメトリクス収集クラス"""
 
     def __init__(self, db_path: Path):
-        """
+        """コンストラクタ
+
         Args:
+        ----
             db_path: SQLiteデータベースファイルパス
 
         """
@@ -86,6 +90,7 @@ class MetricsCollector:
         シャッター操作を記録
 
         Args:
+        ----
             action: "open" または "close"
             mode: "manual", "schedule", "auto"
             sensor_data: センサーデータ（照度、日射、太陽高度など）
@@ -122,7 +127,7 @@ class MetricsCollector:
                     (timestamp, date, action, mode, lux, solar_rad, altitude),
                 )
 
-    def record_failure(self, timestamp: Optional[datetime.datetime] = None):
+    def record_failure(self, timestamp: datetime.datetime | None = None):
         """
         シャッター制御失敗を記録
 
@@ -222,7 +227,7 @@ class MetricsCollector:
 
 
 # グローバルインスタンス
-_collector_instance: Optional[MetricsCollector] = None
+_collector_instance: MetricsCollector | None = None
 
 
 def get_collector(metrics_data_path) -> MetricsCollector:
@@ -241,13 +246,13 @@ def record_shutter_operation(
     action: str,
     mode: str,
     metrics_data_path,
-    sensor_data: Optional[Dict] = None,
-    timestamp: Optional[datetime.datetime] = None,
+    sensor_data: dict | None = None,
+    timestamp: datetime.datetime | None = None,
 ):
     """シャッター操作を記録（便利関数）"""
     get_collector(metrics_data_path).record_shutter_operation(action, mode, sensor_data, timestamp)
 
 
-def record_failure(metrics_data_path, timestamp: Optional[datetime.datetime] = None):
+def record_failure(metrics_data_path, timestamp: datetime.datetime | None = None):
     """シャッター制御失敗を記録（便利関数）"""
     get_collector(metrics_data_path).record_failure(timestamp)
