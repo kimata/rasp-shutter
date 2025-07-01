@@ -18,7 +18,6 @@ from pathlib import Path
 
 
 class MetricsCollector:
-
     """シャッターメトリクス収集クラス"""
 
     def __init__(self, db_path: Path):
@@ -132,7 +131,9 @@ class MetricsCollector:
         シャッター制御失敗を記録
 
         Args:
+        ----
             timestamp: 失敗時刻（指定しない場合は現在時刻）
+
         """
         if timestamp is None:
             timestamp = datetime.datetime.now()
@@ -154,11 +155,14 @@ class MetricsCollector:
         指定期間の操作メトリクスを取得
 
         Args:
+        ----
             start_date: 開始日（YYYY-MM-DD形式）
             end_date: 終了日（YYYY-MM-DD形式）
 
         Returns:
+        -------
             操作メトリクスデータのリスト
+
         """
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
@@ -177,11 +181,14 @@ class MetricsCollector:
         指定期間の失敗メトリクスを取得
 
         Args:
+        ----
             start_date: 開始日（YYYY-MM-DD形式）
             end_date: 終了日（YYYY-MM-DD形式）
 
         Returns:
+        -------
             失敗メトリクスデータのリスト
+
         """
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
@@ -200,10 +207,13 @@ class MetricsCollector:
         最近N日間の操作メトリクスを取得
 
         Args:
+        ----
             days: 取得する日数
 
         Returns:
+        -------
             操作メトリクスデータのリスト
+
         """
         end_date = datetime.date.today()
         start_date = end_date - datetime.timedelta(days=days)
@@ -215,10 +225,13 @@ class MetricsCollector:
         最近N日間の失敗メトリクスを取得
 
         Args:
+        ----
             days: 取得する日数
 
         Returns:
+        -------
             失敗メトリクスデータのリスト
+
         """
         end_date = datetime.date.today()
         start_date = end_date - datetime.timedelta(days=days)

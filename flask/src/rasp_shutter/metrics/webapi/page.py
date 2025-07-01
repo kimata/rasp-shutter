@@ -160,12 +160,20 @@ def generate_statistics(operation_metrics: list[dict], failure_metrics: list[dic
             "open_times": [],
             "close_times": [],
             "auto_sensor_data": {
-                "open_lux": [], "close_lux": [], "open_solar_rad": [], 
-                "close_solar_rad": [], "open_altitude": [], "close_altitude": []
+                "open_lux": [],
+                "close_lux": [],
+                "open_solar_rad": [],
+                "close_solar_rad": [],
+                "open_altitude": [],
+                "close_altitude": [],
             },
             "manual_sensor_data": {
-                "open_lux": [], "close_lux": [], "open_solar_rad": [], 
-                "close_solar_rad": [], "open_altitude": [], "close_altitude": []
+                "open_lux": [],
+                "close_lux": [],
+                "open_solar_rad": [],
+                "close_solar_rad": [],
+                "open_altitude": [],
+                "close_altitude": [],
             },
             "manual_open_total": 0,
             "manual_close_total": 0,
@@ -180,7 +188,7 @@ def generate_statistics(operation_metrics: list[dict], failure_metrics: list[dic
         date = op_data.get("date")
         action = op_data.get("action")
         timestamp = op_data.get("timestamp")
-        
+
         if date and action and timestamp:
             key = f"{date}_{action}"
             # より新しい時刻で上書き（最後の操作時刻を保持）
@@ -189,7 +197,7 @@ def generate_statistics(operation_metrics: list[dict], failure_metrics: list[dic
     # 時刻データを収集（最後の操作時刻のみ）
     open_times = []
     close_times = []
-    
+
     for key, timestamp in daily_last_operations.items():
         if key.endswith("_open"):
             if (t := _extract_time_data({"timestamp": timestamp}, "timestamp")) is not None:
@@ -204,14 +212,26 @@ def generate_statistics(operation_metrics: list[dict], failure_metrics: list[dic
     manual_sensor_data = _collect_sensor_data_by_type(operation_metrics, "manual")
 
     # カウント系データを集計
-    manual_open_total = sum(1 for op in operation_metrics if op.get("operation_type") == "manual" and op.get("action") == "open")
-    manual_close_total = sum(1 for op in operation_metrics if op.get("operation_type") == "manual" and op.get("action") == "close")
-    auto_open_total = sum(1 for op in operation_metrics if op.get("operation_type") in ["auto", "schedule"] and op.get("action") == "open")
-    auto_close_total = sum(1 for op in operation_metrics if op.get("operation_type") in ["auto", "schedule"] and op.get("action") == "close")
+    manual_open_total = sum(
+        1 for op in operation_metrics if op.get("operation_type") == "manual" and op.get("action") == "open"
+    )
+    manual_close_total = sum(
+        1 for op in operation_metrics if op.get("operation_type") == "manual" and op.get("action") == "close"
+    )
+    auto_open_total = sum(
+        1
+        for op in operation_metrics
+        if op.get("operation_type") in ["auto", "schedule"] and op.get("action") == "open"
+    )
+    auto_close_total = sum(
+        1
+        for op in operation_metrics
+        if op.get("operation_type") in ["auto", "schedule"] and op.get("action") == "close"
+    )
 
     # 日数を計算
-    unique_dates = set(op.get("date") for op in operation_metrics if op.get("date"))
-    
+    unique_dates = {op.get("date") for op in operation_metrics if op.get("date")}
+
     return {
         "total_days": len(unique_dates),
         "open_times": open_times,
@@ -319,14 +339,14 @@ def prepare_time_series_data(operation_metrics: list[dict]) -> dict:
         date = op_data.get("date")
         action = op_data.get("action")
         timestamp = op_data.get("timestamp")
-        
+
         if date and action and timestamp:
             key = f"{date}_{action}"
             daily_last_operations[key] = timestamp
 
     # 日付リストを生成
-    unique_dates = sorted(set(op.get("date") for op in operation_metrics if op.get("date")))
-    
+    unique_dates = sorted({op.get("date") for op in operation_metrics if op.get("date")})
+
     dates = []
     open_times = []
     close_times = []
@@ -339,7 +359,9 @@ def prepare_time_series_data(operation_metrics: list[dict]) -> dict:
         open_time = None
         if open_key in daily_last_operations:
             try:
-                open_dt = datetime.datetime.fromisoformat(daily_last_operations[open_key].replace("Z", "+00:00"))
+                open_dt = datetime.datetime.fromisoformat(
+                    daily_last_operations[open_key].replace("Z", "+00:00")
+                )
                 open_time = open_dt.hour + open_dt.minute / 60.0
             except (ValueError, TypeError):
                 pass
@@ -349,7 +371,9 @@ def prepare_time_series_data(operation_metrics: list[dict]) -> dict:
         close_time = None
         if close_key in daily_last_operations:
             try:
-                close_dt = datetime.datetime.fromisoformat(daily_last_operations[close_key].replace("Z", "+00:00"))
+                close_dt = datetime.datetime.fromisoformat(
+                    daily_last_operations[close_key].replace("Z", "+00:00")
+                )
                 close_time = close_dt.hour + close_dt.minute / 60.0
             except (ValueError, TypeError):
                 pass
@@ -462,7 +486,9 @@ def generate_sensor_analysis_section() -> str:
     """センサーデータ分析セクションのHTML生成"""
     return """
     <div class="section">
-        <h2 class="title is-4"><span class="icon"><i class="fas fa-robot"></i></span> 🤖 センサーデータ分析（自動操作）</h2>
+        <h2 class="title is-4">
+            <span class="icon"><i class="fas fa-robot"></i></span> 🤖 センサーデータ分析（自動操作）
+        </h2>
 
         <!-- 照度データ -->
         <div class="columns">
@@ -548,9 +574,11 @@ def generate_sensor_analysis_section() -> str:
             </div>
         </div>
     </div>
-    
+
     <div class="section">
-        <h2 class="title is-4"><span class="icon"><i class="fas fa-hand-paper"></i></span> 👆 センサーデータ分析（手動操作）</h2>
+        <h2 class="title is-4">
+            <span class="icon"><i class="fas fa-hand-paper"></i></span> 👆 センサーデータ分析（手動操作）
+        </h2>
 
         <!-- 照度データ -->
         <div class="columns">
