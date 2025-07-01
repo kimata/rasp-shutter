@@ -130,7 +130,7 @@ def get_shutter_state(config):
     }
 
 
-def set_shutter_state_impl(config, index, state, mode, sense_data=None, user=""):  # noqa: PLR0913
+def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noqa: PLR0913
     # NOTE: 閉じている場合に再度閉じるボタンをおしたり、逆に開いている場合に再度
     # 開くボタンを押すことが続くと、スイッチがエラーになるので exec_hist を使って
     # 防止する。また、明るさに基づく自動の開閉が連続するのを防止する。
@@ -237,7 +237,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data=None, user="")
             logging.warning("失敗メトリクス記録に失敗しました: %s", e)
 
 
-def set_shutter_state(config, index_list, state, mode, sense_data=None, user=""):  # noqa: PLR0913
+def set_shutter_state(config, index_list, state, mode, sense_data, user=""):  # noqa: PLR0913
     if state == "open":
         if mode != CONTROL_MODE.MANUAL:
             # NOTE: 手動以外でシャッターを開けた場合は、
@@ -286,6 +286,8 @@ def api_shutter_ctrl():
     # NOTE: シャッターが指定されていない場合は、全てを制御対象にする
     index_list = list(range(len(config["shutter"]))) if index == -1 else [index]
 
+    sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
+
     if cmd == 1:
         return flask.jsonify(
             dict(
@@ -295,7 +297,8 @@ def api_shutter_ctrl():
                     index_list,
                     state,
                     CONTROL_MODE.MANUAL,
-                    user=my_lib.flask_util.auth_user(flask.request),
+                    sense_data,
+                    my_lib.flask_util.auth_user(flask.request),
                 ),
             )
         )
