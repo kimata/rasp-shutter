@@ -1097,4 +1097,332 @@ def generate_chart_javascript() -> str:
                 });
             }
         }
+
+        function generateManualSensorCharts() {
+            // ヒストグラム生成のヘルパー関数
+            function createHistogram(data, bins) {
+                const hist = Array(bins.length - 1).fill(0);
+                data.forEach(value => {
+                    for (let i = 0; i < bins.length - 1; i++) {
+                        if (value >= bins[i] && value < bins[i + 1]) {
+                            hist[i]++;
+                            break;
+                        }
+                    }
+                });
+                return hist;
+            }
+
+            // 手動開操作時照度チャート
+            const manualOpenLuxCtx = document.getElementById('manualOpenLuxChart');
+            if (manualOpenLuxCtx && chartData.manual_sensor_data &&
+                chartData.manual_sensor_data.open_lux &&
+                chartData.manual_sensor_data.open_lux.length > 0) {
+                const minLux = Math.min(...chartData.manual_sensor_data.open_lux);
+                const maxLux = Math.max(...chartData.manual_sensor_data.open_lux);
+                const bins = Array.from({length: 21}, (_, i) => minLux + (maxLux - minLux) * i / 20);
+                const hist = createHistogram(chartData.manual_sensor_data.open_lux, bins);
+                const total = chartData.manual_sensor_data.open_lux.length;
+                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
+
+                new Chart(manualOpenLuxCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: bins.slice(0, -1).map(b => Math.round(b)),
+                        datasets: [{
+                            label: '👆☀️ 手動開操作時照度頻度',
+                            data: histPercent,
+                            backgroundColor: 'rgba(255, 206, 84, 0.7)',
+                            borderColor: 'rgba(255, 206, 84, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: '頻度（%）'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '照度（lux）'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 手動閉操作時照度チャート
+            const manualCloseLuxCtx = document.getElementById('manualCloseLuxChart');
+            if (manualCloseLuxCtx && chartData.manual_sensor_data &&
+                chartData.manual_sensor_data.close_lux &&
+                chartData.manual_sensor_data.close_lux.length > 0) {
+                const minLux = Math.min(...chartData.manual_sensor_data.close_lux);
+                const maxLux = Math.max(...chartData.manual_sensor_data.close_lux);
+                const bins = Array.from({length: 21}, (_, i) => minLux + (maxLux - minLux) * i / 20);
+                const hist = createHistogram(chartData.manual_sensor_data.close_lux, bins);
+                const total = chartData.manual_sensor_data.close_lux.length;
+                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
+
+                new Chart(manualCloseLuxCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: bins.slice(0, -1).map(b => Math.round(b)),
+                        datasets: [{
+                            label: '👆🌙 手動閉操作時照度頻度',
+                            data: histPercent,
+                            backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: '頻度（%）'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '照度（lux）'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 手動開操作時日射チャート
+            const manualOpenSolarRadCtx = document.getElementById('manualOpenSolarRadChart');
+            if (manualOpenSolarRadCtx && chartData.manual_sensor_data &&
+                chartData.manual_sensor_data.open_solar_rad &&
+                chartData.manual_sensor_data.open_solar_rad.length > 0) {
+                const minRad = Math.min(...chartData.manual_sensor_data.open_solar_rad);
+                const maxRad = Math.max(...chartData.manual_sensor_data.open_solar_rad);
+                const bins = Array.from({length: 21}, (_, i) => minRad + (maxRad - minRad) * i / 20);
+                const hist = createHistogram(chartData.manual_sensor_data.open_solar_rad, bins);
+                const total = chartData.manual_sensor_data.open_solar_rad.length;
+                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
+
+                new Chart(manualOpenSolarRadCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: bins.slice(0, -1).map(b => Math.round(b)),
+                        datasets: [{
+                            label: '👆☀️ 手動開操作時日射頻度',
+                            data: histPercent,
+                            backgroundColor: 'rgba(255, 159, 64, 0.7)',
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: '頻度（%）'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '日射（W/m²）'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 手動閉操作時日射チャート
+            const manualCloseSolarRadCtx = document.getElementById('manualCloseSolarRadChart');
+            if (manualCloseSolarRadCtx && chartData.manual_sensor_data &&
+                chartData.manual_sensor_data.close_solar_rad &&
+                chartData.manual_sensor_data.close_solar_rad.length > 0) {
+                const minRad = Math.min(...chartData.manual_sensor_data.close_solar_rad);
+                const maxRad = Math.max(...chartData.manual_sensor_data.close_solar_rad);
+                const bins = Array.from({length: 21}, (_, i) => minRad + (maxRad - minRad) * i / 20);
+                const hist = createHistogram(chartData.manual_sensor_data.close_solar_rad, bins);
+                const total = chartData.manual_sensor_data.close_solar_rad.length;
+                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
+
+                new Chart(manualCloseSolarRadCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: bins.slice(0, -1).map(b => Math.round(b)),
+                        datasets: [{
+                            label: '👆🌙 手動閉操作時日射頻度',
+                            data: histPercent,
+                            backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: '頻度（%）'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '日射（W/m²）'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 手動開操作時太陽高度チャート
+            const manualOpenAltitudeCtx = document.getElementById('manualOpenAltitudeChart');
+            if (manualOpenAltitudeCtx && chartData.manual_sensor_data &&
+                chartData.manual_sensor_data.open_altitude &&
+                chartData.manual_sensor_data.open_altitude.length > 0) {
+                const minAlt = Math.min(...chartData.manual_sensor_data.open_altitude);
+                const maxAlt = Math.max(...chartData.manual_sensor_data.open_altitude);
+                const bins = Array.from({length: 21}, (_, i) => minAlt + (maxAlt - minAlt) * i / 20);
+                const hist = createHistogram(chartData.manual_sensor_data.open_altitude, bins);
+                const total = chartData.manual_sensor_data.open_altitude.length;
+                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
+
+                new Chart(manualOpenAltitudeCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: bins.slice(0, -1).map(b => Math.round(b * 10) / 10),
+                        datasets: [{
+                            label: '👆☀️ 手動開操作時太陽高度頻度',
+                            data: histPercent,
+                            backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: '頻度（%）'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '太陽高度（度）'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 手動閉操作時太陽高度チャート
+            const manualCloseAltitudeCtx = document.getElementById('manualCloseAltitudeChart');
+            if (manualCloseAltitudeCtx && chartData.manual_sensor_data &&
+                chartData.manual_sensor_data.close_altitude &&
+                chartData.manual_sensor_data.close_altitude.length > 0) {
+                const minAlt = Math.min(...chartData.manual_sensor_data.close_altitude);
+                const maxAlt = Math.max(...chartData.manual_sensor_data.close_altitude);
+                const bins = Array.from({length: 21}, (_, i) => minAlt + (maxAlt - minAlt) * i / 20);
+                const hist = createHistogram(chartData.manual_sensor_data.close_altitude, bins);
+                const total = chartData.manual_sensor_data.close_altitude.length;
+                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
+
+                new Chart(manualCloseAltitudeCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: bins.slice(0, -1).map(b => Math.round(b * 10) / 10),
+                        datasets: [{
+                            label: '👆🌙 手動閉操作時太陽高度頻度',
+                            data: histPercent,
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: '頻度（%）'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '太陽高度（度）'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
     """
