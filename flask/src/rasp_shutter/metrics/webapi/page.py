@@ -33,13 +33,14 @@ def metrics_view():
         collector = rasp_shutter.metrics.collector.get_collector(metrics_data_path)
 
         # 最近30日間のデータを取得
-        recent_metrics = collector.get_recent_metrics(days=30)
+        operation_metrics = collector.get_recent_operation_metrics(days=30)
+        failure_metrics = collector.get_recent_failure_metrics(days=30)
 
         # 統計データを生成
-        stats = generate_statistics(recent_metrics)
+        stats = generate_statistics(operation_metrics, failure_metrics)
 
         # HTMLを生成
-        html_content = generate_metrics_html(stats, recent_metrics)
+        html_content = generate_metrics_html(stats, operation_metrics)
 
         return flask.Response(html_content, mimetype="text/html")
 
@@ -129,8 +130,8 @@ def _extract_time_data(day_data: dict, key: str) -> float | None:
         return None
 
 
-def _collect_sensor_data(metrics_data: list[dict]) -> dict:
-    """センサーデータを収集"""
+def _collect_sensor_data_by_type(operation_metrics: list[dict], operation_type: str) -> dict:
+    """操作タイプ別にセンサーデータを収集"""
     sensor_data = {
         "open_lux": [],
         "close_lux": [],
@@ -140,74 +141,100 @@ def _collect_sensor_data(metrics_data: list[dict]) -> dict:
         "close_altitude": [],
     }
 
-    for day_data in metrics_data:
-        for sensor_type in ["lux", "solar_rad", "altitude"]:
-            for operation in ["open", "close"]:
-                key = f"last_{operation}_{sensor_type}"
-                if day_data.get(key) is not None:
-                    sensor_data[f"{operation}_{sensor_type}"].append(day_data[key])
+    for op_data in operation_metrics:
+        if op_data.get("operation_type") == operation_type:
+            action = op_data.get("action")
+            if action in ["open", "close"]:
+                for sensor_type in ["lux", "solar_rad", "altitude"]:
+                    if op_data.get(sensor_type) is not None:
+                        sensor_data[f"{action}_{sensor_type}"].append(op_data[sensor_type])
 
     return sensor_data
 
 
-def generate_statistics(metrics_data: list[dict]) -> dict:
+def generate_statistics(operation_metrics: list[dict], failure_metrics: list[dict]) -> dict:
     """メトリクスデータから統計情報を生成"""
-    if not metrics_data:
+    if not operation_metrics:
         return {
             "total_days": 0,
             "open_times": [],
             "close_times": [],
-            "open_lux": [],
-            "close_lux": [],
-            "open_solar_rad": [],
-            "close_solar_rad": [],
-            "open_altitude": [],
-            "close_altitude": [],
+            "auto_sensor_data": {
+                "open_lux": [], "close_lux": [], "open_solar_rad": [], 
+                "close_solar_rad": [], "open_altitude": [], "close_altitude": []
+            },
+            "manual_sensor_data": {
+                "open_lux": [], "close_lux": [], "open_solar_rad": [], 
+                "close_solar_rad": [], "open_altitude": [], "close_altitude": []
+            },
             "manual_open_total": 0,
             "manual_close_total": 0,
-            "failure_total": 0,
+            "auto_open_total": 0,
+            "auto_close_total": 0,
+            "failure_total": len(failure_metrics),
         }
 
-    # 時刻データを収集
-    open_times = [
-        t for day_data in metrics_data if (t := _extract_time_data(day_data, "last_open_time")) is not None
-    ]
-    close_times = [
-        t for day_data in metrics_data if (t := _extract_time_data(day_data, "last_close_time")) is not None
-    ]
+    # 日付ごとの最後の操作時刻を取得（時刻分析用）
+    daily_last_operations = {}
+    for op_data in operation_metrics:
+        date = op_data.get("date")
+        action = op_data.get("action")
+        timestamp = op_data.get("timestamp")
+        
+        if date and action and timestamp:
+            key = f"{date}_{action}"
+            # より新しい時刻で上書き（最後の操作時刻を保持）
+            daily_last_operations[key] = timestamp
 
-    # センサーデータを収集
-    sensor_data = _collect_sensor_data(metrics_data)
+    # 時刻データを収集（最後の操作時刻のみ）
+    open_times = []
+    close_times = []
+    
+    for key, timestamp in daily_last_operations.items():
+        if key.endswith("_open"):
+            if (t := _extract_time_data({"timestamp": timestamp}, "timestamp")) is not None:
+                open_times.append(t)
+        elif key.endswith("_close"):
+            if (t := _extract_time_data({"timestamp": timestamp}, "timestamp")) is not None:
+                close_times.append(t)
 
-    # カウント系データを累計
-    manual_open_total = sum(day_data.get("manual_open_count", 0) for day_data in metrics_data)
-    manual_close_total = sum(day_data.get("manual_close_count", 0) for day_data in metrics_data)
-    failure_total = sum(day_data.get("failure_count", 0) for day_data in metrics_data)
+    # センサーデータを操作タイプ別に収集
+    auto_sensor_data = _collect_sensor_data_by_type(operation_metrics, "auto")
+    auto_sensor_data.update(_collect_sensor_data_by_type(operation_metrics, "schedule"))
+    manual_sensor_data = _collect_sensor_data_by_type(operation_metrics, "manual")
 
+    # カウント系データを集計
+    manual_open_total = sum(1 for op in operation_metrics if op.get("operation_type") == "manual" and op.get("action") == "open")
+    manual_close_total = sum(1 for op in operation_metrics if op.get("operation_type") == "manual" and op.get("action") == "close")
+    auto_open_total = sum(1 for op in operation_metrics if op.get("operation_type") in ["auto", "schedule"] and op.get("action") == "open")
+    auto_close_total = sum(1 for op in operation_metrics if op.get("operation_type") in ["auto", "schedule"] and op.get("action") == "close")
+
+    # 日数を計算
+    unique_dates = set(op.get("date") for op in operation_metrics if op.get("date"))
+    
     return {
-        "total_days": len(metrics_data),
+        "total_days": len(unique_dates),
         "open_times": open_times,
         "close_times": close_times,
-        **sensor_data,
+        "auto_sensor_data": auto_sensor_data,
+        "manual_sensor_data": manual_sensor_data,
         "manual_open_total": manual_open_total,
         "manual_close_total": manual_close_total,
-        "failure_total": failure_total,
+        "auto_open_total": auto_open_total,
+        "auto_close_total": auto_close_total,
+        "failure_total": len(failure_metrics),
     }
 
 
-def generate_metrics_html(stats: dict, raw_metrics: list[dict]) -> str:
+def generate_metrics_html(stats: dict, operation_metrics: list[dict]) -> str:
     """Bulma CSSを使用したメトリクスHTMLを生成"""
     # JavaScript用データを準備
     chart_data = {
         "open_times": stats["open_times"],
         "close_times": stats["close_times"],
-        "open_lux": stats["open_lux"],
-        "close_lux": stats["close_lux"],
-        "open_solar_rad": stats["open_solar_rad"],
-        "close_solar_rad": stats["close_solar_rad"],
-        "open_altitude": stats["open_altitude"],
-        "close_altitude": stats["close_altitude"],
-        "time_series": prepare_time_series_data(raw_metrics),
+        "auto_sensor_data": stats["auto_sensor_data"],
+        "manual_sensor_data": stats["manual_sensor_data"],
+        "time_series": prepare_time_series_data(operation_metrics),
     }
 
     chart_data_json = json.dumps(chart_data)
@@ -275,7 +302,8 @@ def generate_metrics_html(stats: dict, raw_metrics: list[dict]) -> str:
 
         // チャート生成
         generateTimeCharts();
-        generateSensorCharts();
+        generateAutoSensorCharts();
+        generateManualSensorCharts();
 
         {generate_chart_javascript()}
     </script>
@@ -283,33 +311,45 @@ def generate_metrics_html(stats: dict, raw_metrics: list[dict]) -> str:
     """
 
 
-def prepare_time_series_data(raw_metrics: list[dict]) -> dict:
+def prepare_time_series_data(operation_metrics: list[dict]) -> dict:
     """時系列データを準備"""
+    # 日付ごとの最後の操作時刻を取得
+    daily_last_operations = {}
+    for op_data in operation_metrics:
+        date = op_data.get("date")
+        action = op_data.get("action")
+        timestamp = op_data.get("timestamp")
+        
+        if date and action and timestamp:
+            key = f"{date}_{action}"
+            daily_last_operations[key] = timestamp
+
+    # 日付リストを生成
+    unique_dates = sorted(set(op.get("date") for op in operation_metrics if op.get("date")))
+    
     dates = []
     open_times = []
     close_times = []
 
-    for day_data in raw_metrics:
-        date = day_data.get("date")
-        if not date:
-            continue
-
+    for date in unique_dates:
         dates.append(date)
 
-        # 開閉時刻を時間として記録
+        # その日の最後の開操作時刻
+        open_key = f"{date}_open"
         open_time = None
-        close_time = None
-
-        if day_data.get("last_open_time"):
+        if open_key in daily_last_operations:
             try:
-                open_dt = datetime.datetime.fromisoformat(day_data["last_open_time"].replace("Z", "+00:00"))
+                open_dt = datetime.datetime.fromisoformat(daily_last_operations[open_key].replace("Z", "+00:00"))
                 open_time = open_dt.hour + open_dt.minute / 60.0
             except (ValueError, TypeError):
                 pass
 
-        if day_data.get("last_close_time"):
+        # その日の最後の閉操作時刻
+        close_key = f"{date}_close"
+        close_time = None
+        if close_key in daily_last_operations:
             try:
-                close_dt = datetime.datetime.fromisoformat(day_data["last_close_time"].replace("Z", "+00:00"))
+                close_dt = datetime.datetime.fromisoformat(daily_last_operations[close_key].replace("Z", "+00:00"))
                 close_time = close_dt.hour + close_dt.minute / 60.0
             except (ValueError, TypeError):
                 pass
@@ -337,16 +377,28 @@ def generate_basic_stats_section(stats: dict) -> str:
                     </div>
                     <div class="card-content">
                         <div class="columns is-multiline">
-                            <div class="column is-half">
+                            <div class="column is-quarter">
                                 <div class="has-text-centered">
-                                    <p class="heading">手動開操作</p>
+                                    <p class="heading">👆 手動開操作 ☀️</p>
                                     <p class="stat-number has-text-success">{stats["manual_open_total"]:,}</p>
                                 </div>
                             </div>
-                            <div class="column is-half">
+                            <div class="column is-quarter">
                                 <div class="has-text-centered">
-                                    <p class="heading">手動閉操作</p>
+                                    <p class="heading">👆 手動閉操作 🌙</p>
                                     <p class="stat-number has-text-info">{stats["manual_close_total"]:,}</p>
+                                </div>
+                            </div>
+                            <div class="column is-quarter">
+                                <div class="has-text-centered">
+                                    <p class="heading">🤖 自動開操作 ☀️</p>
+                                    <p class="stat-number has-text-success">{stats["auto_open_total"]:,}</p>
+                                </div>
+                            </div>
+                            <div class="column is-quarter">
+                                <div class="has-text-centered">
+                                    <p class="heading">🤖 自動閉操作 🌙</p>
+                                    <p class="stat-number has-text-info">{stats["auto_close_total"]:,}</p>
                                 </div>
                             </div>
                             <div class="column is-half">
@@ -380,7 +432,7 @@ def generate_time_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">開操作時刻の頻度分布</p>
+                        <p class="card-header-title">☀️ 開操作時刻の頻度分布</p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -392,7 +444,7 @@ def generate_time_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">閉操作時刻の頻度分布</p>
+                        <p class="card-header-title">🌙 閉操作時刻の頻度分布</p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -410,18 +462,18 @@ def generate_sensor_analysis_section() -> str:
     """センサーデータ分析セクションのHTML生成"""
     return """
     <div class="section">
-        <h2 class="title is-4"><span class="icon"><i class="fas fa-sun"></i></span> センサーデータ分析</h2>
+        <h2 class="title is-4"><span class="icon"><i class="fas fa-robot"></i></span> 🤖 センサーデータ分析（自動操作）</h2>
 
         <!-- 照度データ -->
         <div class="columns">
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">開操作時の照度データ</p>
+                        <p class="card-header-title">🤖 自動開操作時の照度データ ☀️</p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
-                            <canvas id="openLuxChart"></canvas>
+                            <canvas id="autoOpenLuxChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -429,11 +481,11 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">閉操作時の照度データ</p>
+                        <p class="card-header-title">🤖 自動閉操作時の照度データ 🌙</p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
-                            <canvas id="closeLuxChart"></canvas>
+                            <canvas id="autoCloseLuxChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -445,11 +497,11 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">開操作時の日射データ</p>
+                        <p class="card-header-title">🤖 自動開操作時の日射データ ☀️</p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
-                            <canvas id="openSolarRadChart"></canvas>
+                            <canvas id="autoOpenSolarRadChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -457,11 +509,11 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">閉操作時の日射データ</p>
+                        <p class="card-header-title">🤖 自動閉操作時の日射データ 🌙</p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
-                            <canvas id="closeSolarRadChart"></canvas>
+                            <canvas id="autoCloseSolarRadChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -473,11 +525,11 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">開操作時の太陽高度データ</p>
+                        <p class="card-header-title">🤖 自動開操作時の太陽高度データ ☀️</p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
-                            <canvas id="openAltitudeChart"></canvas>
+                            <canvas id="autoOpenAltitudeChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -485,11 +537,99 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">閉操作時の太陽高度データ</p>
+                        <p class="card-header-title">🤖 自動閉操作時の太陽高度データ 🌙</p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
-                            <canvas id="closeAltitudeChart"></canvas>
+                            <canvas id="autoCloseAltitudeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2 class="title is-4"><span class="icon"><i class="fas fa-hand-paper"></i></span> 👆 センサーデータ分析（手動操作）</h2>
+
+        <!-- 照度データ -->
+        <div class="columns">
+            <div class="column is-half">
+                <div class="card metrics-card">
+                    <div class="card-header">
+                        <p class="card-header-title">👆 手動開操作時の照度データ ☀️</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="chart-container">
+                            <canvas id="manualOpenLuxChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column is-half">
+                <div class="card metrics-card">
+                    <div class="card-header">
+                        <p class="card-header-title">👆 手動閉操作時の照度データ 🌙</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="chart-container">
+                            <canvas id="manualCloseLuxChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 日射データ -->
+        <div class="columns">
+            <div class="column is-half">
+                <div class="card metrics-card">
+                    <div class="card-header">
+                        <p class="card-header-title">👆 手動開操作時の日射データ ☀️</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="chart-container">
+                            <canvas id="manualOpenSolarRadChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column is-half">
+                <div class="card metrics-card">
+                    <div class="card-header">
+                        <p class="card-header-title">👆 手動閉操作時の日射データ 🌙</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="chart-container">
+                            <canvas id="manualCloseSolarRadChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 太陽高度データ -->
+        <div class="columns">
+            <div class="column is-half">
+                <div class="card metrics-card">
+                    <div class="card-header">
+                        <p class="card-header-title">👆 手動開操作時の太陽高度データ ☀️</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="chart-container">
+                            <canvas id="manualOpenAltitudeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column is-half">
+                <div class="card metrics-card">
+                    <div class="card-header">
+                        <p class="card-header-title">👆 手動閉操作時の太陽高度データ 🌙</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="chart-container">
+                            <canvas id="manualCloseAltitudeChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -523,10 +663,10 @@ def generate_chart_javascript() -> str:
                     data: {
                         labels: bins.map(h => h + ':00'),
                         datasets: [{
-                            label: '開操作頻度',
+                            label: '☀️ 開操作頻度',
                             data: openHistPercent,
-                            backgroundColor: 'rgba(72, 199, 142, 0.7)',
-                            borderColor: 'rgba(72, 199, 142, 1)',
+                            backgroundColor: 'rgba(255, 206, 84, 0.7)',
+                            borderColor: 'rgba(255, 206, 84, 1)',
                             borderWidth: 1
                         }]
                     },
@@ -578,10 +718,10 @@ def generate_chart_javascript() -> str:
                     data: {
                         labels: bins.map(h => h + ':00'),
                         datasets: [{
-                            label: '閉操作頻度',
+                            label: '🌙 閉操作頻度',
                             data: closeHistPercent,
-                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
                             borderWidth: 1
                         }]
                     },
@@ -614,7 +754,7 @@ def generate_chart_javascript() -> str:
             }
         }
 
-        function generateSensorCharts() {
+        function generateAutoSensorCharts() {
             // ヒストグラム生成のヘルパー関数
             function createHistogram(data, bins) {
                 const hist = Array(bins.length - 1).fill(0);
@@ -629,22 +769,22 @@ def generate_chart_javascript() -> str:
                 return hist;
             }
 
-            // 開操作時照度チャート
-            const openLuxCtx = document.getElementById('openLuxChart');
-            if (openLuxCtx && chartData.open_lux.length > 0) {
-                const minLux = Math.min(...chartData.open_lux);
-                const maxLux = Math.max(...chartData.open_lux);
+            // 自動開操作時照度チャート
+            const autoOpenLuxCtx = document.getElementById('autoOpenLuxChart');
+            if (autoOpenLuxCtx && chartData.auto_sensor_data.open_lux.length > 0) {
+                const minLux = Math.min(...chartData.auto_sensor_data.open_lux);
+                const maxLux = Math.max(...chartData.auto_sensor_data.open_lux);
                 const bins = Array.from({length: 21}, (_, i) => minLux + (maxLux - minLux) * i / 20);
-                const hist = createHistogram(chartData.open_lux, bins);
-                const total = chartData.open_lux.length;
+                const hist = createHistogram(chartData.auto_sensor_data.open_lux, bins);
+                const total = chartData.auto_sensor_data.open_lux.length;
                 const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
 
-                new Chart(openLuxCtx, {
+                new Chart(autoOpenLuxCtx, {
                     type: 'bar',
                     data: {
                         labels: bins.slice(0, -1).map(b => Math.round(b)),
                         datasets: [{
-                            label: '開操作時照度頻度',
+                            label: '🤖☀️ 自動開操作時照度頻度',
                             data: histPercent,
                             backgroundColor: 'rgba(255, 206, 84, 0.7)',
                             borderColor: 'rgba(255, 206, 84, 1)',
@@ -679,22 +819,22 @@ def generate_chart_javascript() -> str:
                 });
             }
 
-            // 閉操作時照度チャート
-            const closeLuxCtx = document.getElementById('closeLuxChart');
-            if (closeLuxCtx && chartData.close_lux.length > 0) {
-                const minLux = Math.min(...chartData.close_lux);
-                const maxLux = Math.max(...chartData.close_lux);
+            // 自動閉操作時照度チャート
+            const autoCloseLuxCtx = document.getElementById('autoCloseLuxChart');
+            if (autoCloseLuxCtx && chartData.auto_sensor_data.close_lux.length > 0) {
+                const minLux = Math.min(...chartData.auto_sensor_data.close_lux);
+                const maxLux = Math.max(...chartData.auto_sensor_data.close_lux);
                 const bins = Array.from({length: 21}, (_, i) => minLux + (maxLux - minLux) * i / 20);
-                const hist = createHistogram(chartData.close_lux, bins);
-                const total = chartData.close_lux.length;
+                const hist = createHistogram(chartData.auto_sensor_data.close_lux, bins);
+                const total = chartData.auto_sensor_data.close_lux.length;
                 const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
 
-                new Chart(closeLuxCtx, {
+                new Chart(autoCloseLuxCtx, {
                     type: 'bar',
                     data: {
                         labels: bins.slice(0, -1).map(b => Math.round(b)),
                         datasets: [{
-                            label: '閉操作時照度頻度',
+                            label: '🤖🌙 自動閉操作時照度頻度',
                             data: histPercent,
                             backgroundColor: 'rgba(153, 102, 255, 0.7)',
                             borderColor: 'rgba(153, 102, 255, 1)',
