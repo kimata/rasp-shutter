@@ -559,7 +559,12 @@ def generate_time_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">☀️ 開操作時刻の頻度分布</p>
+                        <p class="card-header-title permalink-header" id="open-time-histogram">
+                            ☀️ 開操作時刻の頻度分布
+                            <span class="permalink-icon" onclick="copyPermalink('open-time-histogram')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -571,7 +576,12 @@ def generate_time_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">🌙 閉操作時刻の頻度分布</p>
+                        <p class="card-header-title permalink-header" id="close-time-histogram">
+                            🌙 閉操作時刻の頻度分布
+                            <span class="permalink-icon" onclick="copyPermalink('close-time-histogram')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -600,7 +610,12 @@ def generate_time_series_section() -> str:
             <div class="column">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">🕐 操作時刻の時系列遷移</p>
+                        <p class="card-header-title permalink-header" id="time-series-chart">
+                            🕐 操作時刻の時系列遷移
+                            <span class="permalink-icon" onclick="copyPermalink('time-series-chart')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -615,7 +630,12 @@ def generate_time_series_section() -> str:
             <div class="column">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">💡 照度データの時系列遷移</p>
+                        <p class="card-header-title permalink-header" id="lux-time-series">
+                            💡 照度データの時系列遷移
+                            <span class="permalink-icon" onclick="copyPermalink('lux-time-series')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -630,7 +650,12 @@ def generate_time_series_section() -> str:
             <div class="column">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">☀️ 日射データの時系列遷移</p>
+                        <p class="card-header-title permalink-header" id="solar-rad-time-series">
+                            ☀️ 日射データの時系列遷移
+                            <span class="permalink-icon" onclick="copyPermalink('solar-rad-time-series')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -645,7 +670,12 @@ def generate_time_series_section() -> str:
             <div class="column">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">📐 太陽高度の時系列遷移</p>
+                        <p class="card-header-title permalink-header" id="altitude-time-series">
+                            📐 太陽高度の時系列遷移
+                            <span class="permalink-icon" onclick="copyPermalink('altitude-time-series')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -675,7 +705,12 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">🤖 自動開操作時の照度データ ☀️</p>
+                        <p class="card-header-title permalink-header" id="auto-open-lux">
+                            🤖 自動開操作時の照度データ ☀️
+                            <span class="permalink-icon" onclick="copyPermalink('auto-open-lux')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -687,7 +722,12 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">🤖 自動閉操作時の照度データ 🌙</p>
+                        <p class="card-header-title permalink-header" id="auto-close-lux">
+                            🤖 自動閉操作時の照度データ 🌙
+                            <span class="permalink-icon" onclick="copyPermalink('auto-close-lux')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -703,7 +743,12 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">🤖 自動開操作時の日射データ ☀️</p>
+                        <p class="card-header-title permalink-header" id="auto-open-solar-rad">
+                            🤖 自動開操作時の日射データ ☀️
+                            <span class="permalink-icon" onclick="copyPermalink('auto-open-solar-rad')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -715,7 +760,12 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">🤖 自動閉操作時の日射データ 🌙</p>
+                        <p class="card-header-title permalink-header" id="auto-close-solar-rad">
+                            🤖 自動閉操作時の日射データ 🌙
+                            <span class="permalink-icon" onclick="copyPermalink('auto-close-solar-rad')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -731,7 +781,12 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">🤖 自動開操作時の太陽高度データ ☀️</p>
+                        <p class="card-header-title permalink-header" id="auto-open-altitude">
+                            🤖 自動開操作時の太陽高度データ ☀️
+                            <span class="permalink-icon" onclick="copyPermalink('auto-open-altitude')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -743,7 +798,12 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">🤖 自動閉操作時の太陽高度データ 🌙</p>
+                        <p class="card-header-title permalink-header" id="auto-close-altitude">
+                            🤖 自動閉操作時の太陽高度データ 🌙
+                            <span class="permalink-icon" onclick="copyPermalink('auto-close-altitude')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -768,7 +828,12 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">👆 手動開操作時の照度データ ☀️</p>
+                        <p class="card-header-title permalink-header" id="manual-open-lux">
+                            👆 手動開操作時の照度データ ☀️
+                            <span class="permalink-icon" onclick="copyPermalink('manual-open-lux')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -780,7 +845,12 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">👆 手動閉操作時の照度データ 🌙</p>
+                        <p class="card-header-title permalink-header" id="manual-close-lux">
+                            👆 手動閉操作時の照度データ 🌙
+                            <span class="permalink-icon" onclick="copyPermalink('manual-close-lux')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -796,7 +866,12 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">👆 手動開操作時の日射データ ☀️</p>
+                        <p class="card-header-title permalink-header" id="manual-open-solar-rad">
+                            👆 手動開操作時の日射データ ☀️
+                            <span class="permalink-icon" onclick="copyPermalink('manual-open-solar-rad')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -808,7 +883,12 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">👆 手動閉操作時の日射データ 🌙</p>
+                        <p class="card-header-title permalink-header" id="manual-close-solar-rad">
+                            👆 手動閉操作時の日射データ 🌙
+                            <span class="permalink-icon" onclick="copyPermalink('manual-close-solar-rad')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -824,7 +904,12 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">👆 手動開操作時の太陽高度データ ☀️</p>
+                        <p class="card-header-title permalink-header" id="manual-open-altitude">
+                            👆 手動開操作時の太陽高度データ ☀️
+                            <span class="permalink-icon" onclick="copyPermalink('manual-open-altitude')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
@@ -836,7 +921,12 @@ def generate_sensor_analysis_section() -> str:
             <div class="column is-half">
                 <div class="card metrics-card">
                     <div class="card-header">
-                        <p class="card-header-title">👆 手動閉操作時の太陽高度データ 🌙</p>
+                        <p class="card-header-title permalink-header" id="manual-close-altitude">
+                            👆 手動閉操作時の太陽高度データ 🌙
+                            <span class="permalink-icon" onclick="copyPermalink('manual-close-altitude')">
+                                <i class="fas fa-link"></i>
+                            </span>
+                        </p>
                     </div>
                     <div class="card-content">
                         <div class="chart-container">
