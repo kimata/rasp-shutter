@@ -318,6 +318,24 @@ def generate_metrics_html(stats: dict, operation_metrics: list[dict]) -> str:
             font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN",
                          "Noto Sans CJK JP", "Yu Gothic", sans-serif;
         }}
+        .permalink-header {{
+            position: relative;
+            display: inline-block;
+        }}
+        .permalink-icon {{
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            cursor: pointer;
+            color: #4a90e2;
+            margin-left: 0.5rem;
+            font-size: 0.8em;
+        }}
+        .permalink-header:hover .permalink-icon {{
+            opacity: 1;
+        }}
+        .permalink-icon:hover {{
+            color: #357abd;
+        }}
     </style>
 </head>
 <body class="japanese-font">
@@ -353,6 +371,9 @@ def generate_metrics_html(stats: dict, operation_metrics: list[dict]) -> str:
         generateTimeSeriesCharts();
         generateAutoSensorCharts();
         generateManualSensorCharts();
+
+        // パーマリンク機能を初期化
+        initializePermalinks();
 
         {generate_chart_javascript()}
     </script>
@@ -462,9 +483,12 @@ def generate_basic_stats_section(stats: dict) -> str:
     """基本統計セクションのHTML生成"""
     return f"""
     <div class="section">
-        <h2 class="title is-4">
+        <h2 class="title is-4 permalink-header" id="basic-stats">
             <span class="icon"><i class="fas fa-chart-bar"></i></span>
             基本統計（過去30日間）
+            <span class="permalink-icon" onclick="copyPermalink('basic-stats')">
+                <i class="fas fa-link"></i>
+            </span>
         </h2>
 
         <div class="columns">
@@ -524,7 +548,12 @@ def generate_time_analysis_section() -> str:
     """時刻分析セクションのHTML生成"""
     return """
     <div class="section">
-        <h2 class="title is-4"><span class="icon"><i class="fas fa-clock"></i></span> 時刻分析</h2>
+        <h2 class="title is-4 permalink-header" id="time-analysis">
+            <span class="icon"><i class="fas fa-clock"></i></span> 時刻分析
+            <span class="permalink-icon" onclick="copyPermalink('time-analysis')">
+                <i class="fas fa-link"></i>
+            </span>
+        </h2>
 
         <div class="columns">
             <div class="column is-half">
@@ -560,8 +589,11 @@ def generate_time_series_section() -> str:
     """時系列データ分析セクションのHTML生成"""
     return """
     <div class="section">
-        <h2 class="title is-4">
+        <h2 class="title is-4 permalink-header" id="time-series">
             <span class="icon"><i class="fas fa-chart-line"></i></span> 時系列データ分析
+            <span class="permalink-icon" onclick="copyPermalink('time-series')">
+                <i class="fas fa-link"></i>
+            </span>
         </h2>
 
         <div class="columns">
@@ -631,8 +663,11 @@ def generate_sensor_analysis_section() -> str:
     """センサーデータ分析セクションのHTML生成"""
     return """
     <div class="section">
-        <h2 class="title is-4">
+        <h2 class="title is-4 permalink-header" id="auto-sensor-analysis">
             <span class="icon"><i class="fas fa-robot"></i></span> 🤖 センサーデータ分析（自動操作）
+            <span class="permalink-icon" onclick="copyPermalink('auto-sensor-analysis')">
+                <i class="fas fa-link"></i>
+            </span>
         </h2>
 
         <!-- 照度データ -->
@@ -721,8 +756,11 @@ def generate_sensor_analysis_section() -> str:
     </div>
 
     <div class="section">
-        <h2 class="title is-4">
+        <h2 class="title is-4 permalink-header" id="manual-sensor-analysis">
             <span class="icon"><i class="fas fa-hand-paper"></i></span> 👆 センサーデータ分析（手動操作）
+            <span class="permalink-icon" onclick="copyPermalink('manual-sensor-analysis')">
+                <i class="fas fa-link"></i>
+            </span>
         </h2>
 
         <!-- 照度データ -->
@@ -815,6 +853,91 @@ def generate_sensor_analysis_section() -> str:
 def generate_chart_javascript() -> str:
     """チャート生成用JavaScriptを生成"""
     return """
+        function initializePermalinks() {
+            // ページ読み込み時にハッシュがある場合はスクロール
+            if (window.location.hash) {
+                const element = document.querySelector(window.location.hash);
+                if (element) {
+                    setTimeout(() => {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 500); // チャート描画完了を待つ
+                }
+            }
+        }
+
+        function copyPermalink(sectionId) {
+            const url = window.location.origin + window.location.pathname + '#' + sectionId;
+
+            // Clipboard APIを使用してURLをコピー
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showCopyNotification();
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                    fallbackCopyToClipboard(url);
+                });
+            } else {
+                // フォールバック
+                fallbackCopyToClipboard(url);
+            }
+
+            // URLにハッシュを設定（履歴には残さない）
+            window.history.replaceState(null, null, '#' + sectionId);
+        }
+
+        function fallbackCopyToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                document.execCommand('copy');
+                showCopyNotification();
+            } catch (err) {
+                console.error('Fallback: Failed to copy', err);
+                // 最後の手段として、プロンプトでURLを表示
+                prompt('URLをコピーしてください:', text);
+            }
+
+            document.body.removeChild(textArea);
+        }
+
+        function showCopyNotification() {
+            // 通知要素を作成
+            const notification = document.createElement('div');
+            notification.textContent = 'パーマリンクをコピーしました！';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #23d160;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 4px;
+                z-index: 1000;
+                font-size: 14px;
+                font-weight: 500;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                transition: opacity 0.3s ease-in-out;
+            `;
+
+            document.body.appendChild(notification);
+
+            // 3秒後にフェードアウト
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
         function generateTimeCharts() {
             // 開操作時刻ヒストグラム
             const openTimeHistogramCtx = document.getElementById('openTimeHistogramChart');
