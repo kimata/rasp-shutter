@@ -336,6 +336,9 @@ def generate_metrics_html(stats: dict, operation_metrics: list[dict]) -> str:
                 <!-- 時刻分析 -->
                 {generate_time_analysis_section()}
 
+                <!-- 時系列データ分析 -->
+                {generate_time_series_section()}
+
                 <!-- センサーデータ分析 -->
                 {generate_sensor_analysis_section()}
             </div>
@@ -347,6 +350,7 @@ def generate_metrics_html(stats: dict, operation_metrics: list[dict]) -> str:
 
         // チャート生成
         generateTimeCharts();
+        generateTimeSeriesCharts();
         generateAutoSensorCharts();
         generateManualSensorCharts();
 
@@ -356,10 +360,10 @@ def generate_metrics_html(stats: dict, operation_metrics: list[dict]) -> str:
     """
 
 
-def prepare_time_series_data(operation_metrics: list[dict]) -> dict:
-    """時系列データを準備"""
-    # 日付ごとの最後の操作時刻を取得
+def _extract_daily_last_operations(operation_metrics: list[dict]) -> dict:
+    """日付ごとの最後の操作時刻とセンサーデータを取得"""
     daily_last_operations = {}
+
     for op_data in operation_metrics:
         date = op_data.get("date")
         action = op_data.get("action")
@@ -367,7 +371,44 @@ def prepare_time_series_data(operation_metrics: list[dict]) -> dict:
 
         if date and action and timestamp:
             key = f"{date}_{action}"
-            daily_last_operations[key] = timestamp
+            # より新しい時刻で上書き
+            if key not in daily_last_operations or timestamp > daily_last_operations[key]["timestamp"]:
+                daily_last_operations[key] = {
+                    "timestamp": timestamp,
+                    "lux": op_data.get("lux"),
+                    "solar_rad": op_data.get("solar_rad"),
+                    "altitude": op_data.get("altitude"),
+                }
+
+    return daily_last_operations
+
+
+def _extract_daily_data(date: str, action: str, daily_last_operations: dict) -> tuple[float | None, ...]:
+    """指定した日付と操作の時刻とセンサーデータを抽出"""
+    key = f"{date}_{action}"
+    time_val = None
+    lux_val = None
+    solar_rad_val = None
+    altitude_val = None
+
+    if key in daily_last_operations:
+        try:
+            dt = datetime.datetime.fromisoformat(
+                daily_last_operations[key]["timestamp"].replace("Z", "+00:00")
+            )
+            time_val = dt.hour + dt.minute / 60.0
+            lux_val = daily_last_operations[key]["lux"]
+            solar_rad_val = daily_last_operations[key]["solar_rad"]
+            altitude_val = daily_last_operations[key]["altitude"]
+        except (ValueError, TypeError):
+            pass
+
+    return time_val, lux_val, solar_rad_val, altitude_val
+
+
+def prepare_time_series_data(operation_metrics: list[dict]) -> dict:
+    """時系列データを準備"""
+    daily_last_operations = _extract_daily_last_operations(operation_metrics)
 
     # 日付リストを生成
     unique_dates = sorted({op.get("date") for op in operation_metrics if op.get("date")})
@@ -375,38 +416,46 @@ def prepare_time_series_data(operation_metrics: list[dict]) -> dict:
     dates = []
     open_times = []
     close_times = []
+    open_lux = []
+    close_lux = []
+    open_solar_rad = []
+    close_solar_rad = []
+    open_altitude = []
+    close_altitude = []
 
     for date in unique_dates:
         dates.append(date)
 
-        # その日の最後の開操作時刻
-        open_key = f"{date}_open"
-        open_time = None
-        if open_key in daily_last_operations:
-            try:
-                open_dt = datetime.datetime.fromisoformat(
-                    daily_last_operations[open_key].replace("Z", "+00:00")
-                )
-                open_time = open_dt.hour + open_dt.minute / 60.0
-            except (ValueError, TypeError):
-                pass
+        # その日の最後の開操作時刻とセンサーデータ
+        open_time, open_lux_val, open_solar_rad_val, open_altitude_val = _extract_daily_data(
+            date, "open", daily_last_operations
+        )
 
-        # その日の最後の閉操作時刻
-        close_key = f"{date}_close"
-        close_time = None
-        if close_key in daily_last_operations:
-            try:
-                close_dt = datetime.datetime.fromisoformat(
-                    daily_last_operations[close_key].replace("Z", "+00:00")
-                )
-                close_time = close_dt.hour + close_dt.minute / 60.0
-            except (ValueError, TypeError):
-                pass
+        # その日の最後の閉操作時刻とセンサーデータ
+        close_time, close_lux_val, close_solar_rad_val, close_altitude_val = _extract_daily_data(
+            date, "close", daily_last_operations
+        )
 
         open_times.append(open_time)
         close_times.append(close_time)
+        open_lux.append(open_lux_val)
+        close_lux.append(close_lux_val)
+        open_solar_rad.append(open_solar_rad_val)
+        close_solar_rad.append(close_solar_rad_val)
+        open_altitude.append(open_altitude_val)
+        close_altitude.append(close_altitude_val)
 
-    return {"dates": dates, "open_times": open_times, "close_times": close_times}
+    return {
+        "dates": dates,
+        "open_times": open_times,
+        "close_times": close_times,
+        "open_lux": open_lux,
+        "close_lux": close_lux,
+        "open_solar_rad": open_solar_rad,
+        "close_solar_rad": close_solar_rad,
+        "open_altitude": open_altitude,
+        "close_altitude": close_altitude,
+    }
 
 
 def generate_basic_stats_section(stats: dict) -> str:
@@ -498,6 +547,77 @@ def generate_time_analysis_section() -> str:
                     <div class="card-content">
                         <div class="chart-container">
                             <canvas id="closeTimeHistogramChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_time_series_section() -> str:
+    """時系列データ分析セクションのHTML生成"""
+    return """
+    <div class="section">
+        <h2 class="title is-4">
+            <span class="icon"><i class="fas fa-chart-line"></i></span> 時系列データ分析
+        </h2>
+
+        <div class="columns">
+            <div class="column">
+                <div class="card metrics-card">
+                    <div class="card-header">
+                        <p class="card-header-title">🕐 操作時刻の時系列遷移</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="chart-container">
+                            <canvas id="timeSeriesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="columns">
+            <div class="column">
+                <div class="card metrics-card">
+                    <div class="card-header">
+                        <p class="card-header-title">💡 照度データの時系列遷移</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="chart-container">
+                            <canvas id="luxTimeSeriesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="columns">
+            <div class="column">
+                <div class="card metrics-card">
+                    <div class="card-header">
+                        <p class="card-header-title">☀️ 日射データの時系列遷移</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="chart-container">
+                            <canvas id="solarRadTimeSeriesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="columns">
+            <div class="column">
+                <div class="card metrics-card">
+                    <div class="card-header">
+                        <p class="card-header-title">📐 太陽高度の時系列遷移</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="chart-container">
+                            <canvas id="altitudeTimeSeriesChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -807,6 +927,228 @@ def generate_chart_javascript() -> str:
             }
         }
 
+        function generateTimeSeriesCharts() {
+            // 操作時刻の時系列グラフ
+            const timeSeriesCtx = document.getElementById('timeSeriesChart');
+            if (timeSeriesCtx && chartData.time_series && chartData.time_series.dates.length > 0) {
+                new Chart(timeSeriesCtx, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.time_series.dates,
+                        datasets: [
+                            {
+                                label: '☀️ 開操作時刻',
+                                data: chartData.time_series.open_times,
+                                borderColor: 'rgba(255, 206, 84, 1)',
+                                backgroundColor: 'rgba(255, 206, 84, 0.1)',
+                                tension: 0.1,
+                                spanGaps: true
+                            },
+                            {
+                                label: '🌙 閉操作時刻',
+                                data: chartData.time_series.close_times,
+                                borderColor: 'rgba(153, 102, 255, 1)',
+                                backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                                tension: 0.1,
+                                spanGaps: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 24,
+                                title: {
+                                    display: true,
+                                    text: '時刻'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        const hour = Math.floor(value);
+                                        const minute = Math.round((value - hour) * 60);
+                                        return hour + ':' + (minute < 10 ? '0' : '') + minute;
+                                    }
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '日付'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 照度の時系列グラフ
+            const luxTimeSeriesCtx = document.getElementById('luxTimeSeriesChart');
+            if (luxTimeSeriesCtx && chartData.time_series && chartData.time_series.dates.length > 0) {
+                new Chart(luxTimeSeriesCtx, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.time_series.dates,
+                        datasets: [
+                            {
+                                label: '☀️ 開操作時照度',
+                                data: chartData.time_series.open_lux,
+                                borderColor: 'rgba(255, 206, 84, 1)',
+                                backgroundColor: 'rgba(255, 206, 84, 0.1)',
+                                tension: 0.1,
+                                spanGaps: true
+                            },
+                            {
+                                label: '🌙 閉操作時照度',
+                                data: chartData.time_series.close_lux,
+                                borderColor: 'rgba(153, 102, 255, 1)',
+                                backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                                tension: 0.1,
+                                spanGaps: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: '照度（lux）'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value.toLocaleString();
+                                    }
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '日付'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 日射の時系列グラフ
+            const solarRadTimeSeriesCtx = document.getElementById('solarRadTimeSeriesChart');
+            if (solarRadTimeSeriesCtx && chartData.time_series && chartData.time_series.dates.length > 0) {
+                new Chart(solarRadTimeSeriesCtx, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.time_series.dates,
+                        datasets: [
+                            {
+                                label: '☀️ 開操作時日射',
+                                data: chartData.time_series.open_solar_rad,
+                                borderColor: 'rgba(255, 159, 64, 1)',
+                                backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                                tension: 0.1,
+                                spanGaps: true
+                            },
+                            {
+                                label: '🌙 閉操作時日射',
+                                data: chartData.time_series.close_solar_rad,
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                tension: 0.1,
+                                spanGaps: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: '日射（W/m²）'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '日付'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 太陽高度の時系列グラフ
+            const altitudeTimeSeriesCtx = document.getElementById('altitudeTimeSeriesChart');
+            if (altitudeTimeSeriesCtx && chartData.time_series && chartData.time_series.dates.length > 0) {
+                new Chart(altitudeTimeSeriesCtx, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.time_series.dates,
+                        datasets: [
+                            {
+                                label: '☀️ 開操作時太陽高度',
+                                data: chartData.time_series.open_altitude,
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                tension: 0.1,
+                                spanGaps: true
+                            },
+                            {
+                                label: '🌙 閉操作時太陽高度',
+                                data: chartData.time_series.close_altitude,
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                                tension: 0.1,
+                                spanGaps: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        scales: {
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '太陽高度（度）'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '日付'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
         function generateAutoSensorCharts() {
             // ヒストグラム生成のヘルパー関数
             function createHistogram(data, bins) {
@@ -835,7 +1177,7 @@ def generate_chart_javascript() -> str:
                 new Chart(autoOpenLuxCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b)),
+                        labels: bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
                         datasets: [{
                             label: '🤖☀️ 自動開操作時照度頻度',
                             data: histPercent,
@@ -885,7 +1227,7 @@ def generate_chart_javascript() -> str:
                 new Chart(autoCloseLuxCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b)),
+                        labels: bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
                         datasets: [{
                             label: '🤖🌙 自動閉操作時照度頻度',
                             data: histPercent,
@@ -922,22 +1264,22 @@ def generate_chart_javascript() -> str:
                 });
             }
 
-            // 開操作時日射チャート
-            const openSolarRadCtx = document.getElementById('openSolarRadChart');
-            if (openSolarRadCtx && chartData.open_solar_rad.length > 0) {
-                const minRad = Math.min(...chartData.open_solar_rad);
-                const maxRad = Math.max(...chartData.open_solar_rad);
+            // 自動開操作時日射チャート
+            const autoOpenSolarRadCtx = document.getElementById('autoOpenSolarRadChart');
+            if (autoOpenSolarRadCtx && chartData.auto_sensor_data.open_solar_rad.length > 0) {
+                const minRad = Math.min(...chartData.auto_sensor_data.open_solar_rad);
+                const maxRad = Math.max(...chartData.auto_sensor_data.open_solar_rad);
                 const bins = Array.from({length: 21}, (_, i) => minRad + (maxRad - minRad) * i / 20);
-                const hist = createHistogram(chartData.open_solar_rad, bins);
-                const total = chartData.open_solar_rad.length;
+                const hist = createHistogram(chartData.auto_sensor_data.open_solar_rad, bins);
+                const total = chartData.auto_sensor_data.open_solar_rad.length;
                 const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
 
-                new Chart(openSolarRadCtx, {
+                new Chart(autoOpenSolarRadCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b)),
+                        labels: bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
                         datasets: [{
-                            label: '開操作時日射頻度',
+                            label: '🤖☀️ 自動開操作時日射頻度',
                             data: histPercent,
                             backgroundColor: 'rgba(255, 159, 64, 0.7)',
                             borderColor: 'rgba(255, 159, 64, 1)',
@@ -972,22 +1314,22 @@ def generate_chart_javascript() -> str:
                 });
             }
 
-            // 閉操作時日射チャート
-            const closeSolarRadCtx = document.getElementById('closeSolarRadChart');
-            if (closeSolarRadCtx && chartData.close_solar_rad.length > 0) {
-                const minRad = Math.min(...chartData.close_solar_rad);
-                const maxRad = Math.max(...chartData.close_solar_rad);
+            // 自動閉操作時日射チャート
+            const autoCloseSolarRadCtx = document.getElementById('autoCloseSolarRadChart');
+            if (autoCloseSolarRadCtx && chartData.auto_sensor_data.close_solar_rad.length > 0) {
+                const minRad = Math.min(...chartData.auto_sensor_data.close_solar_rad);
+                const maxRad = Math.max(...chartData.auto_sensor_data.close_solar_rad);
                 const bins = Array.from({length: 21}, (_, i) => minRad + (maxRad - minRad) * i / 20);
-                const hist = createHistogram(chartData.close_solar_rad, bins);
-                const total = chartData.close_solar_rad.length;
+                const hist = createHistogram(chartData.auto_sensor_data.close_solar_rad, bins);
+                const total = chartData.auto_sensor_data.close_solar_rad.length;
                 const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
 
-                new Chart(closeSolarRadCtx, {
+                new Chart(autoCloseSolarRadCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b)),
+                        labels: bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
                         datasets: [{
-                            label: '閉操作時日射頻度',
+                            label: '🤖🌙 自動閉操作時日射頻度',
                             data: histPercent,
                             backgroundColor: 'rgba(75, 192, 192, 0.7)',
                             borderColor: 'rgba(75, 192, 192, 1)',
@@ -1022,22 +1364,22 @@ def generate_chart_javascript() -> str:
                 });
             }
 
-            // 開操作時太陽高度チャート
-            const openAltitudeCtx = document.getElementById('openAltitudeChart');
-            if (openAltitudeCtx && chartData.open_altitude.length > 0) {
-                const minAlt = Math.min(...chartData.open_altitude);
-                const maxAlt = Math.max(...chartData.open_altitude);
+            // 自動開操作時太陽高度チャート
+            const autoOpenAltitudeCtx = document.getElementById('autoOpenAltitudeChart');
+            if (autoOpenAltitudeCtx && chartData.auto_sensor_data.open_altitude.length > 0) {
+                const minAlt = Math.min(...chartData.auto_sensor_data.open_altitude);
+                const maxAlt = Math.max(...chartData.auto_sensor_data.open_altitude);
                 const bins = Array.from({length: 21}, (_, i) => minAlt + (maxAlt - minAlt) * i / 20);
-                const hist = createHistogram(chartData.open_altitude, bins);
-                const total = chartData.open_altitude.length;
+                const hist = createHistogram(chartData.auto_sensor_data.open_altitude, bins);
+                const total = chartData.auto_sensor_data.open_altitude.length;
                 const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
 
-                new Chart(openAltitudeCtx, {
+                new Chart(autoOpenAltitudeCtx, {
                     type: 'bar',
                     data: {
                         labels: bins.slice(0, -1).map(b => Math.round(b * 10) / 10),
                         datasets: [{
-                            label: '開操作時太陽高度頻度',
+                            label: '🤖☀️ 自動開操作時太陽高度頻度',
                             data: histPercent,
                             backgroundColor: 'rgba(255, 99, 132, 0.7)',
                             borderColor: 'rgba(255, 99, 132, 1)',
@@ -1072,22 +1414,22 @@ def generate_chart_javascript() -> str:
                 });
             }
 
-            // 閉操作時太陽高度チャート
-            const closeAltitudeCtx = document.getElementById('closeAltitudeChart');
-            if (closeAltitudeCtx && chartData.close_altitude.length > 0) {
-                const minAlt = Math.min(...chartData.close_altitude);
-                const maxAlt = Math.max(...chartData.close_altitude);
+            // 自動閉操作時太陽高度チャート
+            const autoCloseAltitudeCtx = document.getElementById('autoCloseAltitudeChart');
+            if (autoCloseAltitudeCtx && chartData.auto_sensor_data.close_altitude.length > 0) {
+                const minAlt = Math.min(...chartData.auto_sensor_data.close_altitude);
+                const maxAlt = Math.max(...chartData.auto_sensor_data.close_altitude);
                 const bins = Array.from({length: 21}, (_, i) => minAlt + (maxAlt - minAlt) * i / 20);
-                const hist = createHistogram(chartData.close_altitude, bins);
-                const total = chartData.close_altitude.length;
+                const hist = createHistogram(chartData.auto_sensor_data.close_altitude, bins);
+                const total = chartData.auto_sensor_data.close_altitude.length;
                 const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
 
-                new Chart(closeAltitudeCtx, {
+                new Chart(autoCloseAltitudeCtx, {
                     type: 'bar',
                     data: {
                         labels: bins.slice(0, -1).map(b => Math.round(b * 10) / 10),
                         datasets: [{
-                            label: '閉操作時太陽高度頻度',
+                            label: '🤖🌙 自動閉操作時太陽高度頻度',
                             data: histPercent,
                             backgroundColor: 'rgba(54, 162, 235, 0.7)',
                             borderColor: 'rgba(54, 162, 235, 1)',
@@ -1153,7 +1495,7 @@ def generate_chart_javascript() -> str:
                 new Chart(manualOpenLuxCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b)),
+                        labels: bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
                         datasets: [{
                             label: '👆☀️ 手動開操作時照度頻度',
                             data: histPercent,
@@ -1205,7 +1547,7 @@ def generate_chart_javascript() -> str:
                 new Chart(manualCloseLuxCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b)),
+                        labels: bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
                         datasets: [{
                             label: '👆🌙 手動閉操作時照度頻度',
                             data: histPercent,
@@ -1257,7 +1599,7 @@ def generate_chart_javascript() -> str:
                 new Chart(manualOpenSolarRadCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b)),
+                        labels: bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
                         datasets: [{
                             label: '👆☀️ 手動開操作時日射頻度',
                             data: histPercent,
@@ -1309,7 +1651,7 @@ def generate_chart_javascript() -> str:
                 new Chart(manualCloseSolarRadCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b)),
+                        labels: bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
                         datasets: [{
                             label: '👆🌙 手動閉操作時日射頻度',
                             data: histPercent,
