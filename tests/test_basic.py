@@ -300,7 +300,7 @@ def app_log_clear(client):
 
 
 def ctrl_log_check(client, expect):
-    time.sleep(1.0)  # Important function - needs full 1.0s for ctrl_log and async operations
+    time.sleep(3.0)  # Increased wait time for parallel execution - scheduler runs every 2s
 
     response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/ctrl/log")
     assert response.status_code == 200
