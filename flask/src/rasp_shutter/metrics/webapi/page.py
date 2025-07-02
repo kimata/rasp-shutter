@@ -694,7 +694,7 @@ def generate_sensor_analysis_section() -> str:
     return """
     <div class="section">
         <h2 class="title is-4 permalink-header" id="auto-sensor-analysis">
-            <span class="icon"><i class="fas fa-robot"></i></span> 🤖 センサーデータ分析（自動操作）
+            <span class="icon"><i class="fas fa-robot"></i></span> センサーデータ分析（自動操作）
             <span class="permalink-icon" onclick="copyPermalink('auto-sensor-analysis')">
                 <i class="fas fa-link"></i>
             </span>
@@ -817,7 +817,7 @@ def generate_sensor_analysis_section() -> str:
 
     <div class="section">
         <h2 class="title is-4 permalink-header" id="manual-sensor-analysis">
-            <span class="icon"><i class="fas fa-hand-paper"></i></span> 👆 センサーデータ分析（手動操作）
+            <span class="icon"><i class="fas fa-hand-paper"></i></span> センサーデータ分析（手動操作）
             <span class="permalink-icon" onclick="copyPermalink('manual-sensor-analysis')">
                 <i class="fas fa-link"></i>
             </span>
