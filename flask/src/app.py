@@ -23,10 +23,6 @@ import my_lib.webapp.base
 import my_lib.webapp.event
 import my_lib.webapp.log
 import my_lib.webapp.util
-import rasp_shutter.control.webapi.control
-import rasp_shutter.control.webapi.schedule
-import rasp_shutter.control.webapi.sensor
-import rasp_shutter.metrics.webapi.page
 
 import flask
 
@@ -65,6 +61,11 @@ def create_app(config, dummy_mode=False):
 
     my_lib.webapp.config.URL_PREFIX = "/rasp-shutter"
     my_lib.webapp.config.init(config)
+
+    import rasp_shutter.control.webapi.control
+    import rasp_shutter.control.webapi.schedule
+    import rasp_shutter.control.webapi.sensor
+    import rasp_shutter.metrics.webapi.page
 
     if dummy_mode:
         import rasp_shutter.control.webapi.test.time
