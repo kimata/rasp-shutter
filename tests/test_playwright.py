@@ -288,7 +288,7 @@ def test_schedule(page, host, port):
     check_schedule(page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index)
 
 
-# @flaky(max_runs=3, min_passes=1)
+@flaky(max_runs=3, min_passes=1)
 def test_schedule_run(page, host, port):
     page.goto(app_url(host, port))
 

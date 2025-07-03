@@ -19,6 +19,14 @@ import signal
 
 import flask_cors
 import my_lib.proc_util
+import my_lib.webapp.base
+import my_lib.webapp.event
+import my_lib.webapp.log
+import my_lib.webapp.util
+import rasp_shutter.control.webapi.control
+import rasp_shutter.control.webapi.schedule
+import rasp_shutter.control.webapi.sensor
+import rasp_shutter.metrics.webapi.page
 
 import flask
 
@@ -58,15 +66,6 @@ def create_app(config, dummy_mode=False):
     my_lib.webapp.config.URL_PREFIX = "/rasp-shutter"
     my_lib.webapp.config.init(config)
 
-    import my_lib.webapp.base
-    import my_lib.webapp.event
-    import my_lib.webapp.log
-    import my_lib.webapp.util
-    import rasp_shutter.control.webapi.control
-    import rasp_shutter.control.webapi.schedule
-    import rasp_shutter.control.webapi.sensor
-    import rasp_shutter.metrics.webapi.page
-
     if dummy_mode:
         import rasp_shutter.control.webapi.test.time
 
@@ -101,19 +100,29 @@ def create_app(config, dummy_mode=False):
 
     app.json.compat = True
 
-    app.register_blueprint(rasp_shutter.control.webapi.control.blueprint)
-    app.register_blueprint(rasp_shutter.control.webapi.schedule.blueprint)
-    app.register_blueprint(rasp_shutter.control.webapi.sensor.blueprint)
-    app.register_blueprint(rasp_shutter.metrics.webapi.page.blueprint)
+    app.register_blueprint(
+        rasp_shutter.control.webapi.control.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
+    )
+    app.register_blueprint(
+        rasp_shutter.control.webapi.schedule.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
+    )
+    app.register_blueprint(
+        rasp_shutter.control.webapi.sensor.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
+    )
+    app.register_blueprint(
+        rasp_shutter.metrics.webapi.page.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
+    )
 
     if dummy_mode:
-        app.register_blueprint(rasp_shutter.control.webapi.test.time.blueprint)
+        app.register_blueprint(
+            rasp_shutter.control.webapi.test.time.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
+        )
 
     app.register_blueprint(my_lib.webapp.base.blueprint_default)
-    app.register_blueprint(my_lib.webapp.base.blueprint)
-    app.register_blueprint(my_lib.webapp.event.blueprint)
-    app.register_blueprint(my_lib.webapp.log.blueprint)
-    app.register_blueprint(my_lib.webapp.util.blueprint)
+    app.register_blueprint(my_lib.webapp.base.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
+    app.register_blueprint(my_lib.webapp.event.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
+    app.register_blueprint(my_lib.webapp.log.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
+    app.register_blueprint(my_lib.webapp.util.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
     my_lib.webapp.config.show_handler_list(app)
 
