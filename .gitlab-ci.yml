@@ -52,8 +52,8 @@ build-image:
         - 'echo "Building: ${CI_REGISTRY_IMAGE}:${TAG}"'
 
         - export GIT_SSL_NO_VERIFY=1
-        - git clone https://gitlab.green-rabbit.net/kimata/hems_config.git
-        - mv hems_config/rasp-shutter.yaml config.yaml
+        - git clone https://gitlab.green-rabbit.net/kimata/hems-config.git
+        - mv hems-config/rasp-shutter.yaml config.yaml
 
         - docker buildx create --driver docker-container --name ${BUILDER} --use --config /etc/buildkitd.toml
         - docker buildx use ${BUILDER}
@@ -135,8 +135,8 @@ test-playwright:
 
     script:
         - export GIT_SSL_NO_VERIFY=1
-        - git clone https://gitlab.green-rabbit.net/kimata/hems_config.git
-        - mv hems_config/rasp-shutter.yaml config.yaml
+        - git clone https://gitlab.green-rabbit.net/kimata/hems-config.git
+        - mv hems-config/rasp-shutter.yaml config.yaml
 
         - uv run playwright install --with-deps chromium
         - uv run python ./flask/src/app.py -d 2>&1 > flask_log.txt &
