@@ -51,9 +51,6 @@ build-image:
         BUILDER: builder
         BUILD_KIT_IMAGE: gitlab.green-rabbit.net:5050/kimata/local-buildkit:250705_7cc0d1c
 
-    before_script:
-        - echo $CI_REGISTRY_TOKEN | docker login gitlab.green-rabbit.net:5050 -u kimata --password-stdin
-
     script:
         - 'echo "Building: ${CI_REGISTRY_IMAGE}:${TAG}"'
 
