@@ -15,15 +15,10 @@ stages:
 generate-tag:
     stage: generate-tag
 
-    before_script:
-        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-
     script:
         - echo "TAG=$(date +%y%m%d)_${CI_COMMIT_SHORT_SHA}" > tag.env
 
     artifacts:
-        paths:
-            - /root/.docker
         reports:
             dotenv: tag.env
         expire_in: 1 hour
