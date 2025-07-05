@@ -14,9 +14,16 @@ stages:
 
 generate-tag:
     stage: generate-tag
+
+    before_script:
+        - echo $CI_REGISTRY_TOKEN | docker login gitlab.green-rabbit.net:5050 -u kimata --password-stdin
+
     script:
         - echo "TAG=$(date +%y%m%d)_${CI_COMMIT_SHORT_SHA}" > tag.env
+
     artifacts:
+        paths:
+            - /root/.docker
         reports:
             dotenv: tag.env
         expire_in: 1 hour
