@@ -32,10 +32,20 @@ def env_mock():
 
 @pytest.fixture(scope="session", autouse=True)
 def slack_mock():
-    with mock.patch(
-        "my_lib.notify.slack.slack_sdk.web.client.WebClient.chat_postMessage",
-        retunr_value=True,
-    ) as fixture:
+    with (
+        mock.patch(
+            "my_lib.notify.slack.slack_sdk.web.client.WebClient.chat_postMessage",
+            return_value={"ok": True, "ts": "1234567890.123456"},
+        ),
+        mock.patch(
+            "my_lib.notify.slack.slack_sdk.web.client.WebClient.files_upload_v2",
+            return_value={"ok": True, "files": [{"id": "test_file_id"}]},
+        ),
+        mock.patch(
+            "my_lib.notify.slack.slack_sdk.web.client.WebClient.files_getUploadURLExternal",
+            return_value={"ok": True, "upload_url": "https://example.com"},
+        ) as fixture,
+    ):
         yield fixture
 
 
