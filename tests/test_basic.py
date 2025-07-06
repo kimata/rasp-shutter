@@ -395,7 +395,7 @@ def mock_index_html(mocker):
 def test_liveness(client, config):  # noqa: ARG001
     import healthz
 
-    time.sleep(5)
+    time.sleep(12)
 
     assert healthz.check_liveness(
         [
