@@ -1402,8 +1402,7 @@ def test_schedule_ctrl_pending_open_inactive(client, time_machine, mock_sensor_d
 
 
 # NOTE: 開けるのを延期したあとでセンサーエラー
-def test_schedule_ctrl_pending_open_fail(client, mocker, time_machine, mock_sensor_data):
-    mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
+def test_schedule_ctrl_pending_open_fail(client, time_machine, mock_sensor_data):
     sensor_data_mock = mock_sensor_data(SENSOR_DATA_DARK)
 
     move_to(time_machine, time_morning(0))
@@ -1740,8 +1739,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, time_machine, mock_sensor_
     check_notify_slack(None)
 
 
-def test_schedule_ctrl_invalid_sensor_1(client, mocker, time_machine, mock_sensor_data):
-    mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
+def test_schedule_ctrl_invalid_sensor_1(client, time_machine, mock_sensor_data):
     sensor_data = SENSOR_DATA_BRIGHT.copy()
     sensor_data["lux"] = {"valid": False, "value": 5000}
     mock_sensor_data(sensor_data)
@@ -1768,8 +1766,7 @@ def test_schedule_ctrl_invalid_sensor_1(client, mocker, time_machine, mock_senso
     check_notify_slack("センサの値が不明なので開けるのを見合わせました。")
 
 
-def test_schedule_ctrl_invalid_sensor_2(client, mocker, time_machine, mock_sensor_data):
-    mocker.patch("slack_sdk.WebClient.chat_postMessage", return_value=True)
+def test_schedule_ctrl_invalid_sensor_2(client, time_machine, mock_sensor_data):
     sensor_data = SENSOR_DATA_BRIGHT.copy()
     sensor_data["solar_rad"] = {"valid": False, "value": 5000}
     mock_sensor_data(sensor_data)
