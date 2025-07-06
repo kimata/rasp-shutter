@@ -276,7 +276,14 @@ test-healthz-docker:
         - 'echo "APP_URL: ${APP_URL}"'
         - >
             timeout 60 bash -c "until curl --fail \"${APP_URL}/api/sysinfo\" 2>/dev/null;
-            do sleep 5; done" || (echo "Failed to access App" && exit 1)
+            do sleep 5; done" || ACCESS_FAILED=1
+        - |
+            if [ "$ACCESS_FAILED" = "1" ]; then
+                echo "Failed to access App"
+                docker logs ${CI_JOB_NAME}-${CI_JOB_ID} > flask_log.txt
+                docker stop ${CI_JOB_NAME}-${CI_JOB_ID}
+                exit 1
+            fi
         - sleep 2
         - docker logs ${CI_JOB_NAME}-${CI_JOB_ID} > flask_log.txt
         - docker exec ${CI_JOB_NAME}-${CI_JOB_ID} ./flask/src/healthz.py
