@@ -67,6 +67,7 @@ def _clear(config):
     my_lib.webapp.config.init(config)
 
     import rasp_shutter.control.config
+    import rasp_shutter.metrics.collector
 
     my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE)
     my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN)
@@ -86,6 +87,9 @@ def _clear(config):
     my_lib.notify.slack.hist_clear()
 
     ctrl_stat_clear(config)
+
+    # Reset metrics collector singleton to prevent database connection leaks
+    rasp_shutter.metrics.collector.reset_collector()
 
 
 @pytest.fixture(scope="session")

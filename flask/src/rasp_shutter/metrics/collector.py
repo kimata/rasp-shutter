@@ -16,12 +16,15 @@ import sqlite3
 import threading
 from pathlib import Path
 
+import my_lib.time
+
 
 class MetricsCollector:
     """シャッターメトリクス収集クラス"""
 
     def __init__(self, db_path: Path):
-        """コンストラクタ
+        """
+        コンストラクタ
 
         Args:
         ----
@@ -76,7 +79,7 @@ class MetricsCollector:
 
     def _get_today_date(self) -> str:
         """今日の日付を文字列で取得"""
-        return datetime.date.today().isoformat()
+        return my_lib.time.now().date().isoformat()
 
     def record_shutter_operation(
         self,
@@ -97,7 +100,7 @@ class MetricsCollector:
 
         """
         if timestamp is None:
-            timestamp = datetime.datetime.now()
+            timestamp = my_lib.time.now()
 
         date = timestamp.date().isoformat()
 
@@ -114,17 +117,19 @@ class MetricsCollector:
             if sensor_data.get("altitude", {}).get("valid"):
                 altitude = sensor_data["altitude"]["value"]
 
-        with self.lock:
-            with sqlite3.connect(self.db_path) as conn:
-                # 個別操作として記録
-                conn.execute(
-                    """
-                    INSERT INTO operation_metrics
-                    (timestamp, date, action, operation_type, lux, solar_rad, altitude)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                    (timestamp, date, action, mode, lux, solar_rad, altitude),
-                )
+        with self.lock, sqlite3.connect(self.db_path) as conn:
+            # Python 3.12+: datetimeアダプターを明示的に設定
+            conn.execute("BEGIN")
+            # 個別操作として記録
+            conn.execute(
+                """
+                INSERT INTO operation_metrics
+                (timestamp, date, action, operation_type, lux, solar_rad, altitude)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+                (timestamp.isoformat(), date, action, mode, lux, solar_rad, altitude),
+            )
+            conn.execute("COMMIT")
 
     def record_failure(self, timestamp: datetime.datetime | None = None):
         """
@@ -136,19 +141,18 @@ class MetricsCollector:
 
         """
         if timestamp is None:
-            timestamp = datetime.datetime.now()
+            timestamp = my_lib.time.now()
 
         date = timestamp.date().isoformat()
 
-        with self.lock:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.execute(
-                    """
-                    INSERT INTO daily_failures (date, timestamp)
-                    VALUES (?, ?)
-                """,
-                    (date, timestamp),
-                )
+        with self.lock, sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO daily_failures (date, timestamp)
+                VALUES (?, ?)
+            """,
+                (date, timestamp.isoformat()),
+            )
 
     def get_operation_metrics(self, start_date: str, end_date: str) -> list:
         """
@@ -215,7 +219,7 @@ class MetricsCollector:
             操作メトリクスデータのリスト
 
         """
-        end_date = datetime.date.today()
+        end_date = my_lib.time.now().date()
         start_date = end_date - datetime.timedelta(days=days)
 
         return self.get_operation_metrics(start_date.isoformat(), end_date.isoformat())
@@ -233,7 +237,7 @@ class MetricsCollector:
             失敗メトリクスデータのリスト
 
         """
-        end_date = datetime.date.today()
+        end_date = my_lib.time.now().date()
         start_date = end_date - datetime.timedelta(days=days)
 
         return self.get_failure_metrics(start_date.isoformat(), end_date.isoformat())
@@ -245,7 +249,7 @@ _collector_instance: MetricsCollector | None = None
 
 def get_collector(metrics_data_path) -> MetricsCollector:
     """メトリクス収集インスタンスを取得"""
-    global _collector_instance
+    global _collector_instance  # noqa: PLW0603
 
     if _collector_instance is None:
         db_path = Path(metrics_data_path)
@@ -253,6 +257,12 @@ def get_collector(metrics_data_path) -> MetricsCollector:
         logging.info("Metrics collector initialized: %s", db_path)
 
     return _collector_instance
+
+
+def reset_collector():
+    """グローバルコレクタインスタンスをリセット (テスト用)"""
+    global _collector_instance  # noqa: PLW0603
+    _collector_instance = None
 
 
 def record_shutter_operation(
