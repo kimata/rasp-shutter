@@ -91,6 +91,14 @@ def _clear(config):
     # Reset metrics collector singleton to prevent database connection leaks
     rasp_shutter.metrics.collector.reset_collector()
 
+    # Clear webapp logs to reduce database connection warnings
+    import contextlib
+
+    import my_lib.webapp.log
+
+    with contextlib.suppress(Exception):
+        my_lib.webapp.log.clear()
+
 
 @pytest.fixture(scope="session")
 def app(config):
