@@ -258,7 +258,6 @@ test-healthz-docker:
         - job: generate-tag
           artifacts: true
         - job: build-image
-          artifacts: false
 
     script:
         - >
