@@ -140,12 +140,13 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
 
     # DEBUG: 並列実行時の実行間隔チェックをデバッグ
     logging.debug(
-        "set_shutter_state_impl: index=%d state=%s mode=%s diff_sec=%.1f exec_hist=%s",
+        "set_shutter_state_impl: index=%d state=%s mode=%s diff_sec=%.1f exec_hist=%s exists=%s",
         index,
         state,
         mode.value,
         diff_sec,
         exec_hist,
+        exec_hist.exists() if exec_hist else "N/A",
     )
 
     # NOTE: 制御間隔が短く、実際には御できなかった場合、ログを残す。
@@ -275,8 +276,14 @@ def set_shutter_state(config, index_list, state, mode, sense_data, user=""):  # 
 
     with control_lock:
         for index in index_list:
-            logging.debug("set_shutter_state: processing index=%d", index)
-            set_shutter_state_impl(config, index, state, mode, sense_data, user)
+            try:
+                logging.debug("set_shutter_state: processing index=%d", index)
+                set_shutter_state_impl(config, index, state, mode, sense_data, user)
+                logging.debug("set_shutter_state: completed index=%d", index)
+            except Exception:  # noqa: PERF203
+                logging.exception("set_shutter_state: error processing index=%d", index)
+                # Continue processing other shutters even if one fails
+                continue
 
     return get_shutter_state(config)
 
