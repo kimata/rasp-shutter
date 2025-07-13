@@ -10,7 +10,6 @@ import my_lib.time
 import my_lib.webapp.config
 import pytest
 import requests
-from flaky import flaky
 from playwright.sync_api import expect
 
 APP_URL_TMPL = "http://{host}:{port}/rasp-shutter/"
@@ -45,7 +44,7 @@ def wait_for_server_ready(host, port):
     raise RuntimeError(f"サーバーが {TIMEOUT_SEC}秒以内に起動しませんでした。")  # noqa: TRY003, EM102
 
 
-def check_log(page, message, timeout_sec=2):
+def check_log(page, message, timeout_sec=4):
     # DEBUG: ログの内容を詳細に確認
     log_list = page.locator('//div[contains(@class,"log")]/div/div[2]')
     log_count = log_list.count()
@@ -213,7 +212,6 @@ def test_time():
     assert idle_sec < 60
 
 
-@flaky(max_runs=3, min_passes=1)
 def test_manual(page, host, port):
     page.goto(app_url(host, port))
 
@@ -265,7 +263,6 @@ def test_manual(page, host, port):
     check_log(page, "手動で開けました")
 
 
-@flaky(max_runs=3, min_passes=1)
 def test_schedule(page, host, port):
     page.goto(app_url(host, port))
 
@@ -312,7 +309,6 @@ def test_schedule(page, host, port):
     check_schedule(page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index)
 
 
-@flaky(max_runs=3, min_passes=1)
 def test_schedule_run(page, host, port):
     page.goto(app_url(host, port))
 
@@ -372,7 +368,6 @@ def test_schedule_run(page, host, port):
     check_log(page, "スケジューラで閉めました", 10)
 
 
-@flaky(max_runs=3, min_passes=1)
 def test_schedule_disable(page, host, port):
     page.goto(app_url(host, port))
 
