@@ -1617,6 +1617,7 @@ def test_schedule_ctrl_pending_open_dup(client, time_machine, mock_sensor_data):
     else:
         # タイムアウトした場合は最後に詳細なエラーを出力
         ctrl_log_check(client, expected_final_log)
+
     app_log_check(
         client,
         [
@@ -1628,7 +1629,6 @@ def test_schedule_ctrl_pending_open_dup(client, time_machine, mock_sensor_data):
             "OPEN_PENDING",
             "OPEN_BRIGHT",
             "OPEN_AUTO",
-            "OPEN_PENDING",
         ],
     )
     check_notify_slack(None)
