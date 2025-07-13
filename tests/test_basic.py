@@ -900,6 +900,7 @@ def test_schedule_ctrl_auto_close(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_evening(4))
+    time.sleep(4)
 
     ctrl_log_check(
         client,
@@ -1072,6 +1073,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
+    time.sleep(4)
 
     # OPEN
     ctrl_log_check(
@@ -1283,6 +1285,7 @@ def test_schedule_ctrl_pending_open(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
+    time.sleep(4)
 
     ctrl_log_check(
         client,
