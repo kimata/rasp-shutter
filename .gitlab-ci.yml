@@ -203,9 +203,8 @@ test-healthz-docker:
     stage: test
 
     needs:
-        - job: generate-tag
-        - job: build-image
-          artifacts: false
+        - generate-tag
+        - build-image
 
     before_script:
         - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
@@ -273,8 +272,7 @@ tag-latest:
 
     needs:
         - generate-tag
-        - job: build-image
-          artifacts: false
+        - build-image
         - job: test-walk-through
           artifacts: false
         - job: test-playwright
@@ -300,8 +298,7 @@ deploy-webapp:
 
     needs:
         - generate-tag
-        - job: build-image
-          artifacts: false
+        - build-image
         - job: test-walk-through
           artifacts: false
         - job: test-playwright
