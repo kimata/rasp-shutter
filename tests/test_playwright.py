@@ -20,19 +20,16 @@ SCHEDULE_AFTER_MIN = 1
 logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 
 
-@pytest.fixture(autouse=True, scope="session")
-def _server_init(host, port):
+@pytest.fixture(autouse=True)
+def _server_init(page, host, port):
     wait_for_server_ready(host, port)
 
-    time.sleep(2)
-
-
-@pytest.fixture(autouse=True)
-def _page_init(page, host, port):
     page.on("console", lambda msg: print(msg.text))  # noqa: T201
     page.set_viewport_size({"width": 2400, "height": 1600})
 
     clear_control_history(host, port)
+
+    time.sleep(2)
 
 
 def wait_for_server_ready(host, port):

@@ -7,12 +7,12 @@ def pytest_addoption(parser):
     parser.addoption("--port", default="5000")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def host(request):
     return request.config.getoption("--host")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def port(request):
     return request.config.getoption("--port")
 
