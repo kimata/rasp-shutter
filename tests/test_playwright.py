@@ -24,10 +24,10 @@ logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 def _server_init(page, host, port):
     wait_for_server_ready(host, port)
 
+    time.sleep(10)
+
     page.on("console", lambda msg: print(msg.text))  # noqa: T201
     page.set_viewport_size({"width": 2400, "height": 1600})
-
-    time.sleep(5)
 
     clear_control_history(host, port)
 
