@@ -322,7 +322,7 @@ def app_log_clear(client):
 
 
 def ctrl_log_check(client, expect):
-    time.sleep(1.5)
+    time.sleep(3)
 
     response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/ctrl/log")
     assert response.status_code == 200
@@ -762,7 +762,6 @@ def test_schedule_ctrl_inactive(client, time_machine):
     time.sleep(1.5)
 
     move_to(time_machine, time_evening(3))
-    time.sleep(1.5)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR", "SCHEDULE", "SCHEDULE"])
@@ -801,7 +800,6 @@ def test_schedule_ctrl_invalid(client):
     schedule_data = gen_schedule_data()
     schedule_data["open"]["wday"] = ["TEST"] * 7
     schedule_update(client, schedule_data)
-    time.sleep(0.2)  # Optimized for non-scheduler test
 
     ctrl_log_check(client, [])
     app_log_check(
@@ -841,7 +839,6 @@ def test_schedule_ctrl_execute(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -888,7 +885,6 @@ def test_schedule_ctrl_auto_close(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -904,7 +900,6 @@ def test_schedule_ctrl_auto_close(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_evening(4))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -920,7 +915,6 @@ def test_schedule_ctrl_auto_close(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_evening(6))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -979,7 +973,6 @@ def test_schedule_ctrl_auto_close_dup(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -996,7 +989,6 @@ def test_schedule_ctrl_auto_close_dup(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_evening(4))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -1009,7 +1001,6 @@ def test_schedule_ctrl_auto_close_dup(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_evening(5))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -1068,7 +1059,6 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -1082,7 +1072,6 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
-    time.sleep(1.5)
 
     # OPEN
     ctrl_log_check(
@@ -1099,7 +1088,6 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     move_to(time_machine, time_morning(5))
-    time.sleep(1.5)
 
     # NOT CLOSE (自動的に開いてから時間が経過してない)
 
@@ -1115,7 +1103,6 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_morning(10))
-    time.sleep(1.5)
 
     # CLOSE
     ctrl_log_check(
@@ -1134,7 +1121,6 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(11))
-    time.sleep(1.5)
 
     # NOT OPEN (自動的に閉じてから時間が経過してない)
     ctrl_log_check(
@@ -1153,7 +1139,6 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     move_to(time_machine, time_morning(12))
-    time.sleep(1.5)
 
     # NOT CLOSE (開いていない)
     ctrl_log_check(
@@ -1172,10 +1157,8 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(20))
-    time.sleep(1.5)
 
     # OPEN
-
     ctrl_log_check(
         client,
         [
@@ -1192,10 +1175,8 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1.5)
 
     # CLOSE
-
     ctrl_log_check(
         client,
         [
@@ -1259,7 +1240,6 @@ def test_schedule_ctrl_auto_inactive(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1.5)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR", "SCHEDULE"])
@@ -1301,7 +1281,6 @@ def test_schedule_ctrl_pending_open(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -1363,7 +1342,6 @@ def test_schedule_ctrl_pending_open_inactive(client, time_machine, mock_sensor_d
     time.sleep(1.5)
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -1390,7 +1368,6 @@ def test_schedule_ctrl_pending_open_inactive(client, time_machine, mock_sensor_d
     time.sleep(1.5)
 
     move_to(time_machine, time_morning(6))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -1464,7 +1441,6 @@ def test_schedule_ctrl_pending_open_fail(client, time_machine, mock_sensor_data)
     time.sleep(1.5)
 
     move_to(time_machine, time_morning(4))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -1510,7 +1486,6 @@ def test_schedule_ctrl_open_dup(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -1687,7 +1662,6 @@ def test_schedule_ctrl_control_fail_1(client, mocker, time_machine, mock_sensor_
     time.sleep(1.5)
 
     move_to(time_machine, time_evening(3))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -1743,7 +1717,6 @@ def test_schedule_ctrl_control_fail_2(client, mocker, time_machine, mock_sensor_
     time.sleep(1.5)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1.5)
 
     ctrl_log_check(
         client,
@@ -1777,7 +1750,6 @@ def test_schedule_ctrl_invalid_sensor_1(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1.5)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR", "SCHEDULE", "FAIL_SENSOR"])
@@ -1805,7 +1777,6 @@ def test_schedule_ctrl_invalid_sensor_2(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1.5)
 
     ctrl_log_check(client, [])
     app_log_check(client, ["CLEAR", "SCHEDULE", "FAIL_SENSOR"])
