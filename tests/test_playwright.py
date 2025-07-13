@@ -27,7 +27,7 @@ def _server_init(page, host, port):
     page.on("console", lambda msg: print(msg.text))  # noqa: T201
     page.set_viewport_size({"width": 2400, "height": 1600})
 
-    time.sleep(4)
+    time.sleep(5)
 
     clear_control_history(host, port)
 
