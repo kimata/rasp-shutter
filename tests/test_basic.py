@@ -1059,12 +1059,13 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1)  # Restored to 1s for scheduler job
+    time.sleep(2)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(2)  # Restored to 2s for pending open
+    time.sleep(2)
 
     move_to(time_machine, time_morning(3))
+    time.sleep(2)
 
     ctrl_log_check(
         client,
@@ -1078,7 +1079,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
-    time.sleep(5)  # Wait for scheduler to run auto control (runs every 2s)
+    time.sleep(2)
 
     # OPEN
     ctrl_log_check(
@@ -1095,6 +1096,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     move_to(time_machine, time_morning(5))
+    time.sleep(2)
 
     # NOT CLOSE (自動的に開いてから時間が経過してない)
 
@@ -1110,7 +1112,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_morning(10))
-    time.sleep(5)  # Wait for scheduler to run auto control (runs every 2s)
+    time.sleep(2)
 
     # CLOSE
     ctrl_log_check(
@@ -1129,6 +1131,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(11))
+    time.sleep(2)
 
     # NOT OPEN (自動的に閉じてから時間が経過してない)
     ctrl_log_check(
@@ -1147,6 +1150,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     move_to(time_machine, time_morning(12))
+    time.sleep(2)
 
     # NOT CLOSE (開いていない)
     ctrl_log_check(
@@ -1165,7 +1169,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(20))
-    time.sleep(5)  # Wait for scheduler to run auto control (runs every 2s)
+    time.sleep(2)
 
     # OPEN
 
@@ -1185,7 +1189,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_evening(1))
-    time.sleep(5)
+    time.sleep(2)
 
     # CLOSE
 
