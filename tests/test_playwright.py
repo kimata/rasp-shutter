@@ -21,12 +21,18 @@ logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 
 
 @pytest.fixture(autouse=True, scope="session")
-def _page_init(page, host, port):
+def _server_init(host, port):
     wait_for_server_ready(host, port)
+
+    time.sleep(2)
+
+
+@pytest.fixture(autouse=True)
+def _page_init(page, host, port):
     page.on("console", lambda msg: print(msg.text))  # noqa: T201
     page.set_viewport_size({"width": 2400, "height": 1600})
 
-    time.slee(2)
+    clear_control_history(host, port)
 
 
 def wait_for_server_ready(host, port):
@@ -173,13 +179,6 @@ def clear_control_history(host, port):
         return response.status_code == 200
     except requests.RequestException:
         return False
-
-
-@pytest.fixture(autouse=True)
-def _init_page(page, host, port):
-    page.on("console", lambda msg: msg.text)
-    page.set_viewport_size({"width": 2400, "height": 1600})
-    clear_control_history(host, port)
 
 
 ######################################################################
