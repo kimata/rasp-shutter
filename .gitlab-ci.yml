@@ -161,6 +161,9 @@ test-playwright:
         JOB_TYPE: docker
         CONFIG_ARGS: "-d"
 
+    before_script:
+        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+
     script:
         - >
             docker ps --filter "label=job=${CI_JOB_NAME}" | grep hours |
@@ -213,6 +216,9 @@ test-healthz-docker:
         - job: generate-tag
         - job: build-image
           artifacts: false
+
+    before_script:
+        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
 
     script:
         - >
