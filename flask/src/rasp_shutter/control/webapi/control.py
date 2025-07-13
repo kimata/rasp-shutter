@@ -238,7 +238,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
 
 def set_shutter_state(config, index_list, state, mode, sense_data, user=""):  # noqa: PLR0913
     logging.debug(
-        "set_shutter_state index=(%s), state=%s, mode=%s", ",".join(str(n) for n in index_list), state, mode
+        "set_shutter_state index=[%s], state=%s, mode=%s", ",".join(str(n) for n in index_list), state, mode
     )
 
     if state == "open":
