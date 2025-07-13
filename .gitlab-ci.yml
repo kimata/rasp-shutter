@@ -116,20 +116,6 @@ test-walk-through:
     script:
         - uv run pytest --numprocesses=auto --junit-xml=tests/evidence/junit-report.xml tests/test_basic.py
 
-    cache:
-        - key:
-              files:
-                  - pyproject.toml
-                  - .gitlab-ci.yml
-              prefix: ${CI_COMMIT_REF_SLUG}-venv
-          paths:
-              - .venv
-          policy: pull
-        - key: ${CI_COMMIT_REF_SLUG}-cache
-          paths:
-              - /root/.cache
-          policy: pull
-
     artifacts:
         when: always
         paths:
@@ -154,21 +140,6 @@ test-playwright:
             uv run pytest --tracing on --output tests/evidence/playwright
             --junit-xml=tests/evidence/playwright-junit.xml
             tests/test_playwright.py
-
-    cache:
-        - key:
-              files:
-                  - pyproject.toml
-                  - .gitlab-ci.yml
-              prefix: ${CI_COMMIT_REF_SLUG}-venv
-          paths:
-              - .venv
-          policy: pull
-
-        - key: ${CI_COMMIT_REF_SLUG}-uv-toolchain
-          paths:
-              - .uv_python
-          policy: pull
 
     artifacts:
         when: always
@@ -214,20 +185,6 @@ test-playwright:
 
         - docker logs ${CONTAINER_NAME} > flask_log_2.txt
         - docker stop ${CONTAINER_NAME}
-
-    cache:
-        - key:
-              files:
-                  - pyproject.toml
-                  - .gitlab-ci.yml
-              prefix: ${CI_COMMIT_REF_SLUG}-venv
-          paths:
-              - .venv
-          policy: pull
-        - key: ${CI_COMMIT_REF_SLUG}-cache
-          paths:
-              - /root/.cache
-          policy: pull
 
     artifacts:
         when: always
