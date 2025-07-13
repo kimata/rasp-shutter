@@ -138,6 +138,16 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
     exec_hist = exec_stat_file(state, index)
     diff_sec = my_lib.footprint.elapsed(exec_hist)
 
+    # DEBUG: 並列実行時の実行間隔チェックをデバッグ
+    logging.debug(
+        "set_shutter_state_impl: index=%d state=%s mode=%s diff_sec=%.1f exec_hist=%s",
+        index,
+        state,
+        mode.value,
+        diff_sec,
+        exec_hist,
+    )
+
     # NOTE: 制御間隔が短く、実際には御できなかった場合、ログを残す。
     if mode == CONTROL_MODE.MANUAL:
         if (diff_sec / 60) < EXEC_INTERVAL_MANUAL_MINUTES:
@@ -169,8 +179,15 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
             )
             return
     elif mode == CONTROL_MODE.AUTO:
-        if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:  # pragma: no cover
-            # NOTE: shutter_auto_close の段階で撥ねられているので、ここには来ない。
+        if (diff_sec / (60 * 60)) < EXEC_INTERVAL_SCHEDULE_HOUR:
+            # DEBUG: 並列実行時の競合状態をデバッグするためのログ追加
+            logging.warning(
+                "AUTO mode interval check failed: shutter=%d diff=%.1fh limit=%dh state=%s",
+                index,
+                diff_sec / (60 * 60),
+                EXEC_INTERVAL_SCHEDULE_HOUR,
+                state,
+            )
             my_lib.webapp.log.info(
                 (
                     "🔔 自動で{name}のシャッターを{state}るのを見合わせました。"
@@ -187,6 +204,9 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
         pass
 
     result = call_shutter_api(config, index, state)
+
+    # DEBUG: API呼び出し結果をログ
+    logging.debug("call_shutter_api result: index=%d state=%s result=%s", index, state, result)
 
     my_lib.footprint.update(exec_hist)
     exec_inv_hist = exec_stat_file("close" if state == "open" else "open", index)
@@ -238,6 +258,11 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
 
 
 def set_shutter_state(config, index_list, state, mode, sense_data, user=""):  # noqa: PLR0913
+    # DEBUG: 並列実行時のシャッター制御をデバッグ
+    logging.debug(
+        "set_shutter_state: index_list=%s state=%s mode=%s user=%s", index_list, state, mode.value, user
+    )
+
     if state == "open":
         if mode != CONTROL_MODE.MANUAL:
             # NOTE: 手動以外でシャッターを開けた場合は、
@@ -250,6 +275,7 @@ def set_shutter_state(config, index_list, state, mode, sense_data, user=""):  # 
 
     with control_lock:
         for index in index_list:
+            logging.debug("set_shutter_state: processing index=%d", index)
             set_shutter_state_impl(config, index, state, mode, sense_data, user)
 
     return get_shutter_state(config)
