@@ -21,6 +21,30 @@ SCHEDULE_AFTER_MIN = 1
 logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 
 
+@pytest.fixture(autouse=True)
+def _page_init(page, host, port):
+    wait_for_server_ready(host, port)
+    page.on("console", lambda msg: print(msg.text))  # noqa: T201
+    page.set_viewport_size({"width": 2400, "height": 1600})
+
+
+def wait_for_server_ready(host, port):
+    TIMEOUT_SEC = 180
+
+    start_time = time.time()
+    while time.time() - start_time < TIMEOUT_SEC:
+        try:
+            res = requests.get(f"http://{host}:{port}")  # noqa: S113
+            if res.ok:
+                logging.info("サーバが %.1f 秒後に起動しました。", time.time() - start_time)
+                return
+        except Exception:  # noqa: S110
+            pass
+        time.sleep(1)
+
+    raise RuntimeError(f"サーバーが {TIMEOUT_SEC}秒以内に起動しませんでした。")  # noqa: TRY003, EM102
+
+
 def check_log(page, message, timeout_sec=2):
     # DEBUG: ログの内容を詳細に確認
     log_list = page.locator('//div[contains(@class,"log")]/div/div[2]')
