@@ -57,8 +57,7 @@ build-image:
     script:
         - 'echo "Building: ${CI_REGISTRY_IMAGE}:${TAG}"'
 
-        - export GIT_SSL_NO_VERIFY=1
-        - git clone https://gitlab.green-rabbit.net/kimata/hems-config.git
+        - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/hems-config.git
         - mv hems-config/rasp-shutter.yaml config.yaml
 
         - |
@@ -146,8 +145,7 @@ test-playwright:
         - test-prepare
 
     script:
-        - export GIT_SSL_NO_VERIFY=1
-        - git clone https://gitlab.green-rabbit.net/kimata/hems-config.git
+        - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/hems-config.git
         - mv hems-config/rasp-shutter.yaml config.yaml
 
         - uv run playwright install --with-deps chromium
