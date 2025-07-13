@@ -42,11 +42,13 @@ def term():
     os._exit(0)
 
 
-def signal_handler(signum, _frame):
-    """シグナルハンドラー: CTRL-Cや終了シグナルを受け取った際の処理"""
-    logging.info("Received signal %d, shutting down gracefully...", signum)
+def sig_handler(num, frame):  # noqa: ARG001
+    global should_terminate
 
-    term()
+    logging.warning("receive signal %d", num)
+
+    if num == signal.SIGTERM:
+        term()
 
 
 def create_app(config, dummy_mode=False):
@@ -156,6 +158,4 @@ if __name__ == "__main__":
         app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=True)  # noqa: S104
     except KeyboardInterrupt:
         logging.info("Received KeyboardInterrupt, shutting down...")
-        signal_handler(signal.SIGINT, None)
-    finally:
-        term()
+        sig_handler(signal.SIGINT, None)

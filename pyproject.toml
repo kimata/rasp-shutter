@@ -16,7 +16,7 @@ dependencies = [
     "influxdb-client[ciso]>=1.49.0",
     "pillow>=10.0.0",
     "schedule>=1.2.2",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@1cff4c3e693c24b486be717a4465f3df7e6700a4",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@46e902399891f050fa78f2cc47277a7153b7a62f",
     "pysolar>=0.13",
     "time-machine>=2.16.0", # NOTE: テスト用のモードでは時刻操作の API を提供するので、こちらに必要
 ]
@@ -39,7 +39,6 @@ dev = [
 [tool.uv]
 default-groups = ["dev"]
 
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -49,7 +48,6 @@ packages = ["flask/src/rasp_shutter"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
-
 
 [tool.pytest.ini_options]
 minversion = "6.0"
