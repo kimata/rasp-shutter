@@ -1491,6 +1491,7 @@ def test_schedule_ctrl_open_dup(client, time_machine, mock_sensor_data):
     time.sleep(1.5)
 
     move_to(time_machine, time_morning(1))
+    time.sleep(5)
 
     ctrl_log_check(
         client,
@@ -1722,6 +1723,7 @@ def test_schedule_ctrl_control_fail_2(client, mocker, time_machine, mock_sensor_
     time.sleep(1.5)
 
     move_to(time_machine, time_evening(2))
+    time.sleep(5)
 
     ctrl_log_check(
         client,
