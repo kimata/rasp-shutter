@@ -886,6 +886,7 @@ def test_schedule_ctrl_auto_close(client, time_machine, mock_sensor_data):
     time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(2))
+    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -901,6 +902,7 @@ def test_schedule_ctrl_auto_close(client, time_machine, mock_sensor_data):
     time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(4))
+    time.sleep(1)
 
     ctrl_log_check(
         client,
@@ -916,6 +918,7 @@ def test_schedule_ctrl_auto_close(client, time_machine, mock_sensor_data):
     time.sleep(1)  # Restored to 1s for scheduler job
 
     move_to(time_machine, time_evening(6))
+    time.sleep(1)
 
     ctrl_log_check(
         client,
