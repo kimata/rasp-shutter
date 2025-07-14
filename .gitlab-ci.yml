@@ -171,7 +171,9 @@ test-playwright:
         - >
             APP_HOST=$(docker network inspect bridge --format="{{range .IPAM.Config}}{{.Gateway}}{{end}}")
         - >
-            echo "APP_HOST: ${APP_HOST}, APP_PORT: ${APP_PORT}"
+            APP_URL="http://${APP_HOST}:${APP_PORT}/rasp-shutter/"
+        - >
+            echo "APP_URL: ${APP_URL}"
         - >
             timeout 60 bash -c "until curl --fail --connect-timeout 10 --max-time 15 \"${APP_URL}\" > /dev/null 2>&1;
             do echo 'Retrying in 5 seconds...'; sleep 5; done" || ACCESS_FAILED=1
@@ -239,9 +241,9 @@ test-healthz-docker:
         - >
             APP_PORT=$(docker port "${CI_JOB_NAME}-${CI_JOB_ID}" 5000 | cut -d: -f2)
         - >
-            DOCKER_GATEWAY=$(docker network inspect bridge --format="{{range .IPAM.Config}}{{.Gateway}}{{end}}")
+            APP_HOST=$(docker network inspect bridge --format="{{range .IPAM.Config}}{{.Gateway}}{{end}}")
         - >
-            APP_URL="http://${DOCKER_GATEWAY}:${APP_PORT}/rasp-shutter/"
+            APP_URL="http://${APP_HOST}:${APP_PORT}/rasp-shutter/"
         - >
             echo "APP_URL: ${APP_URL}"
         - >
