@@ -50,39 +50,6 @@ def wait_for_server_ready(host, port):
 
 
 def check_log(page, message, timeout_sec=5):
-    # DEBUG: ログの内容を詳細に確認
-    log_list = page.locator('//div[contains(@class,"log")]/div/div[2]')
-    log_count = log_list.count()
-    logging.debug("=== LOG CHECK START ===")
-    logging.debug("Expecting message: %s", message)
-    logging.debug("Total log count: %d", log_count)
-
-    # ログの全内容を詳細表示（最大10件まで）
-    for i in range(min(log_count, 10)):
-        try:
-            log_text = log_list.nth(i).text_content(timeout=2000)
-            logging.debug("Log[%d]: '%s'", i, log_text)
-        except Exception as e:
-            logging.debug("Log[%d]: Failed to get text - %s", i, str(e))
-            break
-
-    # DOM構造も確認
-    log_container = page.locator('//div[contains(@class,"container log")]')
-    if log_container.count() > 0:
-        logging.debug("Log container HTML:\n%s", log_container.inner_html())
-    
-    # 最初のログエントリが期待されるメッセージを含むかチェック
-    first_log = page.locator('//div[contains(@class,"log")]/div/div[2]').first
-    if first_log.count() > 0:
-        first_log_text = first_log.text_content()
-        logging.debug("First log content: '%s'", first_log_text)
-        logging.debug("Does first log contain expected message '%s'? %s", 
-                     message, message in first_log_text)
-    else:
-        logging.debug("No log entries found")
-    
-    logging.debug("=== LOG CHECK END ===")
-
     expect(page.locator('//div[contains(@class,"log")]/div/div[2]').first).to_contain_text(
         message, timeout=timeout_sec * 1000
     )
@@ -237,34 +204,8 @@ def test_time():
 def test_manual(page, host, port):
     page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
 
-    # ログクリア前の状態を確認
-    logging.debug("=== BEFORE CLEAR ===")
-    log_list_before = page.locator('//div[contains(@class,"log")]/div/div[2]')
-    before_count = log_list_before.count()
-    logging.debug("Logs before clear: %d", before_count)
-    for i in range(min(before_count, 3)):
-        try:
-            log_text = log_list_before.nth(i).text_content(timeout=2000)
-            logging.debug("Before[%d]: %s", i, log_text)
-        except Exception as e:
-            logging.debug("Before[%d]: Failed to get text - %s", i, str(e))
-
     page.get_by_test_id("clear").click()
-    logging.debug("Clear button clicked")
-    time.sleep(3)  # Wait longer for log processing
-    
-    # ログクリア後の状態を確認
-    logging.debug("=== AFTER CLEAR ===")
-    log_list_after = page.locator('//div[contains(@class,"log")]/div/div[2]')
-    after_count = log_list_after.count()
-    logging.debug("Logs after clear: %d", after_count)
-    for i in range(min(after_count, 3)):
-        try:
-            log_text = log_list_after.nth(i).text_content(timeout=2000)
-            logging.debug("After[%d]: %s", i, log_text)
-        except Exception as e:
-            logging.debug("After[%d]: Failed to get text - %s", i, str(e))
-    
+    time.sleep(3)  # Wait for log processing
     check_log(page, "ログがクリアされました")
 
     # NOTE: 連続してテスト実行する場合に open がはじかれないようにまず閉める
@@ -360,34 +301,8 @@ def test_schedule(page, host, port):
 def test_schedule_run(page, host, port):
     page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
 
-    # ログクリア前の状態を確認
-    logging.debug("=== SCHEDULE RUN: BEFORE CLEAR ===")
-    log_list_before = page.locator('//div[contains(@class,"log")]/div/div[2]')
-    before_count = log_list_before.count()
-    logging.debug("Logs before clear: %d", before_count)
-    for i in range(min(before_count, 3)):
-        try:
-            log_text = log_list_before.nth(i).text_content(timeout=2000)
-            logging.debug("Before[%d]: %s", i, log_text)
-        except Exception as e:
-            logging.debug("Before[%d]: Failed to get text - %s", i, str(e))
-
     page.get_by_test_id("clear").click()
-    logging.debug("Clear button clicked in schedule_run test")
-    time.sleep(3)  # Wait longer for log processing
-    
-    # ログクリア後の状態を確認
-    logging.debug("=== SCHEDULE RUN: AFTER CLEAR ===")
-    log_list_after = page.locator('//div[contains(@class,"log")]/div/div[2]')
-    after_count = log_list_after.count()
-    logging.debug("Logs after clear: %d", after_count)
-    for i in range(min(after_count, 3)):
-        try:
-            log_text = log_list_after.nth(i).text_content(timeout=2000)
-            logging.debug("After[%d]: %s", i, log_text)
-        except Exception as e:
-            logging.debug("After[%d]: Failed to get text - %s", i, str(e))
-    
+    time.sleep(3)  # Wait for log processing
     check_log(page, "ログがクリアされました")
 
     # NOTE: テスト用APIで時刻を設定（固定時刻で確実にテストできるようにする）
