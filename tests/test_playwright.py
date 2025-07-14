@@ -210,7 +210,7 @@ def test_manual(page, host, port):
 
     # NOTE: 連続してテスト実行する場合に open がはじかれないようにまず閉める
     page.get_by_test_id("close-0").click()
-    time.sleep(1)
+    check_log(page, "手動で閉めました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
