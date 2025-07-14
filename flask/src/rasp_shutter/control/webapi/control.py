@@ -98,6 +98,9 @@ def clean_stat_exec(config):
         my_lib.footprint.clear(exec_stat_file("open", index))
         my_lib.footprint.clear(exec_stat_file("close", index))
 
+    my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN)
+    my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE)
+
 
 def get_shutter_state(config):
     state_list = []
@@ -131,7 +134,6 @@ def get_shutter_state(config):
 
 
 def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noqa: PLR0913
-
     # NOTE: 閉じている場合に再度閉じるボタンをおしたり、逆に開いている場合に再度
     # 開くボタンを押すことが続くと、スイッチがエラーになるので exec_hist を使って
     # 防止する。また、明るさに基づく自動の開閉が連続するのを防止する。

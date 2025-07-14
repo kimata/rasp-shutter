@@ -69,8 +69,6 @@ def _clear(config):
     import rasp_shutter.control.config
     import rasp_shutter.metrics.collector
 
-    my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE)
-    my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN)
     my_lib.footprint.clear(pathlib.Path(config["liveness"]["file"]["scheduler"]))
 
     # Clear schedule file to ensure clean state for each test
