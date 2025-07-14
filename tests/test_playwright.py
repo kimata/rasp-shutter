@@ -231,7 +231,7 @@ def test_time():
 
 
 def test_manual(page, host, port):
-    page.goto(app_url(host, port))
+    page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
 
     # ログクリア前の状態を確認
     logging.debug("=== BEFORE CLEAR ===")
@@ -298,7 +298,7 @@ def test_manual(page, host, port):
 
 
 def test_schedule(page, host, port):
-    page.goto(app_url(host, port))
+    page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
 
     page.get_by_test_id("clear").click()
     time.sleep(3)  # Wait longer for log processing
@@ -344,7 +344,7 @@ def test_schedule(page, host, port):
 
 
 def test_schedule_run(page, host, port):
-    page.goto(app_url(host, port))
+    page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
 
     # ログクリア前の状態を確認
     logging.debug("=== SCHEDULE RUN: BEFORE CLEAR ===")
@@ -419,7 +419,7 @@ def test_schedule_run(page, host, port):
 
 
 def test_schedule_disable(page, host, port):
-    page.goto(app_url(host, port))
+    page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
 
     page.get_by_test_id("clear").click()
     time.sleep(3)  # Wait longer for log processing
