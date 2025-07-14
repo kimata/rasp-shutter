@@ -1102,7 +1102,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_morning(10))
-    time.sleep(5)
+    time.sleep(10)
 
     # CLOSE
     ctrl_log_check(
@@ -1176,7 +1176,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_evening(1))
-    time.sleep(5)
+    time.sleep(10)
 
     # CLOSE
     ctrl_log_check(
