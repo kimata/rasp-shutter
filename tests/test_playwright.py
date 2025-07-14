@@ -63,7 +63,7 @@ def check_log(page, message, timeout_sec=5):
         logging.debug("Log[%d]: '%s'", i, log_text)
 
     # DOM構造も確認
-    log_container = page.locator('//div[contains(@class,"log")]')
+    log_container = page.locator('//div[contains(@class,"container log")]')
     if log_container.count() > 0:
         logging.debug("Log container HTML:\n%s", log_container.inner_html())
     
