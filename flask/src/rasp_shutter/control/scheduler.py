@@ -158,8 +158,6 @@ def shutter_auto_open(config):
         # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない。
         logging.debug("NOT pending")
         return
-    else:
-        logging.debug("Elapsed time since pending open: %s", elapsed_pendiing_open)
 
     if (
         my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE)

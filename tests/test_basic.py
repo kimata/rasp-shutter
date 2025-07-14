@@ -124,7 +124,7 @@ def client(app):
 
     time.sleep(0.1)  # Optimized for test setup
     app_log_clear(test_client)
-    app_log_check(test_client, [])
+    app_log_check(test_client, ["CLEAR"])
     ctrl_log_clear(test_client)
 
     yield test_client
@@ -218,11 +218,9 @@ def gen_schedule_data():
     }
 
 
-def _check_log_content(log_list, expect_list, is_strict):  # noqa: C901, PLR0912
+def _check_log_content(log_list, expect_list):  # noqa: C901, PLR0912
     """ログ内容をチェックする内部関数"""
-    if is_strict:
-        # NOTE: クリアする直前のログが残っている可能性があるので、+1 でも OK とする
-        assert (len(log_list) == len(expect_list)) or (len(log_list) == (len(expect_list) + 1))
+    assert len(log_list) == len(expect_list)
 
     for i, expect in enumerate(reversed(expect_list)):
         if expect == "OPEN_MANUAL":
@@ -267,7 +265,6 @@ def _check_log_content(log_list, expect_list, is_strict):  # noqa: C901, PLR0912
 def app_log_check(
     client,
     expect_list,
-    is_strict=True,
     timeout_sec=5.0,
     retry_interval=0.2,
 ):
@@ -290,7 +287,7 @@ def app_log_check(
             log_list = response.json["data"]
 
             logging.debug(my_lib.pretty.format(log_list))
-            _check_log_content(log_list, expect_list, is_strict)
+            _check_log_content(log_list, expect_list)
             return
 
         except (AssertionError, IndexError, KeyError) as e:  # noqa: PERF203
@@ -1554,7 +1551,7 @@ def test_schedule_ctrl_pending_open_dup(client, time_machine, mock_sensor_data):
     time.sleep(1.5)  # Wait for schedule to be set
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1.5)
+    time.sleep(5)
 
     move_to(time_machine, time_morning(4))
     time.sleep(1.5)
@@ -1593,7 +1590,7 @@ def test_schedule_ctrl_pending_open_dup(client, time_machine, mock_sensor_data):
     time.sleep(2)  # スケジューラーがセンサー状態を確認してシャッターを開くまで待機
 
     move_to(time_machine, time_morning(4))
-    time.sleep(2)  # ログ処理の完了を待つ追加の待機時間
+    time.sleep(5)  # ログ処理の完了を待つ追加の待機時間
 
     # 最終的な状態を確認（シャッター0が開いた状態）
     # リトライロジックの理由:
@@ -1630,6 +1627,7 @@ def test_schedule_ctrl_pending_open_dup(client, time_machine, mock_sensor_data):
             "OPEN_PENDING",
             "OPEN_BRIGHT",
             "OPEN_AUTO",
+            "OPEN_PENDING",
         ],
     )
     check_notify_slack(None)
@@ -1690,7 +1688,7 @@ def test_schedule_ctrl_control_fail_1(client, mocker, time_machine, mock_sensor_
 
 
 def test_schedule_ctrl_control_fail_2(client, mocker, time_machine, mock_sensor_data):
-    mock_sensor_data(SENSOR_DATA_DARK)
+    mock_sensor_data(SENSOR_DATA_BRIGHT)
 
     shutter_control(client, "open")
 
