@@ -57,10 +57,14 @@ def check_log(page, message, timeout_sec=5):
     logging.debug("Expecting message: %s", message)
     logging.debug("Total log count: %d", log_count)
 
-    # ログの全内容を詳細表示
-    for i in range(log_count):
-        log_text = log_list.nth(i).text_content()
-        logging.debug("Log[%d]: '%s'", i, log_text)
+    # ログの全内容を詳細表示（最大10件まで）
+    for i in range(min(log_count, 10)):
+        try:
+            log_text = log_list.nth(i).text_content(timeout=2000)
+            logging.debug("Log[%d]: '%s'", i, log_text)
+        except Exception as e:
+            logging.debug("Log[%d]: Failed to get text - %s", i, str(e))
+            break
 
     # DOM構造も確認
     log_container = page.locator('//div[contains(@class,"container log")]')
@@ -236,9 +240,14 @@ def test_manual(page, host, port):
     # ログクリア前の状態を確認
     logging.debug("=== BEFORE CLEAR ===")
     log_list_before = page.locator('//div[contains(@class,"log")]/div/div[2]')
-    logging.debug("Logs before clear: %d", log_list_before.count())
-    for i in range(min(log_list_before.count(), 3)):
-        logging.debug("Before[%d]: %s", i, log_list_before.nth(i).text_content())
+    before_count = log_list_before.count()
+    logging.debug("Logs before clear: %d", before_count)
+    for i in range(min(before_count, 3)):
+        try:
+            log_text = log_list_before.nth(i).text_content(timeout=2000)
+            logging.debug("Before[%d]: %s", i, log_text)
+        except Exception as e:
+            logging.debug("Before[%d]: Failed to get text - %s", i, str(e))
 
     page.get_by_test_id("clear").click()
     logging.debug("Clear button clicked")
@@ -247,9 +256,14 @@ def test_manual(page, host, port):
     # ログクリア後の状態を確認
     logging.debug("=== AFTER CLEAR ===")
     log_list_after = page.locator('//div[contains(@class,"log")]/div/div[2]')
-    logging.debug("Logs after clear: %d", log_list_after.count())
-    for i in range(min(log_list_after.count(), 3)):
-        logging.debug("After[%d]: %s", i, log_list_after.nth(i).text_content())
+    after_count = log_list_after.count()
+    logging.debug("Logs after clear: %d", after_count)
+    for i in range(min(after_count, 3)):
+        try:
+            log_text = log_list_after.nth(i).text_content(timeout=2000)
+            logging.debug("After[%d]: %s", i, log_text)
+        except Exception as e:
+            logging.debug("After[%d]: Failed to get text - %s", i, str(e))
     
     check_log(page, "ログがクリアされました")
 
@@ -349,9 +363,14 @@ def test_schedule_run(page, host, port):
     # ログクリア前の状態を確認
     logging.debug("=== SCHEDULE RUN: BEFORE CLEAR ===")
     log_list_before = page.locator('//div[contains(@class,"log")]/div/div[2]')
-    logging.debug("Logs before clear: %d", log_list_before.count())
-    for i in range(min(log_list_before.count(), 3)):
-        logging.debug("Before[%d]: %s", i, log_list_before.nth(i).text_content())
+    before_count = log_list_before.count()
+    logging.debug("Logs before clear: %d", before_count)
+    for i in range(min(before_count, 3)):
+        try:
+            log_text = log_list_before.nth(i).text_content(timeout=2000)
+            logging.debug("Before[%d]: %s", i, log_text)
+        except Exception as e:
+            logging.debug("Before[%d]: Failed to get text - %s", i, str(e))
 
     page.get_by_test_id("clear").click()
     logging.debug("Clear button clicked in schedule_run test")
@@ -360,9 +379,14 @@ def test_schedule_run(page, host, port):
     # ログクリア後の状態を確認
     logging.debug("=== SCHEDULE RUN: AFTER CLEAR ===")
     log_list_after = page.locator('//div[contains(@class,"log")]/div/div[2]')
-    logging.debug("Logs after clear: %d", log_list_after.count())
-    for i in range(min(log_list_after.count(), 3)):
-        logging.debug("After[%d]: %s", i, log_list_after.nth(i).text_content())
+    after_count = log_list_after.count()
+    logging.debug("Logs after clear: %d", after_count)
+    for i in range(min(after_count, 3)):
+        try:
+            log_text = log_list_after.nth(i).text_content(timeout=2000)
+            logging.debug("After[%d]: %s", i, log_text)
+        except Exception as e:
+            logging.debug("After[%d]: Failed to get text - %s", i, str(e))
     
     check_log(page, "ログがクリアされました")
 
