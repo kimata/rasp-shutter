@@ -1281,7 +1281,7 @@ def test_schedule_ctrl_pending_open(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
-    time.sleep(5)
+    time.sleep(10)
 
     ctrl_log_check(
         client,

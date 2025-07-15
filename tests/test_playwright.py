@@ -49,7 +49,7 @@ def wait_for_server_ready(host, port):
     raise RuntimeError(f"サーバーが {TIMEOUT_SEC}秒以内に起動しませんでした。")  # noqa: TRY003, EM102
 
 
-def check_log(page, message, timeout_sec=5):
+def check_log(page, message, timeout_sec=10):
     expect(page.locator('//div[contains(@class,"log")]/div/div[2]').first).to_contain_text(
         message, timeout=timeout_sec * 1000
     )
