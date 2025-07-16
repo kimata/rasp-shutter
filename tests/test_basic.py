@@ -714,47 +714,47 @@ def test_schedule_ctrl_inactive(client, time_machine):
     schedule_data["open"]["is_active"] = False
     schedule_data["close"]["is_active"] = False
     schedule_update(client, schedule_data)
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(3))
-    time.sleep(1.5)
+    time.sleep(2)
 
     schedule_data["open"]["is_active"] = True
     schedule_data["open"]["wday"] = [False] * 7
     schedule_data["close"]["is_active"] = True
     schedule_data["close"]["wday"] = [False] * 7
     schedule_update(client, schedule_data)
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(3))
 
@@ -828,10 +828,10 @@ def test_schedule_ctrl_execute(client, time_machine, mock_sensor_data):
     schedule_data["open"]["is_active"] = False
     schedule_update(client, schedule_data)
 
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(2))
 
@@ -874,10 +874,10 @@ def test_schedule_ctrl_auto_close(client, time_machine, mock_sensor_data):
     schedule_data["close"]["time"] = time_str(time_evening(5))
     schedule_update(client, schedule_data)
 
-    time.sleep(1.5)  # Restored to 1s for scheduler
+    time.sleep(2)  # Restored to 1s for scheduler
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(2))
 
@@ -892,7 +892,7 @@ def test_schedule_ctrl_auto_close(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     move_to(time_machine, time_evening(3))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(4))
     time.sleep(5)
@@ -908,7 +908,7 @@ def test_schedule_ctrl_auto_close(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_evening(5))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(6))
 
@@ -963,10 +963,10 @@ def test_schedule_ctrl_auto_close_dup(client, time_machine, mock_sensor_data):
     schedule_data["close"]["time"] = time_str(time_evening(4))
     schedule_data["open"]["is_active"] = False
     schedule_update(client, schedule_data)
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(2))
 
@@ -982,7 +982,7 @@ def test_schedule_ctrl_auto_close_dup(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_DARK
 
     move_to(time_machine, time_evening(3))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(4))
 
@@ -1049,10 +1049,10 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(3))
 
@@ -1228,16 +1228,16 @@ def test_schedule_ctrl_auto_inactive(client, time_machine, mock_sensor_data):
     schedule_data["open"]["is_active"] = False
     schedule_data["close"]["is_active"] = False
     schedule_update(client, schedule_data)
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(2))
 
@@ -1270,13 +1270,13 @@ def test_schedule_ctrl_pending_open(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1.5)
+    time.sleep(2)
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
@@ -1337,10 +1337,10 @@ def test_schedule_ctrl_pending_open_inactive(client, time_machine, mock_sensor_d
     )
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(3))
 
@@ -1358,15 +1358,15 @@ def test_schedule_ctrl_pending_open_inactive(client, time_machine, mock_sensor_d
     schedule_data["open"]["is_active"] = False
     schedule_data["close"]["is_active"] = False
     schedule_update(client, schedule_data)
-    time.sleep(1.5)
+    time.sleep(2)
 
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(5))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(6))
 
@@ -1426,20 +1426,20 @@ def test_schedule_ctrl_pending_open_fail(client, time_machine, mock_sensor_data)
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(2))
-    time.sleep(1.5)
+    time.sleep(2)
 
     sensor_data = SENSOR_DATA_BRIGHT.copy()
     sensor_data["lux"] = {"valid": False, "value": 5000}
     sensor_data_mock.return_value = sensor_data
 
     move_to(time_machine, time_morning(3))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(4))
 
@@ -1461,7 +1461,7 @@ def test_schedule_ctrl_pending_open_fail(client, time_machine, mock_sensor_data)
     # NOTE: 後始末
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT.copy()
     move_to(time_machine, time_morning(5))
-    time.sleep(1.5)
+    time.sleep(2)
 
 
 def test_schedule_ctrl_open_dup(client, time_machine, mock_sensor_data):
@@ -1484,7 +1484,7 @@ def test_schedule_ctrl_open_dup(client, time_machine, mock_sensor_data):
     schedule_data["open"]["time"] = time_str(time_morning(1))
     schedule_data["close"]["is_active"] = False
     schedule_update(client, schedule_data)
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(1))
     time.sleep(5)
@@ -1547,13 +1547,13 @@ def test_schedule_ctrl_pending_open_dup(client, time_machine, mock_sensor_data):
     schedule_data["close"]["is_active"] = False
     schedule_update(client, schedule_data)
 
-    time.sleep(1.5)  # Wait for schedule to be set
+    time.sleep(2)  # Wait for schedule to be set
 
     move_to(time_machine, time_morning(3))
     time.sleep(5)
 
     move_to(time_machine, time_morning(4))
-    time.sleep(1.5)
+    time.sleep(2)
 
     # Check for pending open with enhanced retry logic for parallel execution
     # リトライロジックの理由:
@@ -1656,13 +1656,13 @@ def test_schedule_ctrl_control_fail_1(client, mocker, time_machine, mock_sensor_
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(2))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(3))
 
@@ -1714,10 +1714,10 @@ def test_schedule_ctrl_control_fail_2(client, mocker, time_machine, mock_sensor_
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_evening(2))
     time.sleep(5)
@@ -1748,10 +1748,10 @@ def test_schedule_ctrl_invalid_sensor_1(client, time_machine, mock_sensor_data):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(2))
 
@@ -1775,10 +1775,10 @@ def test_schedule_ctrl_invalid_sensor_2(client, time_machine, mock_sensor_data):
         query_string={"cmd": "set", "data": json.dumps(schedule_data)},
     )
     assert response.status_code == 200
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(1))
-    time.sleep(1.5)
+    time.sleep(2)
 
     move_to(time_machine, time_morning(2))
 
