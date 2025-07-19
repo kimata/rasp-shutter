@@ -175,15 +175,8 @@ def set_mock_time(host, port, target_time):
         response = requests.post(api_url, timeout=5)
         logging.info("API response status: %d", response.status_code)
         if response.status_code == 200:
-            try:
-                response_data = response.json()
-                logging.info("API response data: %s", response_data)
-                if "mock_time" in response_data:
-                    logging.info("server mock time set to: %s", response_data["mock_time"])
-                else:
-                    logging.warning("mock_time field not found in response: %s", response_data)
-            except Exception as e:
-                logging.warning("Failed to parse JSON response: %s, content: %s", e, response.text)
+            response_data = response.json()
+            logging.info("server mock time set to: %s", response_data["mock_time"])
             return True
         else:
             logging.error("API request failed with status %d: %s", response.status_code, response.text)
