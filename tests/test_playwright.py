@@ -369,7 +369,7 @@ def test_schedule(page, host, port):
             enable_checkbox.nth(i).evaluate("node => node.click()")
 
     page.get_by_test_id("save").click()
-
+    time.sleep(5)
     check_log(page, "スケジュールを更新")
 
     check_schedule(page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index)
@@ -427,7 +427,7 @@ def test_schedule_run(page, host, port):
 
     logging.info("Save shcedule")
     page.get_by_test_id("save").click()
-    time.sleep(2)
+    time.sleep(5)
     check_log(page, "スケジュールを更新")
 
     time.sleep(15)
@@ -467,7 +467,7 @@ def test_schedule_disable(page, host, port):
         enable_checkbox.evaluate("node => node.click()")
 
     page.get_by_test_id("save").click()
-    time.sleep(2)
+    time.sleep(5)
     check_log(page, "スケジュールを更新")
 
     # NOTE: 何も実行されていないことを確認
