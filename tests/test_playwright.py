@@ -172,7 +172,11 @@ def advance_mock_time(host, port, seconds):
     api_url = APP_URL_TMPL.format(host=host, port=port) + f"api/test/time/advance/{seconds}"
     try:
         response = requests.post(api_url, timeout=5)
-        return response.status_code == 200
+        if response.status_code == 200:
+            # モック時間の変更がアプリケーション全体に反映されるまで待機
+            time.sleep(0.5)
+            return True
+        return False
     except requests.RequestException:
         return False
 
@@ -281,10 +285,10 @@ def test_manual(page, host, port):
     click_and_check_log(page, "open-0", "開けるのを見合わせました")
 
     click_and_check_log(page, "open-1", "手動で開けました")
-    time.sleep(2)
 
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
+    time.sleep(1)  # モック時間の変更が完全に反映されるまで追加待機
 
     click_and_check_log(page, "open-1", "手動で開けました")
 
