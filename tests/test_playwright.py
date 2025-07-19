@@ -90,6 +90,22 @@ def get_log_count(page):
     return page.locator('//div[contains(@class,"log")]/div/div[2]').count()
 
 
+def click_and_check_log(page, test_id, expected_message, timeout_sec=10):
+    """
+    要素をクリックして新しいログメッセージを確認する
+
+    Args:
+        page: Playwrightページオブジェクト
+        test_id: クリックする要素のtest-id
+        expected_message: 期待するログメッセージ
+        timeout_sec: タイムアウト秒数
+
+    """
+    initial_count = get_log_count(page)
+    page.get_by_test_id(test_id).click()
+    check_log(page, expected_message, timeout_sec=timeout_sec, initial_log_count=initial_count)
+
+
 def time_str_random():
     return f"{int(24 * random.random()):02d}:{int(60 * random.random()):02d}"  # noqa: S311
 
@@ -237,57 +253,37 @@ def test_manual(page, host, port):
     check_log(page, "ログがクリアされました")
 
     # NOTE: 連続してテスト実行する場合に open がはじかれないようにまず閉める
-    initial_count = get_log_count(page)
-    page.get_by_test_id("close-0").click()
-    check_log(page, "手動で閉めました", initial_log_count=initial_count)
+    click_and_check_log(page, "close-0", "手動で閉めました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
-    initial_count = get_log_count(page)
-    page.get_by_test_id("open-0").click()
-    check_log(page, "手動で開けました", initial_log_count=initial_count)
+    click_and_check_log(page, "open-0", "手動で開けました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
-    initial_count = get_log_count(page)
-    page.get_by_test_id("open-1").click()
-    check_log(page, "手動で開けました", initial_log_count=initial_count)
+    click_and_check_log(page, "open-1", "手動で開けました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
-    initial_count = get_log_count(page)
-    page.get_by_test_id("close-0").click()
-    check_log(page, "手動で閉めました", initial_log_count=initial_count)
+    click_and_check_log(page, "close-0", "手動で閉めました")
 
-    initial_count = get_log_count(page)
-    page.get_by_test_id("close-0").click()
-    check_log(page, "閉めるのを見合わせました", initial_log_count=initial_count)
+    click_and_check_log(page, "close-0", "閉めるのを見合わせました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
-    initial_count = get_log_count(page)
-    page.get_by_test_id("close-1").click()
-    check_log(page, "手動で閉めました", initial_log_count=initial_count)
+    click_and_check_log(page, "close-1", "手動で閉めました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
-    initial_count = get_log_count(page)
-    page.get_by_test_id("open-0").click()
-    check_log(page, "手動で開けました", initial_log_count=initial_count)
+    click_and_check_log(page, "open-0", "手動で開けました")
 
-    initial_count = get_log_count(page)
-    page.get_by_test_id("open-0").click()
-    check_log(page, "開けるのを見合わせました", initial_log_count=initial_count)
+    click_and_check_log(page, "open-0", "開けるのを見合わせました")
 
-    initial_count = get_log_count(page)
-    page.get_by_test_id("open-1").click()
-    check_log(page, "手動で開けました", initial_log_count=initial_count)
+    click_and_check_log(page, "open-1", "手動で開けました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
-    initial_count = get_log_count(page)
-    page.get_by_test_id("open-1").click()
-    check_log(page, "手動で開けました", initial_log_count=initial_count)
+    click_and_check_log(page, "open-1", "手動で開けました")
 
 
 def test_schedule(page, host, port):
