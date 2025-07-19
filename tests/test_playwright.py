@@ -254,6 +254,7 @@ def test_manual(page, host, port):
 
     # NOTE: 連続してテスト実行する場合に open がはじかれないようにまず閉める
     click_and_check_log(page, "close-0", "手動で閉めました")
+    click_and_check_log(page, "close-1", "手動で閉めました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
