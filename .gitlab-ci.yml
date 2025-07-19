@@ -131,6 +131,11 @@ test-playwright:
             --junit-xml=tests/evidence/playwright-junit.xml
             tests/test_playwright.py
 
+    cache:
+        key: playwright-cache
+        paths:
+            - .cache/ms-playwright/
+
     artifacts:
         when: always
         paths:
