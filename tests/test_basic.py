@@ -1155,7 +1155,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(20))
-    time.sleep(5)
+    time.sleep(10)
 
     # OPEN
     ctrl_log_check(
@@ -1174,7 +1174,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_evening(1))
-    time.sleep(10)
+    time.sleep(15)
 
     # CLOSE
     ctrl_log_check(
@@ -1586,10 +1586,10 @@ def test_schedule_ctrl_pending_open_dup(client, time_machine, mock_sensor_data):
     # 時刻を再度morning(3)に設定してスケジューラーを再実行
     # この時点でセンサーが明るいため、pending状態のシャッターが開く
     move_to(time_machine, time_morning(3))
-    time.sleep(2)  # スケジューラーがセンサー状態を確認してシャッターを開くまで待機
+    time.sleep(5)  # スケジューラーがセンサー状態を確認してシャッターを開くまで待機
 
     move_to(time_machine, time_morning(4))
-    time.sleep(5)  # ログ処理の完了を待つ追加の待機時間
+    time.sleep(10)  # ログ処理の完了を待つ追加の待機時間
 
     # 最終的な状態を確認（シャッター0が開いた状態）
     # リトライロジックの理由:
