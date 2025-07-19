@@ -162,18 +162,26 @@ def set_mock_time(host, port, target_time):
     logging.info("set server time: %s", target_time)
 
     api_url = APP_URL_TMPL.format(host=host, port=port) + f"api/test/time/set/{target_time.isoformat()}"
+    logging.info("API URL: %s", api_url)
     try:
         response = requests.post(api_url, timeout=5)
+        logging.info("API response status: %d", response.status_code)
         if response.status_code == 200:
             try:
                 response_data = response.json()
+                logging.info("API response data: %s", response_data)
                 if "mock_time" in response_data:
                     logging.info("server mock time set to: %s", response_data["mock_time"])
-            except Exception:
-                logging.info("server mock time set successfully (no response data)")
+                else:
+                    logging.warning("mock_time field not found in response: %s", response_data)
+            except Exception as e:
+                logging.warning("Failed to parse JSON response: %s, content: %s", e, response.text)
             return True
+        else:
+            logging.error("API request failed with status %d: %s", response.status_code, response.text)
         return False
     except requests.RequestException:
+        logging.exception("API request exception")
         return False
 
 
@@ -182,20 +190,28 @@ def advance_mock_time(host, port, seconds):
     logging.info("advance server time: %d sec", seconds)
 
     api_url = APP_URL_TMPL.format(host=host, port=port) + f"api/test/time/advance/{seconds}"
+    logging.info("API URL: %s", api_url)
     try:
         response = requests.post(api_url, timeout=5)
+        logging.info("API response status: %d", response.status_code)
         if response.status_code == 200:
             try:
                 response_data = response.json()
+                logging.info("API response data: %s", response_data)
                 if "mock_time" in response_data:
                     logging.info("server mock time advanced to: %s", response_data["mock_time"])
-            except Exception:
-                logging.info("server mock time advanced successfully (no response data)")
+                else:
+                    logging.warning("mock_time field not found in response: %s", response_data)
+            except Exception as e:
+                logging.warning("Failed to parse JSON response: %s, content: %s", e, response.text)
             # モック時間の変更がアプリケーション全体に反映されるまで待機
             time.sleep(0.5)
             return True
+        else:
+            logging.error("API request failed with status %d: %s", response.status_code, response.text)
         return False
     except requests.RequestException:
+        logging.exception("API request exception")
         return False
 
 
