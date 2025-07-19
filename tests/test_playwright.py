@@ -49,6 +49,14 @@ def wait_for_server_ready(host, port):
     raise RuntimeError(f"サーバーが {TIMEOUT_SEC}秒以内に起動しませんでした。")  # noqa: TRY003, EM102
 
 
+def clear_log(page, host, port):
+    page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
+
+    page.get_by_test_id("clear").click()
+    time.sleep(3)
+    check_log(page, "ログがクリアされました")
+
+
 def check_log(page, message, timeout_sec=10, initial_log_count=None):
     """
     最初のログメッセージ（最新ログ）が期待する内容かを確認する
@@ -285,13 +293,12 @@ def test_time():
 
 
 def test_manual(page, host, port):
-    page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
-
-    page.get_by_test_id("clear").click()
-    check_log(page, "ログがクリアされました")
+    clear_log(page, host, port)
 
     # NOTE: モック時刻を初期設定（advance_mock_timeを使用するため）
-    set_mock_time(host, port, my_lib.time.now())
+    current_time = my_lib.time.now()
+    set_mock_time(host, port, current_time)
+    logging.info("Mock time set to %s", current_time)
 
     # NOTE: 連続してテスト実行する場合に open がはじかれないようにまず閉める
     click_and_check_log(page, host, port, "close-0", "手動で閉めました")
@@ -331,11 +338,7 @@ def test_manual(page, host, port):
 
 
 def test_schedule(page, host, port):
-    page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
-
-    page.get_by_test_id("clear").click()
-    time.sleep(2)  # Wait longer for log processing
-    check_log(page, "ログがクリアされました")
+    clear_log(page, host, port)
 
     # NOTE: ランダムなスケジュール設定を準備
     schedule_time = [time_str_random(), time_str_random()]
@@ -377,11 +380,7 @@ def test_schedule(page, host, port):
 
 
 def test_schedule_run(page, host, port):
-    page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
-
-    page.get_by_test_id("clear").click()
-    time.sleep(2)  # Wait for log processing
-    check_log(page, "ログがクリアされました")
+    clear_log(page, host, port)
 
     # NOTE: テスト用APIで時刻を設定（固定時刻で確実にテストできるようにする）
     # 12:00:55に設定して、12:01に閉めるスケジュールが実行されるようにする
@@ -437,11 +436,7 @@ def test_schedule_run(page, host, port):
 
 
 def test_schedule_disable(page, host, port):
-    page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
-
-    page.get_by_test_id("clear").click()
-    time.sleep(2)  # Wait longer for log processing
-    check_log(page, "ログがクリアされました")
+    clear_log(page, host, port)
 
     # NOTE: スケジュールに従って閉める評価をしたいので、一旦あけておく
     page.get_by_test_id("open-0").click()
