@@ -281,8 +281,10 @@ def test_manual(page, host, port):
     click_and_check_log(page, "open-0", "開けるのを見合わせました")
 
     click_and_check_log(page, "open-1", "手動で開けました")
+
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
+    time.sleep(1)
 
     click_and_check_log(page, "open-1", "手動で開けました")
 
