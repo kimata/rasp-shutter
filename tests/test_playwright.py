@@ -49,17 +49,45 @@ def wait_for_server_ready(host, port):
     raise RuntimeError(f"サーバーが {TIMEOUT_SEC}秒以内に起動しませんでした。")  # noqa: TRY003, EM102
 
 
-def check_log(page, message, timeout_sec=10):
-    time.sleep(1)
-    expect(page.locator('//div[contains(@class,"log")]/div/div[2]').first).to_contain_text(
-        message, timeout=timeout_sec * 1000
-    )
+def check_log(page, message, timeout_sec=10, initial_log_count=None):
+    """
+    最初のログメッセージ（最新ログ）が期待する内容かを確認する
+
+    Args:
+        page: Playwrightページオブジェクト
+        message: 期待するログメッセージ
+        timeout_sec: タイムアウト秒数
+        initial_log_count: 操作前のログ数（指定された場合は新しいログの追加を待機）
+
+    """
+    log_locator = page.locator('//div[contains(@class,"log")]/div/div[2]')
+
+    # 新しいログが追加されるまで待機（初期ログ数が指定されている場合）
+    if initial_log_count is not None:
+        # 新しいログが追加されるまで最大5秒間待機
+        start_time = time.time()
+        while time.time() - start_time < 5:
+            current_count = log_locator.count()
+            if current_count > initial_log_count:
+                break
+            time.sleep(0.1)
+
+        # さらに短時間待機してDOMの更新を確実にする
+        time.sleep(0.5)
+
+    # 最初のログ（最新ログ）が期待するメッセージを含むかチェック
+    expect(log_locator.first).to_contain_text(message, timeout=timeout_sec * 1000)
 
     # NOTE: ログクリアする場合、ログの内容が変化しているので、ここで再取得する
     log_list = page.locator('//div[contains(@class,"log")]/div/div[2]')
     for i in range(log_list.count()):
         expect(log_list.nth(i)).not_to_contain_text("失敗")
         expect(log_list.nth(i)).not_to_contain_text("エラー")
+
+
+def get_log_count(page):
+    """現在のログ数を取得"""
+    return page.locator('//div[contains(@class,"log")]/div/div[2]').count()
 
 
 def time_str_random():
@@ -206,50 +234,60 @@ def test_manual(page, host, port):
     page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
 
     page.get_by_test_id("clear").click()
-    time.sleep(2)  # Wait for log processing
     check_log(page, "ログがクリアされました")
 
     # NOTE: 連続してテスト実行する場合に open がはじかれないようにまず閉める
+    initial_count = get_log_count(page)
     page.get_by_test_id("close-0").click()
-    check_log(page, "手動で閉めました")
+    check_log(page, "手動で閉めました", initial_log_count=initial_count)
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
+    initial_count = get_log_count(page)
     page.get_by_test_id("open-0").click()
+    check_log(page, "手動で開けました", initial_log_count=initial_count)
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
+    initial_count = get_log_count(page)
     page.get_by_test_id("open-1").click()
-    check_log(page, "手動で開けました")
+    check_log(page, "手動で開けました", initial_log_count=initial_count)
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
+    initial_count = get_log_count(page)
     page.get_by_test_id("close-0").click()
-    check_log(page, "手動で閉めました")
+    check_log(page, "手動で閉めました", initial_log_count=initial_count)
 
+    initial_count = get_log_count(page)
     page.get_by_test_id("close-0").click()
-    check_log(page, "閉めるのを見合わせました")
+    check_log(page, "閉めるのを見合わせました", initial_log_count=initial_count)
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
+    initial_count = get_log_count(page)
     page.get_by_test_id("close-1").click()
-    check_log(page, "手動で閉めました")
+    check_log(page, "手動で閉めました", initial_log_count=initial_count)
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
+    initial_count = get_log_count(page)
     page.get_by_test_id("open-0").click()
-    check_log(page, "手動で開けました")
+    check_log(page, "手動で開けました", initial_log_count=initial_count)
 
+    initial_count = get_log_count(page)
     page.get_by_test_id("open-0").click()
-    check_log(page, "開けるのを見合わせました")
+    check_log(page, "開けるのを見合わせました", initial_log_count=initial_count)
 
+    initial_count = get_log_count(page)
     page.get_by_test_id("open-1").click()
-    check_log(page, "手動で開けました")
+    check_log(page, "手動で開けました", initial_log_count=initial_count)
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
+    initial_count = get_log_count(page)
     page.get_by_test_id("open-1").click()
-    check_log(page, "手動で開けました")
+    check_log(page, "手動で開けました", initial_log_count=initial_count)
 
 
 def test_schedule(page, host, port):
