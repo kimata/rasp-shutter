@@ -434,7 +434,7 @@ def test_schedule_disable(page, host, port):
     # NOTE: スケジュールに従って閉める評価をしたいので、一旦あけておく
     page.get_by_test_id("open-0").click()
     page.get_by_test_id("open-1").click()
-    time.sleep(1)
+    time.sleep(5)
 
     # NOTE: テスト用APIで時刻を設定
     current_time = my_lib.time.now().replace(second=30, microsecond=0)
