@@ -90,18 +90,22 @@ def get_log_count(page):
     return page.locator('//div[contains(@class,"log")]/div/div[2]').count()
 
 
-def click_and_check_log(page, test_id, expected_message, timeout_sec=10):
+def click_and_check_log(page, host, port, test_id, expected_message, timeout_sec=10):  # noqa: PLR0913
     """
     要素をクリックして新しいログメッセージを確認する
 
     Args:
         page: Playwrightページオブジェクト
+        host: サーバーホスト名
+        port: サーバーポート番号
         test_id: クリックする要素のtest-id
         expected_message: 期待するログメッセージ
         timeout_sec: タイムアウト秒数
 
     """
     initial_count = get_log_count(page)
+    get_current_server_time(host, port)
+    logging.info("Click %s", test_id)
     page.get_by_test_id(test_id).click()
     check_log(page, expected_message, timeout_sec=timeout_sec, initial_log_count=initial_count)
 
@@ -160,7 +164,15 @@ def set_mock_time(host, port, target_time):
     api_url = APP_URL_TMPL.format(host=host, port=port) + f"api/test/time/set/{target_time.isoformat()}"
     try:
         response = requests.post(api_url, timeout=5)
-        return response.status_code == 200
+        if response.status_code == 200:
+            try:
+                response_data = response.json()
+                if "mock_time" in response_data:
+                    logging.info("server mock time set to: %s", response_data["mock_time"])
+            except Exception:
+                logging.info("server mock time set successfully (no response data)")
+            return True
+        return False
     except requests.RequestException:
         return False
 
@@ -173,6 +185,12 @@ def advance_mock_time(host, port, seconds):
     try:
         response = requests.post(api_url, timeout=5)
         if response.status_code == 200:
+            try:
+                response_data = response.json()
+                if "mock_time" in response_data:
+                    logging.info("server mock time advanced to: %s", response_data["mock_time"])
+            except Exception:
+                logging.info("server mock time advanced successfully (no response data)")
             # モック時間の変更がアプリケーション全体に反映されるまで待機
             time.sleep(0.5)
             return True
@@ -257,40 +275,40 @@ def test_manual(page, host, port):
     check_log(page, "ログがクリアされました")
 
     # NOTE: 連続してテスト実行する場合に open がはじかれないようにまず閉める
-    click_and_check_log(page, "close-0", "手動で閉めました")
-    click_and_check_log(page, "close-1", "手動で閉めました")
+    click_and_check_log(page, host, port, "close-0", "手動で閉めました")
+    click_and_check_log(page, host, port, "close-1", "手動で閉めました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
-    click_and_check_log(page, "open-0", "手動で開けました")
+    click_and_check_log(page, host, port, "open-0", "手動で開けました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
-    click_and_check_log(page, "open-1", "手動で開けました")
+    click_and_check_log(page, host, port, "open-1", "手動で開けました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
-    click_and_check_log(page, "close-0", "手動で閉めました")
+    click_and_check_log(page, host, port, "close-0", "手動で閉めました")
 
-    click_and_check_log(page, "close-0", "閉めるのを見合わせました")
+    click_and_check_log(page, host, port, "close-0", "閉めるのを見合わせました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
-    click_and_check_log(page, "close-1", "手動で閉めました")
+    click_and_check_log(page, host, port, "close-1", "手動で閉めました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
-    click_and_check_log(page, "open-0", "手動で開けました")
+    click_and_check_log(page, host, port, "open-0", "手動で開けました")
 
-    click_and_check_log(page, "open-0", "開けるのを見合わせました")
+    click_and_check_log(page, host, port, "open-0", "開けるのを見合わせました")
 
-    click_and_check_log(page, "open-1", "手動で開けました")
+    click_and_check_log(page, host, port, "open-1", "手動で開けました")
 
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
     time.sleep(1)  # モック時間の変更が完全に反映されるまで追加待機
 
-    click_and_check_log(page, "open-1", "手動で開けました")
+    click_and_check_log(page, host, port, "open-1", "手動で開けました")
 
 
 def test_schedule(page, host, port):
