@@ -350,8 +350,8 @@ deploy-webapp:
         - kubectl -n hems set image deployment/rasp-shutter rasp-shutter=${IMAGE}
         - kubectl -n hems set image deployment/rasp-shutter-demo rasp-shutter-demo=${IMAGE}
 
-        - kubectl -n hems rollout status deployment/rasp-shutter --timeout=120s
-        - kubectl -n hems rollout status deployment/rasp-shutter-demo --timeout=120s
+        - kubectl -n hems rollout status deployment/rasp-shutter --timeout=300s
+        - kubectl -n hems rollout status deployment/rasp-shutter-demo --timeout=300s
 
         - 'echo "✓ All deployments updated successfully to $TAG"'
 
