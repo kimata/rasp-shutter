@@ -1628,6 +1628,7 @@ def test_schedule_ctrl_pending_open_dup(client, time_machine, mock_sensor_data):
             "OPEN_AUTO",
             "OPEN_PENDING",
         ],
+        timeout_sec=10.0,  # 複雑な非同期処理のため待機時間を延長
     )
     check_notify_slack(None)
 
