@@ -162,7 +162,7 @@ def set_mock_time(host, port, target_time):
     logging.info("set server time: %s", target_time)
 
     api_url = APP_URL_TMPL.format(host=host, port=port) + f"api/test/time/set/{target_time.isoformat()}"
-    logging.info("API URL: %s", api_url)
+
     try:
         response = requests.post(api_url, timeout=5)
         logging.info("API response status: %d", response.status_code)
@@ -190,10 +190,10 @@ def advance_mock_time(host, port, seconds):
     logging.info("advance server time: %d sec", seconds)
 
     api_url = APP_URL_TMPL.format(host=host, port=port) + f"api/test/time/advance/{seconds}"
-    logging.info("API URL: %s", api_url)
+
     try:
         response = requests.post(api_url, timeout=5)
-        logging.info("API response status: %d", response.status_code)
+
         if response.status_code == 200:
             try:
                 response_data = response.json()
@@ -289,6 +289,9 @@ def test_manual(page, host, port):
 
     page.get_by_test_id("clear").click()
     check_log(page, "ログがクリアされました")
+
+    # NOTE: モック時刻を初期設定（advance_mock_timeを使用するため）
+    set_mock_time(host, port, my_lib.time.now())
 
     # NOTE: 連続してテスト実行する場合に open がはじかれないようにまず閉める
     click_and_check_log(page, host, port, "close-0", "手動で閉めました")
