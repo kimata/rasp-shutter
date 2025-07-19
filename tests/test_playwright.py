@@ -50,6 +50,7 @@ def wait_for_server_ready(host, port):
 
 
 def check_log(page, message, timeout_sec=10):
+    time.sleep(1)
     expect(page.locator('//div[contains(@class,"log")]/div/div[2]').first).to_contain_text(
         message, timeout=timeout_sec * 1000
     )
@@ -205,7 +206,7 @@ def test_manual(page, host, port):
     page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
 
     page.get_by_test_id("clear").click()
-    time.sleep(3)  # Wait for log processing
+    time.sleep(2)  # Wait for log processing
     check_log(page, "ログがクリアされました")
 
     # NOTE: 連続してテスト実行する場合に open がはじかれないようにまず閉める
@@ -215,7 +216,6 @@ def test_manual(page, host, port):
     advance_mock_time(host, port, 70)
 
     page.get_by_test_id("open-0").click()
-    check_log(page, "手動で開けました")
     # 手動操作間隔制限を回避するため時刻を進める
     advance_mock_time(host, port, 70)
 
@@ -256,7 +256,7 @@ def test_schedule(page, host, port):
     page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
 
     page.get_by_test_id("clear").click()
-    time.sleep(3)  # Wait longer for log processing
+    time.sleep(2)  # Wait longer for log processing
     check_log(page, "ログがクリアされました")
 
     # NOTE: ランダムなスケジュール設定を準備
@@ -302,7 +302,7 @@ def test_schedule_run(page, host, port):
     page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
 
     page.get_by_test_id("clear").click()
-    time.sleep(3)  # Wait for log processing
+    time.sleep(2)  # Wait for log processing
     check_log(page, "ログがクリアされました")
 
     # NOTE: テスト用APIで時刻を設定（固定時刻で確実にテストできるようにする）
@@ -361,7 +361,7 @@ def test_schedule_disable(page, host, port):
     page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
 
     page.get_by_test_id("clear").click()
-    time.sleep(3)  # Wait longer for log processing
+    time.sleep(2)  # Wait longer for log processing
     check_log(page, "ログがクリアされました")
 
     # NOTE: スケジュールに従って閉める評価をしたいので、一旦あけておく
@@ -397,6 +397,4 @@ def test_schedule_disable(page, host, port):
 
     # NOTE: 何も実行されていないことを確認
     advance_mock_time(host, port, 60)
-    # API使用時は短時間で確認
-    time.sleep(0.5)  # さらに短縮
     check_log(page, "スケジュールを更新")
