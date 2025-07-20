@@ -285,9 +285,13 @@ class MetricsCollector:
 _collector_instance: MetricsCollector | None = None
 
 
-def get_collector(metrics_data_path) -> MetricsCollector:
+def get_collector(metrics_data_path) -> MetricsCollector | None:
     """メトリクス収集インスタンスを取得"""
     global _collector_instance  # noqa: PLW0603
+
+    # メトリクスデータパスがNoneの場合は無効化
+    if metrics_data_path is None:
+        return None
 
     if _collector_instance is None:
         db_path = Path(metrics_data_path)
@@ -311,9 +315,13 @@ def record_shutter_operation(
     timestamp: datetime.datetime | None = None,
 ):
     """シャッター操作を記録（便利関数）"""
-    get_collector(metrics_data_path).record_shutter_operation(action, mode, sensor_data, timestamp)
+    collector = get_collector(metrics_data_path)
+    if collector is not None:
+        collector.record_shutter_operation(action, mode, sensor_data, timestamp)
 
 
 def record_failure(metrics_data_path, timestamp: datetime.datetime | None = None):
     """シャッター制御失敗を記録（便利関数）"""
-    get_collector(metrics_data_path).record_failure(timestamp)
+    collector = get_collector(metrics_data_path)
+    if collector is not None:
+        collector.record_failure(timestamp)
