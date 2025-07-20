@@ -186,11 +186,16 @@ test-playwright:
 
         - uv run playwright install --with-deps chromium
 
-        # アプリケーションの起動を待つ（ネットワーク内から直接テスト）
+        # アプリケーションの起動を待つ（公開ポート経由）
         - >
-            timeout 90 bash -c "until docker run --rm --network ${CI_PROJECT_NAME}-${CI_JOB_NAME}-network
-            curlimages/curl:latest curl -f --connect-timeout 5 --max-time 10
-            http://${CI_PROJECT_NAME}-${CI_JOB_NAME}:5000/rasp-shutter/ > /dev/null 2>&1;
+            APP_PORT=$(docker port ${CI_PROJECT_NAME}-${CI_JOB_NAME} 5000 | cut -d: -f2)
+        - >
+            APP_HOST=$(docker network inspect bridge --format="{{range .IPAM.Config}}{{.Gateway}}{{end}}")
+        - >
+            echo "Testing at http://${APP_HOST}:${APP_PORT}/rasp-shutter/"
+        - >
+            timeout 90 bash -c "until curl -f --connect-timeout 5 --max-time 10
+            http://${APP_HOST}:${APP_PORT}/rasp-shutter/ > /dev/null 2>&1;
             do echo 'Waiting for app to start...'; sleep 3; done" || ACCESS_FAILED=1
 
         - |
@@ -269,26 +274,27 @@ test-healthz-docker:
         # 専用ネットワーク作成（プロジェクト固有）
         - docker network create ${CI_PROJECT_NAME}-${CI_JOB_NAME}-network
 
-        # ポートマッピングなしでコンテナ起動（ネットワーク内通信のみ）
+        # ポート公開でコンテナ起動
         - >
             docker run --rm --detach=true
             --name ${CI_PROJECT_NAME}-${CI_JOB_NAME} --label job=${CI_JOB_NAME}
             --network ${CI_PROJECT_NAME}-${CI_JOB_NAME}-network
+            --publish :5000
             ${CI_REGISTRY_IMAGE}:${TAG} ./flask/src/app.py -d
 
         - echo "Container started, checking status..."
         - docker ps | grep ${CI_PROJECT_NAME}-${CI_JOB_NAME}
 
-        # アプリケーションの起動を待つ（IPアドレス直接指定で安定性向上）
+        # アプリケーションの起動を待つ（公開ポート経由）
         - >
-            APP_IP=$(docker inspect ${CI_PROJECT_NAME}-${CI_JOB_NAME}
-            --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+            APP_PORT=$(docker port ${CI_PROJECT_NAME}-${CI_JOB_NAME} 5000 | cut -d: -f2)
         - >
-            echo "APP_IP: ${APP_IP}"
+            APP_HOST=$(docker network inspect bridge --format="{{range .IPAM.Config}}{{.Gateway}}{{end}}")
         - >
-            timeout 90 bash -c "until docker run --rm --network ${CI_PROJECT_NAME}-${CI_JOB_NAME}-network
-            curlimages/curl:latest curl -f --connect-timeout 5 --max-time 10
-            http://${APP_IP}:5000/rasp-shutter/ > /dev/null 2>&1;
+            echo "Testing at http://${APP_HOST}:${APP_PORT}/rasp-shutter/"
+        - >
+            timeout 90 bash -c "until curl -f --connect-timeout 5 --max-time 10
+            http://${APP_HOST}:${APP_PORT}/rasp-shutter/ > /dev/null 2>&1;
             do echo 'Waiting for app to start...'; sleep 3; done" || ACCESS_FAILED=1
 
         - |
