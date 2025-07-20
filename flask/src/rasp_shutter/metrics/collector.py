@@ -206,6 +206,44 @@ class MetricsCollector:
             )
             return [dict(row) for row in cursor.fetchall()]
 
+    def get_all_operation_metrics(self) -> list:
+        """
+        全期間の操作メトリクスを取得
+
+        Returns
+        -------
+        操作メトリクスデータのリスト
+
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT * FROM operation_metrics
+                ORDER BY timestamp
+            """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_all_failure_metrics(self) -> list:
+        """
+        全期間の失敗メトリクスを取得
+
+        Returns
+        -------
+        失敗メトリクスデータのリスト
+
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT * FROM daily_failures
+                ORDER BY timestamp
+            """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
     def get_recent_operation_metrics(self, days: int = 30) -> list:
         """
         最近N日間の操作メトリクスを取得

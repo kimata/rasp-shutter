@@ -53,15 +53,18 @@ def metrics_view():
         # メトリクス収集器を取得
         collector = rasp_shutter.metrics.collector.get_collector(metrics_data_path)
 
-        # 最近30日間のデータを取得
-        operation_metrics = collector.get_recent_operation_metrics(days=30)
-        failure_metrics = collector.get_recent_failure_metrics(days=30)
+        # 全期間のデータを取得
+        operation_metrics = collector.get_all_operation_metrics()
+        failure_metrics = collector.get_all_failure_metrics()
 
         # 統計データを生成
         stats = generate_statistics(operation_metrics, failure_metrics)
 
+        # データ期間を計算
+        data_period = calculate_data_period(operation_metrics)
+
         # HTMLを生成
-        html_content = generate_metrics_html(stats, operation_metrics)
+        html_content = generate_metrics_html(stats, operation_metrics, data_period)
 
         return flask.Response(html_content, mimetype="text/html")
 
@@ -138,6 +141,41 @@ def generate_shutter_metrics_icon():
 
     # 32x32に縮小してアンチエイリアス効果を得る
     return img.resize((size, size), Image.LANCZOS)
+
+
+def calculate_data_period(operation_metrics: list[dict]) -> dict:
+    """データ期間を計算"""
+    if not operation_metrics:
+        return {"total_days": 0, "start_date": None, "end_date": None, "display_text": "データなし"}
+
+    # 日付のみを抽出
+    dates = [op.get("date") for op in operation_metrics if op.get("date")]
+
+    if not dates:
+        return {"total_days": 0, "start_date": None, "end_date": None, "display_text": "データなし"}
+
+    # 最古と最新の日付を取得
+    start_date = min(dates)
+    end_date = max(dates)
+
+    # 日数を計算
+    start_dt = datetime.datetime.fromisoformat(start_date)
+    end_dt = datetime.datetime.fromisoformat(end_date)
+    total_days = (end_dt - start_dt).days + 1
+
+    # 表示テキストを生成
+    if total_days == 1:
+        display_text = f"過去1日間（{start_date.replace('-', '年', 1).replace('-', '月', 1)}日）"
+    else:
+        start_display = start_date.replace("-", "年", 1).replace("-", "月", 1) + "日"
+        display_text = f"過去{total_days}日間（{start_display}〜）"
+
+    return {
+        "total_days": total_days,
+        "start_date": start_date,
+        "end_date": end_date,
+        "display_text": display_text,
+    }
 
 
 def _extract_time_data(day_data: dict, key: str) -> float | None:
@@ -271,7 +309,7 @@ def generate_statistics(operation_metrics: list[dict], failure_metrics: list[dic
     }
 
 
-def generate_metrics_html(stats: dict, operation_metrics: list[dict]) -> str:
+def generate_metrics_html(stats: dict, operation_metrics: list[dict], data_period: dict) -> str:
     """Bulma CSSを使用したメトリクスHTMLを生成"""
     # JavaScript用データを準備
     chart_data = {
@@ -346,10 +384,10 @@ def generate_metrics_html(stats: dict, operation_metrics: list[dict]) -> str:
                     <span class="icon is-large"><i class="fas fa-chart-line"></i></span>
                     シャッター メトリクス ダッシュボード
                 </h1>
-                <p class="subtitle has-text-centered">過去30日間のシャッター操作統計</p>
+                <p class="subtitle has-text-centered">{data_period["display_text"]}のシャッター操作統計</p>
 
                 <!-- 基本統計 -->
-                {generate_basic_stats_section(stats)}
+                {generate_basic_stats_section(stats, data_period)}
 
                 <!-- 時刻分析 -->
                 {generate_time_analysis_section()}
@@ -479,13 +517,13 @@ def prepare_time_series_data(operation_metrics: list[dict]) -> dict:
     }
 
 
-def generate_basic_stats_section(stats: dict) -> str:
+def generate_basic_stats_section(stats: dict, data_period: dict) -> str:
     """基本統計セクションのHTML生成"""
     return f"""
     <div class="section">
         <h2 class="title is-4 permalink-header" id="basic-stats">
             <span class="icon"><i class="fas fa-chart-bar"></i></span>
-            基本統計（過去30日間）
+            基本統計（{data_period["display_text"]}）
             <span class="permalink-icon" onclick="copyPermalink('basic-stats')">
                 <i class="fas fa-link"></i>
             </span>
