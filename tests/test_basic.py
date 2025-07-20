@@ -86,10 +86,6 @@ def _clear(config):
 
     ctrl_stat_clear(config)
 
-    # テスト環境ではメトリクス機能を無効化してパフォーマンスを向上
-    if "metrics" in config:
-        config["metrics"]["data"] = None
-
     # Reset metrics collector singleton to prevent database connection leaks
     rasp_shutter.metrics.collector.reset_collector()
 

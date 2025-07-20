@@ -53,15 +53,6 @@ def metrics_view():
         # メトリクス収集器を取得
         collector = rasp_shutter.metrics.collector.get_collector(metrics_data_path)
 
-        # メトリクス機能が無効化されている場合
-        if collector is None:
-            return flask.Response(
-                "<html><body><h1>メトリクス機能が無効化されています</h1>"
-                "<p>メトリクス機能は現在無効化されています。</p></body></html>",
-                mimetype="text/html",
-                status=503,
-            )
-
         # 全期間のデータを取得
         operation_metrics = collector.get_all_operation_metrics()
         failure_metrics = collector.get_all_failure_metrics()
