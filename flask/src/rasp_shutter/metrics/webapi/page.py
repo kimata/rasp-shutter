@@ -499,37 +499,37 @@ def generate_basic_stats_section(stats: dict) -> str:
                     </div>
                     <div class="card-content">
                         <div class="columns is-multiline">
-                            <div class="column is-quarter">
+                            <div class="column is-2">
                                 <div class="has-text-centered">
                                     <p class="heading">👆 手動開操作 ☀️</p>
                                     <p class="stat-number has-text-success">{stats["manual_open_total"]:,}</p>
                                 </div>
                             </div>
-                            <div class="column is-quarter">
+                            <div class="column is-2">
                                 <div class="has-text-centered">
                                     <p class="heading">👆 手動閉操作 🌙</p>
                                     <p class="stat-number has-text-info">{stats["manual_close_total"]:,}</p>
                                 </div>
                             </div>
-                            <div class="column is-quarter">
+                            <div class="column is-2">
                                 <div class="has-text-centered">
                                     <p class="heading">🤖 自動開操作 ☀️</p>
                                     <p class="stat-number has-text-success">{stats["auto_open_total"]:,}</p>
                                 </div>
                             </div>
-                            <div class="column is-quarter">
+                            <div class="column is-2">
                                 <div class="has-text-centered">
                                     <p class="heading">🤖 自動閉操作 🌙</p>
                                     <p class="stat-number has-text-info">{stats["auto_close_total"]:,}</p>
                                 </div>
                             </div>
-                            <div class="column is-half">
+                            <div class="column is-2">
                                 <div class="has-text-centered">
                                     <p class="heading">制御失敗</p>
                                     <p class="stat-number has-text-danger">{stats["failure_total"]:,}</p>
                                 </div>
                             </div>
-                            <div class="column is-half">
+                            <div class="column is-2">
                                 <div class="has-text-centered">
                                     <p class="heading">データ収集日数</p>
                                     <p class="stat-number has-text-primary">{stats["total_days"]:,}</p>
