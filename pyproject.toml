@@ -16,7 +16,7 @@ dependencies = [
     "influxdb-client[ciso]>=1.49.0",
     "pillow>=10.0.0",
     "schedule>=1.2.2",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@8f30f6c8f842c2ac63676db4bbd44655b73862c6",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@75d8cb720149cd9df6c8758e986a55abfcc80138",
     "pysolar>=0.13",
     "time-machine>=2.16.0", # NOTE: テスト用のモードでは時刻操作の API を提供するので、こちらに必要
 ]
