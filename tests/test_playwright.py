@@ -33,12 +33,12 @@ def _server_init(page, host, port):
 
 
 def wait_for_server_ready(host, port):
-    TIMEOUT_SEC = 180
+    TIMEOUT_SEC = 30
 
     start_time = time.time()
     while time.time() - start_time < TIMEOUT_SEC:
         try:
-            res = requests.get(f"http://{host}:{port}")  # noqa: S113
+            res = requests.get(app_url(host, port))  # noqa: S113
             if res.ok:
                 logging.info("サーバが %.1f 秒後に起動しました。", time.time() - start_time)
                 return
@@ -53,7 +53,7 @@ def clear_log(page, host, port):
     page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
 
     page.get_by_test_id("clear").click()
-    time.sleep(3)
+    time.sleep(5)
     check_log(page, "ログがクリアされました")
 
 
