@@ -226,6 +226,9 @@ test-playwright-docker-demo:
 test-healthz-docker:
     stage: test
 
+    # 同一ジョブの並行実行を防止してリソース競合を回避
+    resource_group: healthz-docker-exclusive
+
     needs:
         - generate-tag
         - build-image
@@ -234,42 +237,51 @@ test-healthz-docker:
         - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
 
     script:
+        # クリーンアップ: 古いコンテナを停止
         - >
-            docker ps --filter "label=job=${CI_JOB_NAME}" | grep hours |
-            cut -d " " -f1 | while read id; do docker stop -t 5 $id; done || true
+            docker ps --filter "label=job=${CI_JOB_NAME}" --format "{{.ID}}" |
+            xargs -r docker stop -t 10 || true
 
+        # クリーンアップ: 古いネットワークを削除
+        - docker network rm ${CI_PROJECT_NAME}-test-network 2>/dev/null || true
+
+        # 専用ネットワーク作成（プロジェクト固有）
+        - docker network create ${CI_PROJECT_NAME}-test-network
+
+        # ポートマッピングなしでコンテナ起動（ネットワーク内通信のみ）
         - >
-            docker run --rm --detach=true --tty=true
-            --name ${CI_JOB_NAME}-${CI_JOB_ID} --label job=${CI_JOB_NAME}
-            --publish :5000
+            docker run --rm --detach=true
+            --name ${CI_PROJECT_NAME}-${CI_JOB_NAME} --label job=${CI_JOB_NAME}
+            --network ${CI_PROJECT_NAME}-test-network
             ${CI_REGISTRY_IMAGE}:${TAG} ./flask/src/app.py -d
 
-        - sleep 5
+        - echo "Container started, checking status..."
+        - docker ps | grep ${CI_PROJECT_NAME}-${CI_JOB_NAME}
 
-        - docker ps | grep ${CI_JOB_NAME}-${CI_JOB_ID}
+        # アプリケーションの起動を待つ（ネットワーク内から直接テスト）
+        - >
+            timeout 60 bash -c "until docker run --rm --network ${CI_PROJECT_NAME}-test-network
+            curlimages/curl:latest curl -f --connect-timeout 5 --max-time 10
+            http://${CI_PROJECT_NAME}-${CI_JOB_NAME}:5000/rasp-shutter/ > /dev/null 2>&1;
+            do echo 'Waiting for app to start...'; sleep 3; done" || ACCESS_FAILED=1
 
-        - >
-            APP_PORT=$(docker port "${CI_JOB_NAME}-${CI_JOB_ID}" 5000 | cut -d: -f2)
-        - >
-            APP_HOST=$(docker network inspect bridge --format="{{range .IPAM.Config}}{{.Gateway}}{{end}}")
-        - >
-            APP_URL="http://${APP_HOST}:${APP_PORT}/rasp-shutter/"
-        - >
-            echo "APP_URL: ${APP_URL}"
-        - >
-            timeout 60 bash -c "until curl --fail --connect-timeout 10 --max-time 15 \"${APP_URL}\" > /dev/null 2>&1;
-            do echo 'Retrying in 5 seconds...'; sleep 5; done" || ACCESS_FAILED=1
         - |
             if [ "$ACCESS_FAILED" = "1" ]; then
                 echo "Failed to access App"
-                docker logs ${CI_JOB_NAME}-${CI_JOB_ID} > flask_log.txt
-                docker stop ${CI_JOB_NAME}-${CI_JOB_ID}
+                docker logs ${CI_PROJECT_NAME}-${CI_JOB_NAME} > flask_log.txt
+                docker stop ${CI_PROJECT_NAME}-${CI_JOB_NAME} || true
+                docker network rm ${CI_PROJECT_NAME}-test-network || true
                 exit 1
             fi
-        - sleep 2
-        - docker logs ${CI_JOB_NAME}-${CI_JOB_ID} > flask_log.txt
-        - docker exec ${CI_JOB_NAME}-${CI_JOB_ID} ./flask/src/healthz.py
-        - docker stop ${CI_JOB_NAME}-${CI_JOB_ID}
+
+        # ヘルスチェック実行
+        - echo "App is ready, running health check..."
+        - docker logs ${CI_PROJECT_NAME}-${CI_JOB_NAME} > flask_log.txt
+        - docker exec ${CI_PROJECT_NAME}-${CI_JOB_NAME} ./flask/src/healthz.py
+
+        # クリーンアップ
+        - docker stop ${CI_PROJECT_NAME}-${CI_JOB_NAME} || true
+        - docker network rm ${CI_PROJECT_NAME}-test-network || true
     artifacts:
         when: always
         paths:
