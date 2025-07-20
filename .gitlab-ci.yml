@@ -173,11 +173,12 @@ test-playwright:
         # 専用ネットワーク作成（プロジェクト固有）
         - docker network create ${CI_PROJECT_NAME}-${CI_JOB_NAME}-network
 
-        # ポートマッピングなしでコンテナ起動（ネットワーク内通信のみ）
+        # テスト用に一時的なポート公開でコンテナ起動
         - >
             docker run --rm --detach=true
             --name ${CI_PROJECT_NAME}-${CI_JOB_NAME} --label job=${CI_JOB_NAME}
             --network ${CI_PROJECT_NAME}-${CI_JOB_NAME}-network
+            --publish :5000
             ${CI_REGISTRY_IMAGE}:${TAG} ./flask/src/app.py ${CONFIG_ARGS}
 
         - echo "Container started, checking status..."
@@ -201,15 +202,17 @@ test-playwright:
                 exit 1
             fi
 
-        # Playwrightテストを実行（フォワードプロキシ経由）
+        # Playwrightテストを実行（ホストからポート経由で接続）
         - >
-            docker run --rm --network ${CI_PROJECT_NAME}-${CI_JOB_NAME}-network
-            --volumes-from gitlab-runner-helper
-            --workdir /builds/${CI_PROJECT_PATH}
-            gitlab.green-rabbit.net:5050/kimata/local-ubuntu:250706_043ea01d
+            APP_PORT=$(docker port ${CI_PROJECT_NAME}-${CI_JOB_NAME} 5000 | cut -d: -f2)
+        - >
+            APP_HOST=$(docker network inspect bridge --format="{{range .IPAM.Config}}{{.Gateway}}{{end}}")
+        - >
+            echo "Testing at http://${APP_HOST}:${APP_PORT}/rasp-shutter/"
+        - >
             uv run pytest --tracing on --output tests/evidence/playwright
             --junit-xml=tests/evidence/playwright-docker-junit.xml
-            tests/test_playwright.py --host ${CI_PROJECT_NAME}-${CI_JOB_NAME} --port 5000
+            tests/test_playwright.py --host ${APP_HOST} --port ${APP_PORT}
 
         # ログ取得とクリーンアップ
         - docker logs ${CI_PROJECT_NAME}-${CI_JOB_NAME} > flask_log.txt
