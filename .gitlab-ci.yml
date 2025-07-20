@@ -188,7 +188,7 @@ test-playwright:
 
         # アプリケーションの起動を待つ（ネットワーク内から直接テスト）
         - >
-            timeout 60 bash -c "until docker run --rm --network ${CI_PROJECT_NAME}-${CI_JOB_NAME}-network
+            timeout 90 bash -c "until docker run --rm --network ${CI_PROJECT_NAME}-${CI_JOB_NAME}-network
             curlimages/curl:latest curl -f --connect-timeout 5 --max-time 10
             http://${CI_PROJECT_NAME}-${CI_JOB_NAME}:5000/rasp-shutter/ > /dev/null 2>&1;
             do echo 'Waiting for app to start...'; sleep 3; done" || ACCESS_FAILED=1
@@ -284,9 +284,9 @@ test-healthz-docker:
             APP_IP=$(docker inspect ${CI_PROJECT_NAME}-${CI_JOB_NAME}
             --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
         - >
-            echo "Container IP: ${APP_IP}"
+            echo "APP_IP: ${APP_IP}"
         - >
-            timeout 60 bash -c "until docker run --rm --network ${CI_PROJECT_NAME}-${CI_JOB_NAME}-network
+            timeout 90 bash -c "until docker run --rm --network ${CI_PROJECT_NAME}-${CI_JOB_NAME}-network
             curlimages/curl:latest curl -f --connect-timeout 5 --max-time 10
             http://${APP_IP}:5000/rasp-shutter/ > /dev/null 2>&1;
             do echo 'Waiting for app to start...'; sleep 3; done" || ACCESS_FAILED=1
