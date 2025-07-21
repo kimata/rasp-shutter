@@ -85,6 +85,29 @@ test-prepare:
     script:
         - uv sync --locked --no-editable
 
+        - |
+            now=$(date +%s)
+            threshold=$((60*60*24))  # 24時間
+
+            for net in $(docker network ls --format '{{.Name}}'); do
+                if [[ "$net" == "bridge" || "$net" == "host" || "$net" == "none" ]]; then
+                    continue
+                fi
+
+                attached=$(docker network inspect "$net" --format '{{json .Containers}}')
+                if [[ "$attached" != "{}" ]]; then
+                    continue
+                fi
+
+                created=$(docker network inspect "$net" --format '{{.Created}}')
+                created_ts=$(date -d "$created" +%s 2>/dev/null)
+
+                if [[ -n "$created_ts" && $((now - created_ts)) -gt $threshold ]]; then
+                    echo "Removing unused network: $net (created at $created)"
+                    docker network rm "$net" || true
+                fi
+            done
+
     artifacts:
         paths:
             - ${UV_CACHE_DIR}
