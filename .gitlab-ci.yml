@@ -172,7 +172,7 @@ test-playwright:
 
                 if [ "$diff" -ge 600 ]; then
                     echo "Stopping container $id (running for $diff seconds)"
-                    docker stop -t 10 "$id"
+                    docker stop -t 10 "$id" || true
                 fi
             done
 
@@ -274,7 +274,7 @@ test-healthz-docker:
 
                 if [ "$diff" -ge 600 ]; then
                     echo "Stopping container $id (running for $diff seconds)"
-                    docker stop -t 10 "$id"
+                    docker stop -t 10 "$id" || true
                 fi
             done
 
