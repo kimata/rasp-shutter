@@ -86,7 +86,6 @@ test-prepare:
         - uv sync --locked --no-editable
 
         - |
-            set -x
             now=$(date +%s)
             threshold=$((60*60*24))  # 24時間
 
@@ -188,7 +187,6 @@ test-playwright:
     script:
         # クリーンアップ: 古いコンテナを停止
         - |
-            set -x
             for id in $(docker ps --filter "label=job=${CI_PROJECT_NAME}-${CI_JOB_NAME}" --format "{{.ID}}"); do
                 started_at=$(docker inspect --format '{{.State.StartedAt}}' "$id")
                 started_epoch=$(date --date="$started_at" +%s)
@@ -290,7 +288,6 @@ test-healthz-docker:
     script:
         # クリーンアップ: 古いコンテナを停止
         - |
-            set -x
             for id in $(docker ps --filter "label=job=${CI_PROJECT_NAME}-${CI_JOB_NAME}" --format "{{.ID}}"); do
                 started_at=$(docker inspect --format '{{.State.StartedAt}}' "$id")
                 started_epoch=$(date --date="$started_at" +%s)
