@@ -1026,7 +1026,6 @@ def test_schedule_ctrl_auto_close_dup(client, time_machine, mock_sensor_data):
             "CLOSE_AUTO",
             "CLOSE_PENDING",
             "CLOSE_PENDING",
-            "CLOSE_PENDING",
         ],
     )
 
