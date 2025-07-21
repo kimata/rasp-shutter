@@ -100,13 +100,14 @@ test-prepare:
                 fi
 
                 created=$(docker network inspect "$net" --format '{{.Created}}')
-                created_ts=$(date -d "$created" +%s 2>/dev/null)
+                created_fixed=$(echo "$created" | sed -E 's/\.[0-9]+//; s/ [A-Z]+$//')
+                created_ts=$(date --date="$created_fixed" +%s)
 
                 if [[ -n "$created_ts" && $((now - created_ts)) -gt $threshold ]]; then
                     echo "Removing unused network: $net (created at $created)"
                     docker network rm "$net" || true
                 fi
-            done || true
+            done
 
     artifacts:
         paths:
