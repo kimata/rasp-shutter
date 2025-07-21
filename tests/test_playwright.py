@@ -70,8 +70,9 @@ def check_log(page, message, timeout_sec=10, initial_log_count=None):
     """
     log_locator = page.locator('//div[contains(@class,"log")]/div/div[2]')
 
-    # 新しいログが追加されるまで待機（初期ログ数が指定されている場合）
-    if initial_log_count is not None:
+    if initial_log_count is None:
+        time.sleep(5)
+    else:
         # 新しいログが追加されるまで最大5秒間待機
         start_time = time.time()
         while time.time() - start_time < 5:
