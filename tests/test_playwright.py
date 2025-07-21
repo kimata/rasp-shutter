@@ -422,9 +422,7 @@ def test_schedule_run(page, host, port):
             wday_checkbox.nth(j).check()
 
     logging.info("Save shcedule")
-    page.get_by_test_id("save").click()
-    time.sleep(5)
-    check_log(page, "スケジュールを更新")
+    click_and_check_log(page, host, port, "save", "スケジュールを更新")
 
     time.sleep(15)
 
