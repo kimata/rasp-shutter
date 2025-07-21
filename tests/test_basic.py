@@ -113,7 +113,15 @@ def app(config):
             yield app
 
         # NOTE: 特定のテストのみ実行したときのため、ここでも呼ぶ
-        test_terminate()
+        terminate_app()
+
+
+def terminate_app():
+    import my_lib.webapp.log
+    import rasp_shutter.control.webapi.schedule
+
+    my_lib.webapp.log.term()
+    rasp_shutter.control.webapi.schedule.term()
 
 
 @pytest.fixture
@@ -1979,14 +1987,3 @@ def test_second_str():
     assert rasp_shutter.control.webapi.control.time_str(3600) == "1時間"
     assert rasp_shutter.control.webapi.control.time_str(3660) == "1時間1分"
     assert rasp_shutter.control.webapi.control.time_str(50) == "50秒"
-
-
-def test_terminate():
-    import my_lib.webapp.log
-    import rasp_shutter.control.webapi.schedule
-
-    my_lib.webapp.log.term()
-    rasp_shutter.control.webapi.schedule.term()
-    # NOTE: 二重に呼んでもエラーにならないことを確認
-    my_lib.webapp.log.term()
-    rasp_shutter.control.webapi.schedule.term()
