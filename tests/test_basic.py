@@ -1005,6 +1005,8 @@ def test_schedule_ctrl_auto_close_dup(client, time_machine, mock_sensor_data):
 
     move_to(time_machine, time_evening(5))
 
+    time.sleep(10)
+
     ctrl_log_check(
         client,
         [
@@ -1024,6 +1026,7 @@ def test_schedule_ctrl_auto_close_dup(client, time_machine, mock_sensor_data):
             "SCHEDULE",
             "CLOSE_DARK",
             "CLOSE_AUTO",
+            "CLOSE_PENDING",
             "CLOSE_PENDING",
             "CLOSE_PENDING",
         ],
