@@ -112,7 +112,6 @@ def app(config):
         with app.app_context():
             yield app
 
-        # NOTE: 特定のテストのみ実行したときのため、ここでも呼ぶ
         terminate_app()
 
 
