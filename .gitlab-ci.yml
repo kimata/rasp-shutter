@@ -215,13 +215,6 @@ test-playwright:
                 exit 1
             fi
 
-        # Playwrightテストを実行（ホストからポート経由で接続）
-        - >
-            APP_PORT=$(docker port ${CI_PROJECT_NAME}-${CI_JOB_NAME} 5000 | cut -d: -f2)
-        - >
-            APP_HOST=$(docker network inspect bridge --format="{{range .IPAM.Config}}{{.Gateway}}{{end}}")
-        - >
-            echo "Testing at http://${APP_HOST}:${APP_PORT}/rasp-shutter/"
         - >
             uv run pytest --tracing on --output tests/evidence/playwright
             --junit-xml=tests/evidence/playwright-docker-junit.xml
