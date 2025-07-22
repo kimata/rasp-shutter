@@ -56,7 +56,6 @@ build-image:
 
     variables:
         BUILDER: builder
-        BUILD_KIT_IMAGE: gitlab.green-rabbit.net:5050/kimata/local-buildkit:250705_7cc0d1c
 
     script:
         - 'echo "Building: ${CI_REGISTRY_IMAGE}:${TAG}"'
@@ -67,7 +66,6 @@ build-image:
         - |
             docker buildx create \
                 --name ${BUILDER} \
-                --driver-opt image=${BUILD_KIT_IMAGE} \
                 --use \
                 --config /etc/buildkitd.toml
 
@@ -214,15 +212,15 @@ test-playwright:
             ${CI_REGISTRY_IMAGE}:${TAG} ./flask/src/app.py ${CONFIG_ARGS}
 
         - echo "Container started, checking status..."
-        - docker ps | grep ${CI_JOB_NAME}-${CI_JOB_ID}
+        - docker ps -a --filter name=${CI_JOB_NAME}-${CI_JOB_ID}
 
         - uv run playwright install --with-deps chromium
 
         # アプリケーションの起動を待つ（公開ポート経由）
         - >
-            APP_PORT=$(docker port ${CI_JOB_NAME}-${CI_JOB_ID} 5000 | cut -d: -f2)
-        - >
             APP_HOST=$(docker network inspect bridge --format="{{range .IPAM.Config}}{{.Gateway}}{{end}}")
+        - >
+            APP_PORT=$(docker port ${CI_JOB_NAME}-${CI_JOB_ID} 5000 | cut -d: -f2)
         - >
             echo "Testing at http://${APP_HOST}:${APP_PORT}/rasp-shutter/"
         - >
@@ -312,13 +310,13 @@ test-healthz-docker:
             ${CI_REGISTRY_IMAGE}:${TAG} ./flask/src/app.py -d
 
         - echo "Container started, checking status..."
-        - docker ps | grep ${CI_JOB_NAME}-${CI_JOB_ID}
+        - docker ps -a --filter name=${CI_JOB_NAME}-${CI_JOB_ID}
 
         # アプリケーションの起動を待つ（公開ポート経由）
         - >
-            APP_PORT=$(docker port ${CI_JOB_NAME}-${CI_JOB_ID} 5000 | cut -d: -f2)
-        - >
             APP_HOST=$(docker network inspect bridge --format="{{range .IPAM.Config}}{{.Gateway}}{{end}}")
+        - >
+            APP_PORT=$(docker port ${CI_JOB_NAME}-${CI_JOB_ID} 5000 | cut -d: -f2)
         - >
             echo "Testing at http://${APP_HOST}:${APP_PORT}/rasp-shutter/"
         - >
