@@ -4,6 +4,10 @@ variables:
     UV_LINK_MODE: copy
     UV_CACHE_DIR: .uv-cache
 
+default:
+    before_script:
+        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+
 stages:
     - generate-tag
     - build
@@ -50,9 +54,6 @@ build-image:
     variables:
         BUILDER: builder
         BUILD_KIT_IMAGE: gitlab.green-rabbit.net:5050/kimata/local-buildkit:250705_7cc0d1c
-
-    before_script:
-        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
 
     script:
         - 'echo "Building: ${CI_REGISTRY_IMAGE}:${TAG}"'
@@ -182,9 +183,6 @@ test-playwright:
     variables:
         CONFIG_ARGS: "-d"
 
-    before_script:
-        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-
     script:
         # クリーンアップ: 古いコンテナを停止
         - |
@@ -283,9 +281,6 @@ test-healthz-docker:
         - generate-tag
         - build-image
 
-    before_script:
-        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-
     script:
         # クリーンアップ: 古いコンテナを停止
         - |
@@ -382,9 +377,6 @@ tag-latest:
           artifacts: false
         - job: test-healthz-docker
           artifacts: false
-
-    before_script:
-        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
 
     script:
         - 'echo "Tagging multi-arch image ${CI_REGISTRY_IMAGE}:${TAG} as latest"'
