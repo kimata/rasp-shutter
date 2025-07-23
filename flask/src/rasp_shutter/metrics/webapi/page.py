@@ -387,7 +387,7 @@ def generate_metrics_html(stats: dict, operation_metrics: list[dict], data_perio
                 <p class="subtitle has-text-centered">{data_period["display_text"]}のシャッター操作統計</p>
 
                 <!-- 基本統計 -->
-                {generate_basic_stats_section(stats, data_period)}
+                {generate_basic_stats_section(stats)}
 
                 <!-- 時刻分析 -->
                 {generate_time_analysis_section()}
@@ -517,7 +517,7 @@ def prepare_time_series_data(operation_metrics: list[dict]) -> dict:
     }
 
 
-def generate_basic_stats_section(stats: dict, _data_period: dict) -> str:
+def generate_basic_stats_section(stats: dict) -> str:
     """基本統計セクションのHTML生成"""
     return f"""
     <div class="section">
