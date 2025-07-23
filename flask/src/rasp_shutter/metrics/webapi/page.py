@@ -517,13 +517,13 @@ def prepare_time_series_data(operation_metrics: list[dict]) -> dict:
     }
 
 
-def generate_basic_stats_section(stats: dict, data_period: dict) -> str:
+def generate_basic_stats_section(stats: dict, _data_period: dict) -> str:
     """基本統計セクションのHTML生成"""
     return f"""
     <div class="section">
         <h2 class="title is-4 permalink-header" id="basic-stats">
             <span class="icon"><i class="fas fa-chart-bar"></i></span>
-            基本統計（{data_period["display_text"]}）
+            基本統計
             <span class="permalink-icon" onclick="copyPermalink('basic-stats')">
                 <i class="fas fa-link"></i>
             </span>
