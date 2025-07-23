@@ -225,8 +225,6 @@ def gen_schedule_data():
 
 def _check_log_content(log_list, expect_list):  # noqa: C901, PLR0912
     """ログ内容をチェックする内部関数"""
-    assert len(log_list) == len(expect_list)
-
     for i, expect in enumerate(reversed(expect_list)):
         if expect == "OPEN_MANUAL":
             assert "手動で開けました" in log_list[i]["message"]
@@ -273,38 +271,28 @@ def app_log_check(
     timeout_sec=5.0,
     retry_interval=0.2,
 ):
-    """
-    アプリケーションログをチェックする。
-
-    ログの非同期処理による競合状態を回避するため、
-    タイムアウト付きのリトライロジックを実装。
-    """
-    import time
-
     import my_lib.pretty
 
+    # 期待するログ数が揃うまで最大30秒待機
     start_time = time.time()
-    last_exception = None
+    log_list = []
 
     while time.time() - start_time < timeout_sec:
-        try:
-            response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_view")
+        response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_view")
+        if response.status_code in {200, 301}:  # NOTE: テストによっては 301 に mock している
             log_list = response.json["data"]
 
-            logging.debug(my_lib.pretty.format(log_list))
-            _check_log_content(log_list, expect_list)
-            return
+            if len(log_list) >= len(expect_list):
+                break
 
-        except (AssertionError, IndexError, KeyError) as e:  # noqa: PERF203
-            last_exception = e
-            time.sleep(retry_interval)
+        time.sleep(retry_interval)
 
-    # タイムアウトした場合、最後の例外を再発生
-    if last_exception:
-        raise last_exception
+    assert len(log_list) == len(expect_list), (
+        f"ログ数が期待値より少ないです。期待: {len(expect_list)} 実際: {len(log_list)} "
+        f"(待機時間: {time.time() - start_time:.1f}秒)\n" + my_lib.pretty.format(log_list)
+    )
 
-    msg = f"app_log_check failed after {timeout_sec} seconds"
-    raise AssertionError(msg)
+    _check_log_content(log_list, expect_list)
 
 
 def ctrl_log_clear(client):
