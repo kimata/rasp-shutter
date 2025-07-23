@@ -55,7 +55,7 @@ build-image:
         - build-vue
 
     variables:
-        BUILDER: builder
+        BUILDER: builder-${CI_PROJECT_NAME}
 
     script:
         - 'echo "Building: ${CI_REGISTRY_IMAGE}:${TAG}"'
