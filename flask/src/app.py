@@ -23,6 +23,11 @@ import my_lib.webapp.base
 import my_lib.webapp.event
 import my_lib.webapp.log
 import my_lib.webapp.util
+import rasp_shutter.control.scheduler
+import rasp_shutter.control.webapi.control
+import rasp_shutter.control.webapi.schedule
+import rasp_shutter.control.webapi.sensor
+import rasp_shutter.metrics.webapi.page
 
 import flask
 
@@ -30,8 +35,6 @@ SCHEMA_CONFIG = "config.schema"
 
 
 def term():
-    import rasp_shutter.control.scheduler
-
     rasp_shutter.control.scheduler.term()
 
     # 子プロセスを終了
@@ -52,6 +55,7 @@ def sig_handler(num, frame):  # noqa: ARG001
 
 
 def create_app(config, dummy_mode=False):
+    global rasp_shutter
     # NOTE: オプションでダミーモードが指定された場合、環境変数もそれに揃えておく
     if dummy_mode:
         os.environ["DUMMY_MODE"] = "true"
@@ -63,14 +67,6 @@ def create_app(config, dummy_mode=False):
 
     my_lib.webapp.config.URL_PREFIX = "/rasp-shutter"
     my_lib.webapp.config.init(config)
-
-    import rasp_shutter.control.webapi.control
-    import rasp_shutter.control.webapi.schedule
-    import rasp_shutter.control.webapi.sensor
-    import rasp_shutter.metrics.webapi.page
-
-    if os.environ.get("TEST") == "true":
-        import rasp_shutter.control.webapi.test.time
 
     app = flask.Flask("rasp-shutter")
 
@@ -116,16 +112,18 @@ def create_app(config, dummy_mode=False):
         rasp_shutter.metrics.webapi.page.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
     )
 
-    if dummy_mode:
-        app.register_blueprint(
-            rasp_shutter.control.webapi.test.time.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
-        )
-
     app.register_blueprint(my_lib.webapp.base.blueprint_default)
     app.register_blueprint(my_lib.webapp.base.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
     app.register_blueprint(my_lib.webapp.event.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
     app.register_blueprint(my_lib.webapp.log.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
     app.register_blueprint(my_lib.webapp.util.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
+
+    if os.environ.get("TEST") == "true":
+        import rasp_shutter.control.webapi.test.time
+
+        app.register_blueprint(
+            rasp_shutter.control.webapi.test.time.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
+        )
 
     my_lib.webapp.config.show_handler_list(app)
 
