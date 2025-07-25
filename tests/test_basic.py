@@ -8,6 +8,7 @@ import os
 import pathlib
 import re
 import time
+import unittest
 
 import my_lib.webapp.config
 import pytest
@@ -18,8 +19,9 @@ SCHEMA_CONFIG = "config.schema"
 
 
 @pytest.fixture(scope="session", autouse=True)
-def env_mock(mocker):
-    with mocker.patch.dict(
+def env_mock():
+    # NOTE: session スコープなので、mocker ではなく、unittest.mock を使う
+    with unittest.mock.patch.dict(
         "os.environ",
         {
             "TEST": "true",
@@ -30,17 +32,17 @@ def env_mock(mocker):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def slack_mock(mocker):
+def slack_mock():
     with (
-        mocker.patch(
+        unittest.mock.patch(
             "my_lib.notify.slack.slack_sdk.web.client.WebClient.chat_postMessage",
             return_value={"ok": True, "ts": "1234567890.123456"},
         ),
-        mocker.patch(
+        unittest.mock.patch(
             "my_lib.notify.slack.slack_sdk.web.client.WebClient.files_upload_v2",
             return_value={"ok": True, "files": [{"id": "test_file_id"}]},
         ),
-        mocker.patch(
+        unittest.mock.patch(
             "my_lib.notify.slack.slack_sdk.web.client.WebClient.files_getUploadURLExternal",
             return_value={"ok": True, "upload_url": "https://example.com"},
         ) as fixture,
@@ -98,12 +100,12 @@ def _clear(config):
 
 
 @pytest.fixture(scope="session")
-def app(mocker, config):
+def app(config):
     import my_lib.webapp.config
 
     my_lib.webapp.config.init(config)
 
-    with mocker.patch.dict("os.environ", {"WERKZEUG_RUN_MAIN": "true"}):
+    with unittest.mock.patch.dict("os.environ", {"WERKZEUG_RUN_MAIN": "true"}):
         my_lib.webapp.config.SCHEDULE_FILE_PATH.unlink(missing_ok=True)
 
         app = create_app(config, dummy_mode=True)
