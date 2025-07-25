@@ -14,26 +14,25 @@ dependencies = [
     "flask>=3.1.0",
     "fluent-logger>=0.11.1",
     "influxdb-client[ciso]>=1.49.0",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@90a909607dde9d39f635d57fc0e2898b0e6471de",
     "pillow>=10.0.0",
-    "schedule>=1.2.2",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@30bb0cb7bdc8d4b063be302321b37783ebbb2c13",
     "pysolar>=0.13",
-    "time-machine>=2.16.0", # NOTE: テスト用のモードでは時刻操作の API を提供するので、こちらに必要
+    "schedule>=1.2.2",
 ]
 
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.0.1",
-    "flaky>=3.8.1",
     "playwright>=1.48.0",
+    "pre-commit>=4.0.1",
     "pytest-cov>=5.0.0",
     "pytest-html>=4.1.1",
     "pytest-mock>=3.14.0",
     "pytest-playwright>=0.5.2",
+    "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.6.1",
     "pytest>=8.3.4",
-    "pytest-timeout>=2.4.0",
+    "time-machine>=2.16.0",
 ]
 
 [tool.uv]

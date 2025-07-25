@@ -20,6 +20,17 @@ SCHEDULE_AFTER_MIN = 1
 logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def env_mock(mocker):
+    with mocker.patch.dict(
+        "os.environ",
+        {
+            "TEST": "true",
+        },
+    ) as fixture:
+        yield fixture
+
+
 @pytest.fixture(autouse=True)
 def _server_init(page, host, port):
     wait_for_server_ready(host, port)

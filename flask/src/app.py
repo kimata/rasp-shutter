@@ -69,7 +69,7 @@ def create_app(config, dummy_mode=False):
     import rasp_shutter.control.webapi.sensor
     import rasp_shutter.metrics.webapi.page
 
-    if dummy_mode:
+    if os.environ.get("TEST") == "true":
         import rasp_shutter.control.webapi.test.time
 
     app = flask.Flask("rasp-shutter")

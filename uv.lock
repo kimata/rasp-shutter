@@ -433,15 +433,6 @@ wheels = [
 ]
 
 [[package]]
-name = "flaky"
-version = "3.8.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5b/c5/ef69119a01427204ff2db5fc8f98001087bcce719bbb94749dcd7b191365/flaky-3.8.1.tar.gz", hash = "sha256:47204a81ec905f3d5acfbd61daeabcada8f9d4031616d9bcb0618461729699f5", size = 25248, upload-time = "2024-03-12T22:17:59.265Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/7f/b8/b830fc43663246c3f3dd1ae7dca4847b96ed992537e85311e27fa41ac40e/flaky-3.8.1-py2.py3-none-any.whl", hash = "sha256:194ccf4f0d3a22b2de7130f4b62e45e977ac1b5ccad74d4d48f3005dcc38815e", size = 19139, upload-time = "2024-03-12T22:17:51.59Z" },
-]
-
-[[package]]
 name = "flask"
 version = "3.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1103,7 +1094,7 @@ wheels = [
 [[package]]
 name = "my-lib"
 version = "0.1.0"
-source = { git = "https://github.com/kimata/my-py-lib?rev=30bb0cb7bdc8d4b063be302321b37783ebbb2c13#30bb0cb7bdc8d4b063be302321b37783ebbb2c13" }
+source = { git = "https://github.com/kimata/my-py-lib?rev=90a909607dde9d39f635d57fc0e2898b0e6471de#90a909607dde9d39f635d57fc0e2898b0e6471de" }
 dependencies = [
     { name = "coloredlogs" },
     { name = "docopt-ng" },
@@ -1871,12 +1862,10 @@ dependencies = [
     { name = "pillow" },
     { name = "pysolar" },
     { name = "schedule" },
-    { name = "time-machine" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "flaky" },
     { name = "playwright" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -1886,6 +1875,7 @@ dev = [
     { name = "pytest-playwright" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
+    { name = "time-machine" },
 ]
 
 [package.metadata]
@@ -1895,16 +1885,14 @@ requires-dist = [
     { name = "flask-cors", specifier = ">=5.0.0" },
     { name = "fluent-logger", specifier = ">=0.11.1" },
     { name = "influxdb-client", extras = ["ciso"], specifier = ">=1.49.0" },
-    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=30bb0cb7bdc8d4b063be302321b37783ebbb2c13" },
+    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=90a909607dde9d39f635d57fc0e2898b0e6471de" },
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "pysolar", specifier = ">=0.13" },
     { name = "schedule", specifier = ">=1.2.2" },
-    { name = "time-machine", specifier = ">=2.16.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "flaky", specifier = ">=3.8.1" },
     { name = "playwright", specifier = ">=1.48.0" },
     { name = "pre-commit", specifier = ">=4.0.1" },
     { name = "pytest", specifier = ">=8.3.4" },
@@ -1914,6 +1902,7 @@ dev = [
     { name = "pytest-playwright", specifier = ">=0.5.2" },
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "pytest-xdist", specifier = ">=3.6.1" },
+    { name = "time-machine", specifier = ">=2.16.0" },
 ]
 
 [[package]]
