@@ -5,6 +5,7 @@ import datetime
 import logging
 import random
 import time
+import unittest
 
 import my_lib.time
 import my_lib.webapp.config
@@ -21,8 +22,8 @@ logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 
 
 @pytest.fixture(scope="session", autouse=True)
-def env_mock(mocker):
-    with mocker.patch.dict(
+def env_mock():
+    with unittest.mock.patch.dict(
         "os.environ",
         {
             "TEST": "true",
