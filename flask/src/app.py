@@ -60,13 +60,14 @@ def create_app(config, dummy_mode=False):
 
     # NOTE: テストのため、環境変数 DUMMY_MODE をセットしてからロードしたいのでこの位置
     import my_lib.webapp.config
+
+    my_lib.webapp.config.URL_PREFIX = "/rasp-shutter"
+    my_lib.webapp.config.init(config)
+
     import rasp_shutter.control.webapi.control
     import rasp_shutter.control.webapi.schedule
     import rasp_shutter.control.webapi.sensor
     import rasp_shutter.metrics.webapi.page
-
-    my_lib.webapp.config.URL_PREFIX = "/rasp-shutter"
-    my_lib.webapp.config.init(config)
 
     app = flask.Flask("rasp-shutter")
 
