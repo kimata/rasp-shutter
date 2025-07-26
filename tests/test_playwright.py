@@ -5,7 +5,6 @@ import datetime
 import logging
 import random
 import time
-import unittest
 
 import my_lib.time
 import my_lib.webapp.config
@@ -19,17 +18,6 @@ SCHEDULE_AFTER_MIN = 1
 
 # urllib3のconnectionpoolログを抑制
 logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def env_mock():
-    with unittest.mock.patch.dict(
-        "os.environ",
-        {
-            "TEST": "true",
-        },
-    ) as fixture:
-        yield fixture
 
 
 @pytest.fixture(autouse=True)

@@ -33,6 +33,7 @@ def term():
     import rasp_shutter.control.scheduler
 
     rasp_shutter.control.scheduler.term()
+    my_lib.webapp.log.term()
 
     # 子プロセスを終了
     my_lib.proc_util.kill_child()
