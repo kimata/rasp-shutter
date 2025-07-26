@@ -69,7 +69,8 @@ filterwarnings = [
     "ignore:unclosed database.*:ResourceWarning:multiprocessing.*",
     "ignore:unclosed database.*:ResourceWarning:logging.*",
     "ignore::ResourceWarning:_pytest.unraisableexception",
-    "ignore::ResourceWarning:coverage.sqldata"
+    "ignore::ResourceWarning:coverage.sqldata",
+    "ignore::ResourceWarning:coverage.collector"
 ]
 
 [tool.coverage.run]
