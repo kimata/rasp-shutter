@@ -91,7 +91,7 @@ test-prepare:
 
         - |
             now=$(date +%s)
-            threshold=$((60*60*24))  # 24時間
+            threshold=$((60*60*1))  # 1時間
 
             for net in $(docker network ls --format '{{.Name}}'); do
                 if [[ "$net" == "bridge" || "$net" == "host" || "$net" == "none" ]]; then
