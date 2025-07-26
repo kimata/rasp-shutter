@@ -16,13 +16,13 @@ ADD https://astral.sh/uv/install.sh /uv-installer.sh
 
 RUN sh /uv-installer.sh && rm /uv-installer.sh
 
-# NOTE: システムにインストール
+# NOTE: システムにインストール (time-machine を API 経由で使いたいので、dev グループもインストール)
 RUN --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=.python-version,target=.python-version \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=README.md,target=README.md \
     --mount=type=cache,target=/root/.cache/uv \
-    uv export --frozen --no-group dev --format requirements-txt > requirements.txt \
+    uv export --frozen --format requirements-txt > requirements.txt \
     && uv pip install -r requirements.txt
 
 FROM python:${PYTHON_VERSION}-slim-bookworm AS prod
