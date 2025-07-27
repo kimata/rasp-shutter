@@ -186,8 +186,8 @@ def shutter_auto_open(config):
     else:
         logging.debug(
             "Skip pendding open (solar_rad: %.1f W/m^2, lux: %.1f LUX)",
-            sense_data["solar_rad"]["value"],
-            sense_data["lux"]["value"],
+            sense_data["solar_rad"]["value"] if sense_data["solar_rad"]["valid"] else -1,
+            sense_data["lux"]["value"] if sense_data["lux"]["valid"] else -1,
         )
 
 
@@ -272,7 +272,7 @@ def shutter_auto_close(config):
         logging.debug(
             "Skip pendding close (solar_rad: %.1f W/m^2, lux: %.1f LUX)",
             sense_data["solar_rad"]["value"] if sense_data["solar_rad"]["valid"] else -1,
-            sense_data["lux"]["value"] if sense_data["solar_rad"]["valid"] else -1,
+            sense_data["lux"]["value"] if sense_data["lux"]["valid"] else -1,
         )
 
 
