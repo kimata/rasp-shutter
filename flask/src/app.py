@@ -44,8 +44,6 @@ def term():
 
 
 def sig_handler(num, frame):  # noqa: ARG001
-    global should_terminate
-
     logging.warning("receive signal %d", num)
 
     if num == signal.SIGTERM:
@@ -86,7 +84,6 @@ def create_app(config, dummy_mode=False):
         my_lib.webapp.log.init(config)
 
         def notify_terminate():  # pragma: no cover
-            term()
             my_lib.webapp.log.info("🏃 アプリを再起動します。")
             my_lib.webapp.log.term()
 

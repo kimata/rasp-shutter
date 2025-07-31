@@ -14,7 +14,7 @@ dependencies = [
     "flask>=3.1.0",
     "fluent-logger>=0.11.1",
     "influxdb-client[ciso]>=1.49.0",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@90a909607dde9d39f635d57fc0e2898b0e6471de",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@5ebcc0d575980c55bdc1fd06c833f20688565b4f",
     "pillow>=10.0.0",
     "pysolar>=0.13",
     "schedule>=1.2.2",
@@ -75,6 +75,8 @@ filterwarnings = [
 
 [tool.coverage.run]
 branch = true
+parallel = true
+concurrency = ["multiprocessing"]
 
 [tool.coverage.report]
 exclude_lines = [
