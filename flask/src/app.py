@@ -34,7 +34,26 @@ def term():
     import rasp_shutter.control.scheduler
 
     rasp_shutter.control.scheduler.term()
+
+    # スケジュールワーカーの終了を待機（最大10秒）
+    try:
+        schedule_worker = rasp_shutter.control.webapi.schedule.worker
+        if schedule_worker:
+            logging.info("Waiting for schedule worker to finish...")
+            schedule_worker.join(timeout=10)
+            if schedule_worker.is_alive():
+                logging.warning("Schedule worker did not finish within timeout")
+    except Exception:
+        logging.exception("Error waiting for schedule worker")
+
     my_lib.webapp.log.term()
+
+    # ファイルシステムを同期
+    try:
+        os.sync()
+        logging.info("File system synced")
+    except Exception:
+        logging.exception("Failed to sync filesystem")
 
     # 子プロセスを終了
     my_lib.proc_util.kill_child()

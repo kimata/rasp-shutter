@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import multiprocessing
+import os
 import threading
 import urllib.parse
 
@@ -13,45 +14,62 @@ import rasp_shutter.control.scheduler
 
 import flask
 
+blueprint = flask.Blueprint("rasp-shutter-schedule", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
+
+_schedule_lock = {}
+_schedule_queue = {}
+_worker_thread = {}
+
 WDAY_STR = ["日", "月", "火", "水", "木", "金", "土"]
 
 
-blueprint = flask.Blueprint("rasp-shutter-schedule", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
-
-schedule_lock = threading.Lock()
-schedule_queue = None
-worker = None
-
-
 def init(config):
-    global worker  # noqa: PLW0603
-    global schedule_queue  # noqa: PLW0603
-
-    if worker is not None:
-        raise ValueError("worker should be None")  # noqa: TRY003, EM101
-
-    schedule_queue = multiprocessing.Queue()
-    rasp_shutter.control.scheduler.init()
-    worker = threading.Thread(
-        target=rasp_shutter.control.scheduler.schedule_worker,
-        args=(
-            config,
-            schedule_queue,
-        ),
-    )
-    worker.start()
+    init_impl(config)
 
 
 def term():
-    global worker  # noqa: PLW0603
-
-    if worker is None:
+    if get_worker_thread() is None:
         return
 
     rasp_shutter.control.scheduler.term()
-    worker.join()
+    get_worker_thread().join()
+    del _worker_thread[get_worker_id()]
 
-    worker = None
+
+def init_impl(config):
+    if get_worker_thread() is not None:
+        raise ValueError("worker should be None")  # noqa: TRY003, EM101
+
+    worker_id = get_worker_id()
+
+    _schedule_queue[worker_id] = multiprocessing.Queue()
+    _schedule_lock[worker_id] = threading.RLock()
+    rasp_shutter.control.scheduler.init()
+
+    _worker_thread[worker_id] = threading.Thread(
+        target=rasp_shutter.control.scheduler.schedule_worker,
+        args=(
+            config,
+            get_schedule_queue(),
+        ),
+    )
+    _worker_thread[worker_id].start()
+
+
+def get_worker_id():
+    return os.environ.get("PYTEST_XDIST_WORKER", "")
+
+
+def get_schedule_lock():
+    return _schedule_lock.get(get_worker_id(), None)
+
+
+def get_schedule_queue():
+    return _schedule_queue.get(get_worker_id(), None)
+
+
+def get_worker_thread():
+    return _worker_thread.get(get_worker_id(), None)
 
 
 def wday_str_list(wday_list):
@@ -98,7 +116,7 @@ def api_schedule_ctrl():
             my_lib.webapp.log.error("😵 スケジュールの指定が不正です。")
             return flask.jsonify(rasp_shutter.control.scheduler.schedule_load())
 
-        with schedule_lock:
+        with get_schedule_lock():
             schedule_data = json.loads(data)
 
             endpoint = urllib.parse.urljoin(
@@ -108,7 +126,7 @@ def api_schedule_ctrl():
 
             for entry in schedule_data.values():
                 entry["endpoint"] = endpoint
-            schedule_queue.put(schedule_data)
+            get_schedule_queue().put(schedule_data)
 
             rasp_shutter.control.scheduler.schedule_store(schedule_data)
             my_lib.webapp.event.notify_event(my_lib.webapp.event.EVENT_TYPE.SCHEDULE)
