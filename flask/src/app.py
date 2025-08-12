@@ -37,7 +37,7 @@ def term():
 
     # スケジュールワーカーの終了を待機（最大10秒）
     try:
-        schedule_worker = rasp_shutter.control.webapi.schedule.worker
+        schedule_worker = rasp_shutter.control.webapi.schedule.get_worker_thread()
         if schedule_worker:
             logging.info("Waiting for schedule worker to finish...")
             schedule_worker.join(timeout=10)
