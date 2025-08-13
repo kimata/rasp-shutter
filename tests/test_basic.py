@@ -195,6 +195,13 @@ def move_to(time_machine, target_time):
     time_machine.move_to(target_time)
 
 
+def wait_for_scheduler_completion(timeout=30.0):
+    """スケジューラの自動制御完了を待機"""
+    from rasp_shutter.control.scheduler import wait_for_auto_control_completion
+
+    return wait_for_auto_control_completion(timeout)
+
+
 SENSOR_DATA_DARK = {
     "lux": {"valid": True, "value": 10},
     "solar_rad": {"valid": True, "value": 10},
@@ -994,7 +1001,7 @@ def test_schedule_ctrl_auto_close_dup(client, time_machine, mock_sensor_data):
 
     move_to(time_machine, time_evening(5))
 
-    time.sleep(10)
+    wait_for_scheduler_completion()
 
     ctrl_log_check(
         client,
@@ -1066,7 +1073,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
-    time.sleep(10)
+    wait_for_scheduler_completion()
 
     # OPEN
     ctrl_log_check(
@@ -1098,7 +1105,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_morning(10))
-    time.sleep(10)
+    wait_for_scheduler_completion()
 
     # CLOSE
     ctrl_log_check(
@@ -1153,7 +1160,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(20))
-    time.sleep(10)
+    wait_for_scheduler_completion()
 
     # OPEN
     ctrl_log_check(
@@ -1172,7 +1179,7 @@ def test_schedule_ctrl_auto_reopen(client, time_machine, mock_sensor_data):
     )
 
     move_to(time_machine, time_evening(1))
-    time.sleep(10)
+    wait_for_scheduler_completion()
 
     # CLOSE
     ctrl_log_check(
@@ -1279,7 +1286,7 @@ def test_schedule_ctrl_pending_open(client, time_machine, mock_sensor_data):
     sensor_data_mock.return_value = SENSOR_DATA_BRIGHT
 
     move_to(time_machine, time_morning(4))
-    time.sleep(10)
+    wait_for_scheduler_completion()
 
     ctrl_log_check(
         client,
@@ -1587,7 +1594,7 @@ def test_schedule_ctrl_pending_open_dup(client, time_machine, mock_sensor_data):
     time.sleep(5)  # スケジューラーがセンサー状態を確認してシャッターを開くまで待機
 
     move_to(time_machine, time_morning(4))
-    time.sleep(10)  # ログ処理の完了を待つ追加の待機時間
+    wait_for_scheduler_completion()  # ログ処理の完了を待つ追加の待機時間
 
     # 最終的な状態を確認（シャッター0が開いた状態）
     # リトライロジックの理由:

@@ -34,6 +34,7 @@ should_terminate = threading.Event()
 # Worker-specific instances for pytest-xdist parallel execution
 _scheduler_instances = {}
 _schedule_data_instances = {}
+_auto_control_events = {}
 
 
 def get_scheduler():
@@ -45,6 +46,34 @@ def get_scheduler():
         _scheduler_instances[worker_id] = schedule.Scheduler()
 
     return _scheduler_instances[worker_id]
+
+
+def get_auto_control_event():
+    """テスト同期用のワーカー固有自動制御イベントを取得"""
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+
+    if worker_id not in _auto_control_events:
+        _auto_control_events[worker_id] = threading.Event()
+
+    return _auto_control_events[worker_id]
+
+
+def _signal_auto_control_completed():
+    """自動制御サイクルの完了をシグナル（テスト用）"""
+    # テスト環境でのみイベントを設定
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        event = get_auto_control_event()
+        event.set()
+
+
+def wait_for_auto_control_completion(timeout=5.0):
+    """自動制御の完了を待機（テスト用）"""
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        return True
+
+    event = get_auto_control_event()
+    event.clear()  # 待機前にクリア
+    return event.wait(timeout)
 
 
 def get_schedule_data():
@@ -286,6 +315,9 @@ def shutter_auto_control(config):
 
     if (hour > 5) and (hour < 20):
         shutter_auto_close(config)
+
+    # テスト同期用の完了シグナル
+    _signal_auto_control_completed()
 
 
 def shutter_schedule_control(config, state):
