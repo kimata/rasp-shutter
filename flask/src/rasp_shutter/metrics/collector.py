@@ -16,6 +16,7 @@ import sqlite3
 import threading
 from pathlib import Path
 
+import my_lib.sqlite_util
 import my_lib.time
 
 
@@ -37,7 +38,8 @@ class MetricsCollector:
 
     def _init_database(self):
         """データベース初期化"""
-        with sqlite3.connect(self.db_path) as conn:
+        conn = my_lib.sqlite_util.create(self.db_path)
+        try:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS operation_metrics (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,6 +78,10 @@ class MetricsCollector:
                 CREATE INDEX IF NOT EXISTS idx_daily_failures_date
                 ON daily_failures(date)
             """)
+
+            conn.commit()
+        finally:
+            conn.close()
 
     def _get_today_date(self) -> str:
         """今日の日付を文字列で取得"""

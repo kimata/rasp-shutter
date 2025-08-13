@@ -48,13 +48,6 @@ def term():
 
     my_lib.webapp.log.term()
 
-    # ファイルシステムを同期
-    try:
-        os.sync()
-        logging.info("File system synced")
-    except Exception:
-        logging.exception("Failed to sync filesystem")
-
     # 子プロセスを終了
     my_lib.proc_util.kill_child()
 
