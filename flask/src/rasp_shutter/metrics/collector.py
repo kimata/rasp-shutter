@@ -38,8 +38,7 @@ class MetricsCollector:
 
     def _init_database(self):
         """データベース初期化"""
-        conn = my_lib.sqlite_util.connect(self.db_path)
-        try:
+        with my_lib.sqlite_util.connect(self.db_path) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS operation_metrics (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,8 +79,6 @@ class MetricsCollector:
             """)
 
             conn.commit()
-        finally:
-            conn.close()
 
     def _get_today_date(self) -> str:
         """今日の日付を文字列で取得"""
