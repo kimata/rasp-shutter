@@ -38,7 +38,7 @@ class MetricsCollector:
 
     def _init_database(self):
         """データベース初期化"""
-        conn = my_lib.sqlite_util.create(self.db_path)
+        conn = my_lib.sqlite_util.connect(self.db_path)
         try:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS operation_metrics (
