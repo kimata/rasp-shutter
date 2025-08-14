@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+import contextlib
 import logging
 import os
 import pathlib
+import signal
 import subprocess
 import sys
 import time
@@ -56,6 +58,8 @@ def webserver(request):
         stderr=subprocess.PIPE,
         text=True,
         env=env,
+        # Create new process group for proper cleanup
+        preexec_fn=os.setsid,  # noqa: PLW1509
     )
 
     # Wait for server to start
@@ -83,13 +87,19 @@ def webserver(request):
 
     yield server_process
 
-    # Cleanup: terminate the server process
-    server_process.terminate()
+    # Cleanup: gracefully terminate the entire process group
     try:
-        server_process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        server_process.kill()
-        server_process.wait()
+        # Send SIGTERM to the entire process group (including reloader children)
+        os.killpg(os.getpgid(server_process.pid), signal.SIGTERM)
+        # Wait for graceful shutdown
+        server_process.wait(timeout=10)
+    except (subprocess.TimeoutExpired, ProcessLookupError):
+        # If graceful shutdown fails or process already gone, try force kill
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(os.getpgid(server_process.pid), signal.SIGKILL)
+        # Ensure subprocess handle is cleaned up
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            server_process.wait(timeout=5)
 
 
 @pytest.fixture

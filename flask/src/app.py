@@ -13,6 +13,7 @@ Options:
 """
 
 import atexit
+import contextlib
 import logging
 import os
 import signal
@@ -60,6 +61,18 @@ def sig_handler(num, frame):  # noqa: ARG001
     logging.warning("receive signal %d", num)
 
     if num in (signal.SIGTERM, signal.SIGINT):
+        # Flask reloader の子プロセスも含めて終了する
+        try:
+            # 現在のプロセスがプロセスグループリーダーの場合、全体を終了
+            current_pid = os.getpid()
+            pgid = os.getpgid(current_pid)
+            if current_pid == pgid:
+                logging.info("Terminating process group %d", pgid)
+                os.killpg(pgid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            # プロセスグループ操作に失敗した場合は通常の終了処理
+            pass
+
         term()
 
 
@@ -161,6 +174,23 @@ if __name__ == "__main__":
     config = my_lib.config.load(config_file, pathlib.Path(SCHEMA_CONFIG))
 
     app = create_app(config, dummy_mode)
+
+    # プロセスグループリーダーとして実行（リローダープロセスの適切な管理のため）
+    with contextlib.suppress(PermissionError):
+        os.setpgrp()
+
+    # 異常終了時のクリーンアップ処理を登録
+    def cleanup_on_exit():
+        try:
+            current_pid = os.getpid()
+            pgid = os.getpgid(current_pid)
+            if current_pid == pgid:
+                # プロセスグループ内の他のプロセスを終了
+                os.killpg(pgid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+    atexit.register(cleanup_on_exit)
 
     # Flaskアプリケーションを実行
     try:
