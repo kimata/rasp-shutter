@@ -21,8 +21,10 @@ logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 
 
 @pytest.fixture(autouse=True)
-def _server_init(page, host, port):
-    wait_for_server_ready(host, port)
+def _server_init(page, host, port, webserver):
+    # If webserver fixture was not used (server not auto-started), wait for manual server
+    if webserver is None:
+        wait_for_server_ready(host, port)
 
     time.sleep(5)
 
