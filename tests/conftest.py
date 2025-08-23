@@ -5,7 +5,6 @@ import os
 import pathlib
 import signal
 import subprocess
-import sys
 import time
 
 import pytest
@@ -53,7 +52,7 @@ def webserver(request):
     env["TEST"] = "true"
 
     server_process = subprocess.Popen(  # noqa: S603
-        [sys.executable, "flask/src/app.py", "-d", "-p", str(port)],
+        ["/usr/bin/env", "uv", "run", "python", "flask/src/app.py", "-d", "-p", str(port)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,

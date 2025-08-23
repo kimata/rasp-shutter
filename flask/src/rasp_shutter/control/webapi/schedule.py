@@ -38,7 +38,7 @@ def term():
 
 def init_impl(config):
     if get_worker_thread() is not None:
-        raise ValueError("worker should be None")  # noqa: TRY003, EM101
+        raise ValueError("worker should be None")  # noqa: TRY003
 
     worker_id = get_worker_id()
 
