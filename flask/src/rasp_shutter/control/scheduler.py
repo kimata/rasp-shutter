@@ -131,8 +131,9 @@ def check_brightness(sense_data, action):
     if action == "close":
         if (
             (sense_data["lux"]["value"] < schedule_data[action]["lux"])
-            and (sense_data["solar_rad"]["value"] < schedule_data[action]["solar_rad"])
-        ) or (sense_data["altitude"]["value"] < schedule_data[action]["altitude"]):
+            or (sense_data["solar_rad"]["value"] < schedule_data[action]["solar_rad"])
+            or (sense_data["altitude"]["value"] < schedule_data[action]["altitude"])
+        ):
             logging.info("Getting darker %s", brightness_text(sense_data, schedule_data[action]))
             return BRIGHTNESS_STATE.DARK
         else:

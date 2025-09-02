@@ -34,7 +34,7 @@
         </div>
         <div class="row mt-3">
             <small v-if="name == 'open'" class="text-success">午前、高度・日射・照度が共に上回ったら開きます。</small>
-            <small v-else class="text-success">午後、高度もしくは日射・照度が共に下回ったら閉じます。</small>
+            <small v-else class="text-success">高度・日射・照度のいずれかが下回ったら閉じます。</small>
         </div>
         <div class="row">
             <h3>日射閾値</h3>

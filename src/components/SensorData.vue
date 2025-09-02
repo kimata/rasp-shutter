@@ -12,7 +12,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="name in ['lux', 'solar_rad', 'altitude']" :key="name" className="row">
+                        <tr v-for="name in ['solar_rad', 'lux', 'altitude']" :key="name" className="row">
                             <td class="text-start col-2">{{ this.SENSOR_DEF[name].label }}</td>
                             <td class="text-end col-2">
                                 <span v-if="sensor[name].valid">
