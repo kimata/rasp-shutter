@@ -20,7 +20,12 @@ import my_lib.healthz
 
 def check_liveness(target_list, port=None):
     for target in target_list:
-        if not my_lib.healthz.check_liveness(target["name"], target["liveness_file"], target["interval"]):
+        healthz_target = my_lib.healthz.HealthzTarget(
+            name=target["name"],
+            liveness_file=target["liveness_file"],
+            interval=target["interval"],
+        )
+        if not my_lib.healthz.check_liveness(healthz_target):
             return False
 
     if port is not None:
