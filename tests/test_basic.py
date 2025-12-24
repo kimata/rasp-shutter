@@ -82,8 +82,8 @@ def _clear(config):
     my_lib.webapp.config.SCHEDULE_FILE_PATH = worker_schedule_path
     worker_schedule_path.unlink(missing_ok=True)
 
-    my_lib.notify.slack.interval_clear()
-    my_lib.notify.slack.hist_clear()
+    my_lib.notify.slack._interval_clear()
+    my_lib.notify.slack._hist_clear()
 
     ctrl_stat_clear(config)
 
@@ -343,7 +343,7 @@ def ctrl_stat_clear(config):
 def check_notify_slack(message, index=-1):
     import my_lib.notify.slack
 
-    notify_hist = my_lib.notify.slack.hist_get(False)
+    notify_hist = my_lib.notify.slack._hist_get(False)
     logging.debug(notify_hist)
 
     if message is None:
@@ -1859,18 +1859,23 @@ def test_sensor_1(client):
 
 
 def test_sensor_2(client, mocker):
-    mocker.patch("my_lib.sensor_data.fetch_data", return_value={"valid": False})
+    import my_lib.sensor_data
+
+    mocker.patch(
+        "my_lib.sensor_data.fetch_data",
+        return_value=my_lib.sensor_data.SensorDataResult(valid=False),
+    )
 
     response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/sensor")
     assert response.status_code == 200
 
     mocker.patch(
         "my_lib.sensor_data.fetch_data",
-        return_value={
-            "valid": True,
-            "value": [0],
-            "time": [datetime.datetime.now(datetime.timezone.utc)],
-        },
+        return_value=my_lib.sensor_data.SensorDataResult(
+            valid=True,
+            value=[0],
+            time=[datetime.datetime.now(datetime.timezone.utc)],
+        ),
     )
 
     response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/sensor")
