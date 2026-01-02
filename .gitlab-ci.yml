@@ -132,14 +132,12 @@ test-walk-through:
         - test-prepare
 
     script:
-        - uv run pytest --numprocesses=auto --junit-xml=tests/evidence/junit-report.xml tests/test_basic.py
+        - uv run pytest --numprocesses=auto --junit-xml=reports/junit-report.xml tests/test_basic.py
 
     artifacts:
         when: always
-        paths:
-            - tests/evidence/**
         reports:
-            junit: tests/evidence/junit-report.xml
+            junit: reports/junit-report.xml
 
 test-playwright:
     stage: test
@@ -156,8 +154,7 @@ test-playwright:
         - env TEST=true uv run python ./flask/src/app.py -d 2>&1 > flask_log.txt &
         - >
             uv run pytest tests/test_playwright.py --no-cov
-            --tracing on --output tests/evidence/playwright
-            --junit-xml=tests/evidence/playwright-junit.xml
+            --junit-xml=reports/playwright-junit.xml
 
     cache:
         key: playwright-cache
@@ -168,9 +165,8 @@ test-playwright:
         when: always
         paths:
             - flask_log.txt
-            - tests/evidence/**
         reports:
-            junit: tests/evidence/playwright-junit.xml
+            junit: reports/playwright-junit.xml
 
 .test-playwright-docker-base:
     stage: test
@@ -242,8 +238,7 @@ test-playwright:
 
         - >
             uv run pytest tests/test_playwright.py --no-cov
-            --tracing on --output tests/evidence/playwright
-            --junit-xml=tests/evidence/playwright-docker-junit.xml
+            --junit-xml=reports/playwright-docker-junit.xml
             --host ${APP_HOST} --port ${APP_PORT}
 
         # ログ取得とクリーンアップ
@@ -259,10 +254,9 @@ test-playwright:
     artifacts:
         when: always
         paths:
-            - flask_log_*.txt
-            - tests/evidence/**
+            - flask_log.txt
         reports:
-            junit: tests/evidence/playwright-docker-junit.xml
+            junit: reports/playwright-docker-junit.xml
 
 test-playwright-docker:
     extends: .test-playwright-docker-base
@@ -357,7 +351,7 @@ pages:
 
     script:
         - mkdir -p public/
-        - cp -r tests/evidence/* public/
+        - cp -r reports/* public/
 
     artifacts:
         paths:
