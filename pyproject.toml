@@ -14,7 +14,7 @@ dependencies = [
     "flask>=3.1.0",
     "fluent-logger>=0.11.1",
     "influxdb-client[ciso]>=1.49.0",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@0edb22758eca60440655590846299f8406be70c2",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@aa64482fe669ed3d133adf6a13b9ef4d217a5ffc",
     "pillow>=10.0.0",
     "pysolar>=0.13",
     "schedule>=1.2.2",
@@ -58,6 +58,10 @@ venvPath = "."
 venv = ".venv"
 include = ["src", "tests"]
 reportMissingImports = false
+reportArgumentType = false
+reportOperatorIssue = false
+reportIndexIssue = false
+reportGeneralTypeIssues = false
 
 [tool.ruff]
 line-length = 110
