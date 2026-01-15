@@ -14,7 +14,7 @@ dependencies = [
     "flask>=3.1.0",
     "fluent-logger>=0.11.1",
     "influxdb-client[ciso]>=1.49.0",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@bae2ba7f4d635c9094edbb27668e2806193d8a76",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@a942af723698644415e34b33a59b8bcf8a54b9a8",
     "pillow>=10.0.0",
     "pysolar>=0.13",
     "schedule>=1.2.2",
@@ -35,9 +35,11 @@ dev = [
     "time-machine>=3.2.0",
     "mypy>=1.19.1",
     "pyright>=1.1.407",
+    "ty>=0.0.1a7",
     "types-pytz>=2025.2.0",
     "types-paramiko>=4.0.0",
     "types-pyyaml>=6.0.12",
+    "types-requests>=2.32.0",
 ]
 
 [tool.uv]
