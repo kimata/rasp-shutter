@@ -345,6 +345,7 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
                 state="開け" if state == "open" else "閉め",
             )
         )
+        _signal_auto_control_completed()
         return
 
     if state == "open":
@@ -380,6 +381,9 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
             sense_data,
             "scheduler",
         )
+
+    # テスト同期用の完了シグナル
+    _signal_auto_control_completed()
 
 
 def schedule_validate(schedule_data):

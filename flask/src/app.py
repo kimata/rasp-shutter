@@ -147,10 +147,14 @@ def create_app(config: rasp_shutter.config.AppConfig, dummy_mode: bool = False) 
     app.register_blueprint(my_lib.webapp.util.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
     if os.environ.get("TEST") == "true":
+        import rasp_shutter.control.webapi.test.sync
         import rasp_shutter.control.webapi.test.time
 
         app.register_blueprint(
             rasp_shutter.control.webapi.test.time.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
+        )
+        app.register_blueprint(
+            rasp_shutter.control.webapi.test.sync.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
         )
 
     my_lib.webapp.config.show_handler_list(app)
