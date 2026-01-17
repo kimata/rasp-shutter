@@ -138,12 +138,22 @@ test-walk-through:
         - test-prepare
 
     script:
-        - uv run pytest --numprocesses=auto --junit-xml=reports/junit-report.xml tests/test_basic.py
+        - >
+            uv run pytest tests/unit/ tests/integration/
+            --junit-xml=reports/junit-report.xml --maxfail=1 --dist=loadgroup
+
+    coverage: '/TOTAL.*\s+(\d+%)/'
 
     artifacts:
         when: always
+        paths:
+            - reports/**
+            - htmlcov/**
         reports:
             junit: reports/junit-report.xml
+            coverage_report:
+                coverage_format: cobertura
+                path: reports/coverage.xml
 
 test-playwright:
     stage: test
@@ -159,7 +169,7 @@ test-playwright:
         - uv run playwright install --with-deps chromium
         - env TEST=true uv run python ./flask/src/app.py -d 2>&1 > flask_log.txt &
         - >
-            uv run pytest tests/test_playwright.py --no-cov
+            uv run pytest tests/e2e/ --no-cov
             --junit-xml=reports/playwright-junit.xml
 
     cache:
@@ -243,7 +253,7 @@ test-playwright:
             fi
 
         - >
-            uv run pytest tests/test_playwright.py --no-cov
+            uv run pytest tests/e2e/ --no-cov
             --junit-xml=reports/playwright-docker-junit.xml
             --host ${APP_HOST} --port ${APP_PORT}
 

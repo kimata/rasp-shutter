@@ -15,40 +15,25 @@ jobs:
 
         strategy:
             matrix:
-                node-version: [22.15.x]
+                node-version: [22.x]
 
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@v4
 
             - name: Use Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@v4
               with:
                   node-version: ${{ matrix.node-version }}
-
-            - name: Cache node modules
-              id: cache-node-modules
-              uses: actions/cache@v5
-              env:
-                  cache-name: cache-node-modules
-              with:
-                  path: node_modules
-                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-                  restore-keys: |
-                      ${{ runner.os }}-build-${{ env.cache-name }}-
-                      ${{ runner.os }}-build-
-                      ${{ runner.os }}-
+                  cache: "npm"
 
             - name: Install Dependencies
-              if: steps.cache-nodemodules.outputs.cache-hit != 'true'
-              run: |
-                  npm ci
+              run: npm ci
 
             - name: Build
-              run: |
-                  npm run build
+              run: npm run build
 
             - name: Upload built file
-              uses: actions/upload-artifact@v6
+              uses: actions/upload-artifact@v4
               with:
                   name: vue-built
                   path: dist
@@ -62,17 +47,17 @@ jobs:
 
         strategy:
             matrix:
-                python-version: ["3.12"]
+                python-version: ["3.11", "3.12", "3.13"]
 
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@v4
 
             - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v6
+              uses: actions/setup-python@v5
               with:
                   python-version: ${{ matrix.python-version }}
 
-            - name: Download react built files
+            - name: Download Vue built files
               uses: actions/download-artifact@v4
               with:
                   name: vue-built
@@ -83,7 +68,7 @@ jobs:
                   sudo locale-gen ja_JP.UTF-8
 
             - name: Install uv
-              uses: astral-sh/setup-uv@v4
+              uses: astral-sh/setup-uv@v5
               with:
                   enable-cache: true
 
@@ -92,27 +77,94 @@ jobs:
                   uv sync --locked --no-editable
 
             - name: Run Tests
-              run: uv run pytest
+              run: uv run pytest tests/unit/ tests/integration/
+
+            - name: Upload coverage to Coveralls
+              uses: coverallsapp/github-action@v2
+              if: matrix.python-version == '3.12'
+              with:
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  path-to-lcov: reports/coverage.lcov
 
             - name: Publish Test Results
-              uses: dorny/test-reporter@v2
+              uses: dorny/test-reporter@v1
               if: success() || failure()
               with:
-                  name: test results
+                  name: test results (${{ matrix.python-version }})
                   path: reports/junit-report.xml
                   reporter: java-junit
 
             - name: Upload coverage file
-              uses: actions/upload-artifact@v6
+              uses: actions/upload-artifact@v4
               if: always()
               with:
-                  name: pytest
+                  name: pytest-${{ matrix.python-version }}
                   path: reports
 
             - name: Upload artifact
               uses: actions/upload-pages-artifact@v3
+              if: matrix.python-version == '3.12'
               with:
                   path: reports
+
+    e2e:
+        needs: [build, test]
+        runs-on: ubuntu-latest
+
+        env:
+            TZ: "Asia/Tokyo"
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Python 3.12
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Download Vue built files
+              uses: actions/download-artifact@v4
+              with:
+                  name: vue-built
+                  path: dist
+
+            - name: Set locale
+              run: |
+                  sudo locale-gen ja_JP.UTF-8
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@v5
+              with:
+                  enable-cache: true
+
+            - name: Install Dependencies
+              run: |
+                  uv sync --locked --no-editable
+
+            - name: Install Playwright browsers
+              run: uv run playwright install --with-deps chromium
+
+            - name: Start Flask server for E2E tests
+              run: |
+                  env TEST=true uv run python ./flask/src/app.py -d &
+                  echo $! > flask.pid
+                  # Wait for server to start
+                  sleep 10
+                  # Check if server is running
+                  curl -f http://127.0.0.1:5000/rasp-shutter/ || echo "Flask server failed to start"
+              continue-on-error: true
+
+            - name: Run Playwright E2E tests
+              run: uv run pytest tests/e2e/ --no-cov --host 127.0.0.1 --port 5000
+              continue-on-error: true
+
+            - name: Stop Flask server
+              run: |
+                  if [ -f flask.pid ]; then
+                    kill $(cat flask.pid) || true
+                    rm flask.pid
+                  fi
+              if: always()
 
     deploy:
         environment:
@@ -122,6 +174,6 @@ jobs:
         needs: test
         if: github.ref == 'refs/heads/master'
         steps:
-            - name: Download test results
+            - name: Deploy to GitHub Pages
               id: deployment
               uses: actions/deploy-pages@v4
