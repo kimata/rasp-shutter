@@ -3,7 +3,6 @@ import datetime
 import enum
 import logging
 import os
-import pathlib
 import re
 import threading
 import time
@@ -11,15 +10,17 @@ import traceback
 
 import my_lib.footprint
 import my_lib.serializer
+import my_lib.time
 import my_lib.webapp.config
 import my_lib.webapp.log
+import rasp_shutter.config
 import rasp_shutter.control.config
 import rasp_shutter.control.webapi.control
 import rasp_shutter.control.webapi.sensor
 import schedule
 
 
-class BRIGHTNESS_STATE(enum.IntEnum):  # noqa: N801
+class BRIGHTNESS_STATE(enum.IntEnum):
     DARK = 0
     BRIGHT = 1
     UNKNOWN = 2
@@ -93,7 +94,7 @@ def set_schedule_data(data):
 
 
 def init():
-    global schedule_lock  # noqa: PLW0603
+    global schedule_lock
     global should_terminate
 
     schedule_lock = threading.Lock()
@@ -138,7 +139,7 @@ def check_brightness(sense_data, action):
             return BRIGHTNESS_STATE.DARK
         else:
             return BRIGHTNESS_STATE.BRIGHT
-    else:  # noqa: PLR5501
+    else:
         if (
             (sense_data["lux"]["value"] > schedule_data[action]["lux"])
             and (sense_data["solar_rad"]["value"] > schedule_data[action]["solar_rad"])
@@ -150,11 +151,13 @@ def check_brightness(sense_data, action):
             return BRIGHTNESS_STATE.DARK
 
 
-def exec_shutter_control_impl(config, state, mode, sense_data, user):
+def exec_shutter_control_impl(
+    config: rasp_shutter.config.AppConfig, state: str, mode: str, sense_data: dict, user: str
+) -> bool:
     try:
         # NOTE: Web 経由だと認証つけた場合に困るので、直接関数を呼ぶ
         rasp_shutter.control.webapi.control.set_shutter_state(
-            config, list(range(len(config["shutter"]))), state, mode, sense_data, user
+            config, list(range(len(config.shutter))), state, mode, sense_data, user
         )
         return True
     except Exception as e:
@@ -164,7 +167,9 @@ def exec_shutter_control_impl(config, state, mode, sense_data, user):
     return False
 
 
-def exec_shutter_control(config, state, mode, sense_data, user):
+def exec_shutter_control(
+    config: rasp_shutter.config.AppConfig, state: str, mode: str, sense_data: dict, user: str
+) -> bool:
     logging.debug("Execute shutter control")
 
     for _ in range(RETRY_COUNT):
@@ -176,7 +181,7 @@ def exec_shutter_control(config, state, mode, sense_data, user):
     return False
 
 
-def shutter_auto_open(config):
+def shutter_auto_open(config: rasp_shutter.config.AppConfig) -> None:
     logging.debug("try auto open")
 
     schedule_data = get_schedule_data()
@@ -234,7 +239,7 @@ def conv_schedule_time_to_datetime(schedule_time):
     )
 
 
-def shutter_auto_close(config):
+def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
     logging.debug("try auto close")
 
     schedule_data = get_schedule_data()
@@ -262,7 +267,7 @@ def shutter_auto_close(config):
         logging.debug("already close")
         return
 
-    for index in range(len(config["shutter"])):
+    for index in range(len(config.shutter)):
         if (
             my_lib.footprint.elapsed(rasp_shutter.control.webapi.control.exec_stat_file("open", index))
             < rasp_shutter.control.config.EXEC_INTERVAL_AUTO_MIN * 60
@@ -307,7 +312,7 @@ def shutter_auto_close(config):
         )
 
 
-def shutter_auto_control(config):
+def shutter_auto_control(config: rasp_shutter.config.AppConfig) -> None:
     hour = my_lib.time.now().hour
 
     # NOTE: 時間帯によって自動制御の内容を分ける
@@ -321,7 +326,7 @@ def shutter_auto_control(config):
     _signal_auto_control_completed()
 
 
-def shutter_schedule_control(config, state):
+def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) -> None:
     logging.info("Execute schedule control")
 
     sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
@@ -377,7 +382,7 @@ def shutter_schedule_control(config, state):
         )
 
 
-def schedule_validate(schedule_data):  # noqa: C901, PLR0911
+def schedule_validate(schedule_data):
     if len(schedule_data) != 2:
         logging.warning("Count of entry is Invalid: %d", len(schedule_data))
         return False
@@ -455,7 +460,7 @@ def schedule_load():
     return schedule_default
 
 
-def set_schedule(config, schedule_data):  # noqa: C901
+def set_schedule(config: rasp_shutter.config.AppConfig, schedule_data: dict) -> None:
     scheduler = get_scheduler()
     scheduler.clear()
 
@@ -511,13 +516,13 @@ def set_schedule(config, schedule_data):  # noqa: C901
     scheduler.every(1).seconds.do(shutter_auto_control, config)
 
 
-def schedule_worker(config, queue):
+def schedule_worker(config: rasp_shutter.config.AppConfig, queue) -> None:
     global should_terminate
 
     sleep_sec = 0.5
     scheduler = get_scheduler()
 
-    liveness_file = pathlib.Path(config["liveness"]["file"]["scheduler"])
+    liveness_file = config.liveness.file.scheduler
 
     logging.info("Load schedule")
     schedule_data = schedule_load()

@@ -6,6 +6,56 @@
 
 これは日本の電動シャッター自動化アプリケーション（`rasp-shutter`）で、スケジュールや照度センサーに基づいて電動シャッターを自動制御します。システムはVue.jsフロントエンドとFlaskバックエンドで構成され、ESP32デバイスとREST APIで通信します。
 
+## 重要な注意事項
+
+### コード変更時のドキュメント更新
+
+コードを更新した際は、以下のドキュメントも更新が必要か**必ず検討してください**:
+
+| ドキュメント | 更新が必要なケース                                                 |
+| ------------ | ------------------------------------------------------------------ |
+| README.md    | 機能追加・変更、使用方法の変更、依存関係の変更                     |
+| CLAUDE.md    | アーキテクチャ変更、新規モジュール追加、設定項目変更、開発手順変更 |
+
+### my-lib（共通ライブラリ）の修正について
+
+`my_lib` のソースコードは **`../my-py-lib`** に存在します。
+
+リファクタリング等で `my_lib` の修正が必要な場合:
+
+1. **必ず事前に何を変更したいか説明し、確認を取ること**
+2. `../my-py-lib` で修正を行い、commit & push
+3. このリポジトリの `pyproject.toml` の my-lib のコミットハッシュを更新
+4. `uv lock && uv sync` で依存関係を更新
+
+```bash
+# my-lib 更新の流れ
+cd ../my-py-lib
+# ... 修正 ...
+git add . && git commit -m "変更内容" && git push
+cd ../rasp-shutter
+# pyproject.toml の my-lib ハッシュを更新
+uv lock && uv sync
+```
+
+### プロジェクト管理ファイルについて
+
+以下のファイルは **`../py-project`** で一元管理しています:
+
+- `pyproject.toml`
+- `.pre-commit-config.yaml`
+- `.gitignore`
+- `.gitlab-ci.yml`
+- その他プロジェクト共通設定
+
+**これらのファイルを直接編集しないでください。**
+
+修正が必要な場合:
+
+1. **必ず事前に何を変更したいか説明し、確認を取ること**
+2. `../py-project` のテンプレートを更新
+3. このリポジトリに変更を反映
+
 ## アーキテクチャ
 
 - **フロントエンド**: Vue 3 with Bootstrap Vue Next、`/rasp-shutter/`ベースパスで提供
@@ -111,3 +161,58 @@ pytestを使用したテスト：
 - ブラウザ自動化テスト用Playwright（Flaskサーバーの実行が必要）
 - 日付/時間モック用time-machine
 - 並列実行用のワーカー固有スケジューラインスタンス（pytest-xdist）
+
+## コーディング規約
+
+### Python バージョン
+
+- Python 3.10 以上
+
+### スタイル
+
+- ruff でフォーマット・lint
+- pyright で型チェック
+- 型ヒントを積極的に使用
+
+### インポートスタイル
+
+`from xxx import yyy` は基本的に使わず、`import xxx` としてモジュールをインポートし、使用時は `xxx.yyy` の形式で参照する。
+
+```python
+# 推奨
+import my_lib.webapp.config
+my_lib.webapp.config.URL_PREFIX
+
+# 非推奨
+from my_lib.webapp.config import URL_PREFIX
+URL_PREFIX
+```
+
+**例外:**
+
+- 標準ライブラリの一般的なパターン（例: `from pathlib import Path`）
+- 型ヒント用のインポート（`from typing import TYPE_CHECKING`）
+- dataclass などのデコレータ（`from dataclasses import dataclass`）
+
+### 型チェック（pyright）
+
+pyright のエラー対策として、各行に `# type: ignore` コメントを付けて回避するのは**最後の手段**とします。
+
+基本方針:
+
+1. **型推論が効くようにコードを書く** - 明示的な型注釈や適切な変数の初期化で対応
+2. **型の絞り込み（Type Narrowing）を活用** - `assert`, `if`, `isinstance()` 等で型を絞り込む
+3. **どうしても回避できない場合のみ `# type: ignore`** - その場合は理由をコメントに記載
+
+```python
+# 推奨: 型の絞り込み
+value = get_optional_value()
+assert value is not None
+use_value(value)
+
+# 非推奨: type: ignore での回避
+value = get_optional_value()
+use_value(value)  # type: ignore
+```
+
+**例外:** テストコードでは、モックオブジェクトの使用など型チェックが困難な場合に `# type: ignore` を使用可能です。

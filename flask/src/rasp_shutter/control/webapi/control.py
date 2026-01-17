@@ -9,6 +9,7 @@ import my_lib.flask_util
 import my_lib.footprint
 import my_lib.webapp.config
 import my_lib.webapp.log
+import rasp_shutter.config
 import rasp_shutter.control.config
 import rasp_shutter.metrics.collector
 import requests
@@ -23,13 +24,13 @@ EXEC_INTERVAL_SCHEDULE_HOUR = 12
 EXEC_INTERVAL_MANUAL_MINUTES = 1
 
 
-class SHUTTER_STATE(enum.IntEnum):  # noqa: N801
+class SHUTTER_STATE(enum.IntEnum):
     OPEN = 0
     CLOSE = 1
     UNKNOWN = 2
 
 
-class CONTROL_MODE(enum.Enum):  # noqa: N801
+class CONTROL_MODE(enum.Enum):
     MANUAL = "🔧手動"
     SCHEDULE = "⏰スケジューラ"
     AUTO = "🤖自動"
@@ -38,15 +39,15 @@ class CONTROL_MODE(enum.Enum):  # noqa: N801
 blueprint = flask.Blueprint("rasp-shutter-control", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
 control_lock = threading.Lock()
-cmd_hist = []
+cmd_hist: list[dict] = []
 
 
-def init():
-    global cmd_hist  # noqa: PLW0603
+def init() -> None:
+    global cmd_hist
     cmd_hist = []
 
 
-def time_str(time_val):
+def time_str(time_val: float) -> str:
     if time_val >= (60 * 60):
         unit = ["分", "時間"]
         time_val /= 60
@@ -57,18 +58,18 @@ def time_str(time_val):
     if time_val >= 60:
         upper = int(time_val / 60)
         time_val -= upper * 60
-    time_val = int(time_val)
+    time_val_int = int(time_val)
 
     if upper != 0:
-        if time_val == 0:
+        if time_val_int == 0:
             return f"{upper}{unit[1]}"
         else:
-            return f"{upper}{unit[1]}{time_val}{unit[0]}"
+            return f"{upper}{unit[1]}{time_val_int}{unit[0]}"
     else:
-        return f"{time_val}{unit[0]}"
+        return f"{time_val_int}{unit[0]}"
 
 
-def call_shutter_api(config, index, state):
+def call_shutter_api(config: rasp_shutter.config.AppConfig, index: int, state: str) -> bool:
     cmd_hist_push(
         {
             "index": index,
@@ -80,21 +81,22 @@ def call_shutter_api(config, index, state):
         return True
 
     result = True
-    shutter = config["shutter"][index]
+    shutter = config.shutter[index]
 
-    logging.debug("Request %s", shutter["endpoint"][state])
-    if requests.get(shutter["endpoint"][state], timeout=5).status_code != 200:
+    endpoint = shutter.endpoint.open if state == "open" else shutter.endpoint.close
+    logging.debug("Request %s", endpoint)
+    if requests.get(endpoint, timeout=5).status_code != 200:
         result = False
 
     return result
 
 
-def exec_stat_file(state, index):
+def exec_stat_file(state: str, index: int) -> pathlib.Path:
     return pathlib.Path(str(rasp_shutter.control.config.STAT_EXEC_TMPL[state]).format(index=index))
 
 
-def clean_stat_exec(config):
-    for index in range(len(config["shutter"])):
+def clean_stat_exec(config: rasp_shutter.config.AppConfig) -> None:
+    for index in range(len(config.shutter)):
         my_lib.footprint.clear(exec_stat_file("open", index))
         my_lib.footprint.clear(exec_stat_file("close", index))
 
@@ -102,11 +104,11 @@ def clean_stat_exec(config):
     my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE)
 
 
-def get_shutter_state(config):
+def get_shutter_state(config: rasp_shutter.config.AppConfig) -> dict:
     state_list = []
-    for index, shutter in enumerate(config["shutter"]):
-        shutter_state = {
-            "name": shutter["name"],
+    for index, shutter in enumerate(config.shutter):
+        shutter_state: dict = {
+            "name": shutter.name,
         }
 
         exec_stat_open = exec_stat_file("open", index)
@@ -120,7 +122,7 @@ def get_shutter_state(config):
                     shutter_state["state"] = SHUTTER_STATE.CLOSE
             else:
                 shutter_state["state"] = SHUTTER_STATE.OPEN
-        else:  # noqa: PLR5501
+        else:
             if my_lib.footprint.exists(exec_stat_close):
                 shutter_state["state"] = SHUTTER_STATE.CLOSE
             else:
@@ -133,13 +135,22 @@ def get_shutter_state(config):
     }
 
 
-def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noqa: PLR0913
+def set_shutter_state_impl(
+    config: rasp_shutter.config.AppConfig,
+    index: int,
+    state: str,
+    mode: CONTROL_MODE,
+    sense_data: dict | None,
+    user: str,
+) -> None:
     # NOTE: 閉じている場合に再度閉じるボタンをおしたり、逆に開いている場合に再度
     # 開くボタンを押すことが続くと、スイッチがエラーになるので exec_hist を使って
     # 防止する。また、明るさに基づく自動の開閉が連続するのを防止する。
     # exec_hist はこれ以外の目的で使わない。
     exec_hist = exec_stat_file(state, index)
     diff_sec = my_lib.footprint.elapsed(exec_hist)
+
+    shutter_name = config.shutter[index].name
 
     # NOTE: 制御間隔が短く、実際には御できなかった場合、ログを残す。
     if mode == CONTROL_MODE.MANUAL:
@@ -149,7 +160,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
                     "🔔 {name}のシャッターを{state}るのを見合わせました。"
                     "{time_diff_str}前に{state}ています。{by}"
                 ).format(
-                    name=config["shutter"][index]["name"],
+                    name=shutter_name,
                     state="開け" if state == "open" else "閉め",
                     time_diff_str=time_str(diff_sec),
                     by=f"(by {user})" if user != "" else "",
@@ -164,7 +175,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
                     "🔔 スケジュールに従って{name}のシャッターを{state}るのを見合わせました。"
                     "{time_diff_str}前に{state}ています。{by}"
                 ).format(
-                    name=config["shutter"][index]["name"],
+                    name=shutter_name,
                     state="開け" if state == "open" else "閉め",
                     time_diff_str=time_str(diff_sec),
                     by=f"(by {user})" if user != "" else "",
@@ -178,7 +189,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
                     "🔔 自動で{name}のシャッターを{state}るのを見合わせました。"
                     "{time_diff_str}前に{state}ています。{by}"
                 ).format(
-                    name=config["shutter"][index]["name"],
+                    name=shutter_name,
                     state="開け" if state == "open" else "閉め",
                     time_diff_str=time_str(diff_sec),
                     by=f"(by {user})" if user != "" else "",
@@ -197,7 +208,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
     if result:
         my_lib.webapp.log.info(
             "{name}のシャッターを{mode}で{state}ました。{sensor_text}{by}".format(
-                name=config["shutter"][index]["name"],
+                name=shutter_name,
                 mode=mode.value,
                 state="開け" if state == "open" else "閉め",
                 sensor_text=sensor_text(sense_data),
@@ -214,7 +225,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
                 if mode == CONTROL_MODE.SCHEDULE
                 else "auto"
             )
-            metrics_data_path = config.get("metrics", {}).get("data")
+            metrics_data_path = config.metrics.data
             rasp_shutter.metrics.collector.record_shutter_operation(
                 state, mode_str, metrics_data_path, sense_data
             )
@@ -223,7 +234,7 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
     else:
         my_lib.webapp.log.error(
             "{name}のシャッターを{mode}で{state}るのに失敗しました。{sensor_text}{by}".format(
-                name=config["shutter"][index]["name"],
+                name=shutter_name,
                 mode=mode.value,
                 state="開け" if state == "open" else "閉め",
                 sensor_text=sensor_text(sense_data),
@@ -233,13 +244,20 @@ def set_shutter_state_impl(config, index, state, mode, sense_data, user):  # noq
 
         # 失敗メトリクス収集
         try:
-            metrics_data_path = config.get("metrics", {}).get("data")
+            metrics_data_path = config.metrics.data
             rasp_shutter.metrics.collector.record_failure(metrics_data_path)
         except Exception as e:
             logging.warning("失敗メトリクス記録に失敗しました: %s", e)
 
 
-def set_shutter_state(config, index_list, state, mode, sense_data, user=""):  # noqa: PLR0913
+def set_shutter_state(
+    config: rasp_shutter.config.AppConfig,
+    index_list: list[int],
+    state: str,
+    mode: CONTROL_MODE,
+    sense_data: dict | None,
+    user: str = "",
+) -> dict:
     logging.debug(
         "set_shutter_state index=[%s], state=%s, mode=%s", ",".join(str(n) for n in index_list), state, mode
     )
@@ -258,14 +276,14 @@ def set_shutter_state(config, index_list, state, mode, sense_data, user=""):  # 
         for index in index_list:
             try:
                 set_shutter_state_impl(config, index, state, mode, sense_data, user)
-            except Exception:  # noqa: PERF203
+            except Exception:
                 logging.exception("Failed to control shutter (index=%d)", index)
                 continue
 
     return get_shutter_state(config)
 
 
-def sensor_text(sense_data):
+def sensor_text(sense_data: dict | None) -> str:
     if sense_data is None:
         return ""
     else:
@@ -277,7 +295,7 @@ def sensor_text(sense_data):
 
 
 # NOTE: テスト用のコード
-def cmd_hist_push(cmd):  # pragma: no cover
+def cmd_hist_push(cmd: dict) -> None:  # pragma: no cover
     global cmd_hist
 
     cmd_hist.append(cmd)
@@ -287,14 +305,14 @@ def cmd_hist_push(cmd):  # pragma: no cover
 
 @blueprint.route("/api/shutter_ctrl", methods=["GET", "POST"])
 @my_lib.flask_util.support_jsonp
-def api_shutter_ctrl():
+def api_shutter_ctrl() -> flask.Response:
     cmd = flask.request.args.get("cmd", 0, type=int)
     index = flask.request.args.get("index", -1, type=int)
     state = flask.request.args.get("state", "close", type=str)
-    config = flask.current_app.config["CONFIG"]
+    config: rasp_shutter.config.AppConfig = flask.current_app.config["CONFIG"]
 
     # NOTE: シャッターが指定されていない場合は、全てを制御対象にする
-    index_list = list(range(len(config["shutter"]))) if index == -1 else [index]
+    index_list = list(range(len(config.shutter))) if index == -1 else [index]
 
     sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
 
@@ -319,8 +337,8 @@ def api_shutter_ctrl():
 # NOTE: テスト用
 @blueprint.route("/api/ctrl/log", methods=["GET"])
 @my_lib.flask_util.support_jsonp
-def api_shutter_ctrl_log():
-    global cmd_hist  # noqa: PLW0603
+def api_shutter_ctrl_log() -> flask.Response:
+    global cmd_hist
 
     cmd = flask.request.args.get("cmd", "get")
     if cmd == "clear":
@@ -336,30 +354,30 @@ def api_shutter_ctrl_log():
 
 @blueprint.route("/api/shutter_list", methods=["GET"])
 @my_lib.flask_util.support_jsonp
-def api_shutter_list():
-    config = flask.current_app.config["CONFIG"]
+def api_shutter_list() -> flask.Response:
+    config: rasp_shutter.config.AppConfig = flask.current_app.config["CONFIG"]
 
-    return flask.jsonify([shutter["name"] for shutter in config["shutter"]])
+    return flask.jsonify([shutter.name for shutter in config.shutter])
 
 
 if os.environ.get("DUMMY_MODE", "false") == "true":
 
     @blueprint.route("/api/dummy/open", methods=["GET"])
     @my_lib.flask_util.support_jsonp
-    def api_dummy_open():
+    def api_dummy_open() -> flask.Response:
         logging.info("ダミーのシャッターが開きました。")
         return flask.jsonify({"status": "OK"})
 
     @blueprint.route("/api/dummy/close", methods=["GET"])
     @my_lib.flask_util.support_jsonp
-    def api_dummy_close():
+    def api_dummy_close() -> flask.Response:
         logging.info("ダミーのシャッターが閉じました。")
         return flask.jsonify({"status": "OK"})
 
     @blueprint.route("/api/ctrl/clear", methods=["POST"])
     @my_lib.flask_util.support_jsonp
-    def api_test_control_clear():
+    def api_test_control_clear() -> flask.Response:
         """テスト用: 制御履歴をクリア"""
-        config = flask.current_app.config["CONFIG"]
+        config: rasp_shutter.config.AppConfig = flask.current_app.config["CONFIG"]
         clean_stat_exec(config)
         return flask.jsonify({"status": "OK"})

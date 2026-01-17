@@ -7,33 +7,32 @@ import my_lib.sensor_data
 import my_lib.webapp.config
 import pysolar.solar
 import pytz
+import rasp_shutter.config
 
 import flask
 
 blueprint = flask.Blueprint("rasp-shutter-sensor", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
 
-def get_solar_altitude(config):
-    now = datetime.datetime.now(datetime.timezone.utc)
+def get_solar_altitude(config: rasp_shutter.config.AppConfig) -> dict:
+    now = datetime.datetime.now(datetime.UTC)
     return {
-        "value": pysolar.solar.get_altitude(
-            config["location"]["latitude"], config["location"]["longitude"], now
-        ),
+        "value": pysolar.solar.get_altitude(config.location.latitude, config.location.longitude, now),
         "valid": True,
         "time": now,
     }
 
 
-def get_sensor_data(config):
+def get_sensor_data(config: rasp_shutter.config.AppConfig) -> dict:
     timezone = pytz.timezone("Asia/Tokyo")
 
-    sense_data = {}
+    sense_data: dict = {}
     for field in ["lux", "solar_rad"]:
-        sensor = config["sensor"][field]
+        sensor = getattr(config.sensor, field)
         data = my_lib.sensor_data.fetch_data(
-            config["sensor"]["influxdb"],
-            sensor["measure"],
-            sensor["hostname"],
+            config.sensor.influxdb,
+            sensor.measure,
+            sensor.hostname,
             field,
             start="-1h",
             last=True,
@@ -58,5 +57,6 @@ def get_sensor_data(config):
 @blueprint.route("/api/sensor", methods=["GET"])
 @my_lib.flask_util.support_jsonp
 @flask_cors.cross_origin()
-def api_sensor_data():
-    return flask.jsonify(get_sensor_data(flask.current_app.config["CONFIG"]))
+def api_sensor_data() -> flask.Response:
+    config: rasp_shutter.config.AppConfig = flask.current_app.config["CONFIG"]
+    return flask.jsonify(get_sensor_data(config))

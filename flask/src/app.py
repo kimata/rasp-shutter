@@ -22,17 +22,20 @@ import sys
 import flask_cors
 import my_lib.proc_util
 import my_lib.webapp.base
+import my_lib.webapp.config
 import my_lib.webapp.event
 import my_lib.webapp.log
 import my_lib.webapp.util
+import rasp_shutter.config
 
 import flask
 
 SCHEMA_CONFIG = "config.schema"
 
 
-def term():
+def term() -> None:
     import rasp_shutter.control.scheduler
+    import rasp_shutter.control.webapi.schedule
 
     rasp_shutter.control.scheduler.term()
 
@@ -57,7 +60,7 @@ def term():
     sys.exit(0)
 
 
-def sig_handler(num, frame):  # noqa: ARG001
+def sig_handler(num: int, frame: object) -> None:
     logging.warning("receive signal %d", num)
 
     if num in (signal.SIGTERM, signal.SIGINT):
@@ -76,23 +79,23 @@ def sig_handler(num, frame):  # noqa: ARG001
         term()
 
 
-def create_app(config, dummy_mode=False):
+def create_app(config: rasp_shutter.config.AppConfig, dummy_mode: bool = False) -> flask.Flask:
     # NOTE: オプションでダミーモードが指定された場合、環境変数もそれに揃えておく
+    # control.py がモジュールロード時に DUMMY_MODE を参照するため、インポート前に設定する
     if dummy_mode:
         os.environ["DUMMY_MODE"] = "true"
     else:  # pragma: no cover
         os.environ["DUMMY_MODE"] = "false"
 
-    # NOTE: テストのため、環境変数 DUMMY_MODE をセットしてからロードしたいのでこの位置
-    import my_lib.webapp.config
-
-    my_lib.webapp.config.URL_PREFIX = "/rasp-shutter"
-    my_lib.webapp.config.init(config)
-
+    # NOTE: DUMMY_MODE 環境変数を設定した後にモジュールをインポート
     import rasp_shutter.control.webapi.control
     import rasp_shutter.control.webapi.schedule
     import rasp_shutter.control.webapi.sensor
     import rasp_shutter.metrics.webapi.page
+
+    # NOTE: テストのため、環境変数 DUMMY_MODE をセットしてからロードしたいのでこの位置
+    my_lib.webapp.config.URL_PREFIX = "/rasp-shutter"
+    my_lib.webapp.config.init(rasp_shutter.config.to_my_lib_webapp_config(config))
 
     app = flask.Flask("rasp-shutter")
 
@@ -107,9 +110,9 @@ def create_app(config, dummy_mode=False):
 
         rasp_shutter.control.webapi.control.init()
         rasp_shutter.control.webapi.schedule.init(config)
-        my_lib.webapp.log.init(config)
+        my_lib.webapp.log.init(config.slack)
 
-        def notify_terminate():  # pragma: no cover
+        def notify_terminate() -> None:  # pragma: no cover
             my_lib.webapp.log.info("🏃 アプリを再起動します。")
             my_lib.webapp.log.term()
 
@@ -159,7 +162,6 @@ if __name__ == "__main__":
     import pathlib
 
     import docopt
-    import my_lib.config
     import my_lib.logger
 
     args = docopt.docopt(__doc__)
@@ -171,7 +173,7 @@ if __name__ == "__main__":
 
     my_lib.logger.init("hems.rasp-shutter", level=logging.DEBUG if debug_mode else logging.INFO)
 
-    config = my_lib.config.load(config_file, pathlib.Path(SCHEMA_CONFIG))
+    config = rasp_shutter.config.load(config_file, pathlib.Path(SCHEMA_CONFIG))
 
     app = create_app(config, dummy_mode)
 
@@ -180,7 +182,7 @@ if __name__ == "__main__":
         os.setpgrp()
 
     # 異常終了時のクリーンアップ処理を登録
-    def cleanup_on_exit():
+    def cleanup_on_exit() -> None:
         try:
             current_pid = os.getpid()
             pgid = os.getpgid(current_pid)

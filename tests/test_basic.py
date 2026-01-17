@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # ruff: noqa: S101
+# pyright: reportAttributeAccessIssue=false
 
 import datetime
 import json
@@ -9,8 +10,11 @@ import pathlib
 import re
 import time
 import unittest
+import unittest.mock
 
+import my_lib.time
 import my_lib.webapp.config
+import my_lib.webapp.log
 import pytest
 from app import create_app
 
@@ -54,9 +58,9 @@ def slack_mock():
 def config():
     import pathlib
 
-    import my_lib.config
+    import rasp_shutter.config
 
-    return my_lib.config.load(CONFIG_FILE, pathlib.Path(SCHEMA_CONFIG))
+    return rasp_shutter.config.load(CONFIG_FILE, pathlib.Path(SCHEMA_CONFIG))
 
 
 @pytest.fixture(autouse=True)
@@ -64,13 +68,14 @@ def _clear(config):
     import my_lib.footprint
     import my_lib.notify.slack
     import my_lib.webapp.config
+    import rasp_shutter.config
 
-    my_lib.webapp.config.init(config)
+    my_lib.webapp.config.init(rasp_shutter.config.to_my_lib_webapp_config(config))
 
     import rasp_shutter.control.config
     import rasp_shutter.metrics.collector
 
-    my_lib.footprint.clear(pathlib.Path(config["liveness"]["file"]["scheduler"]))
+    my_lib.footprint.clear(config.liveness.file.scheduler)
 
     # Clear schedule file to ensure clean state for each test
     # Use worker-specific schedule file paths for parallel execution
@@ -78,9 +83,10 @@ def _clear(config):
 
     worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
     original_schedule_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
-    worker_schedule_path = original_schedule_path.parent / f"schedule_{worker_id}.dat"
-    my_lib.webapp.config.SCHEDULE_FILE_PATH = worker_schedule_path
-    worker_schedule_path.unlink(missing_ok=True)
+    if original_schedule_path is not None:
+        worker_schedule_path = original_schedule_path.parent / f"schedule_{worker_id}.dat"
+        my_lib.webapp.config.SCHEDULE_FILE_PATH = worker_schedule_path
+        worker_schedule_path.unlink(missing_ok=True)
 
     my_lib.notify.slack._interval_clear()
     my_lib.notify.slack._hist_clear()
@@ -102,11 +108,13 @@ def _clear(config):
 @pytest.fixture(scope="session")
 def app(config):
     import my_lib.webapp.config
+    import rasp_shutter.config
 
-    my_lib.webapp.config.init(config)
+    my_lib.webapp.config.init(rasp_shutter.config.to_my_lib_webapp_config(config))
 
     with unittest.mock.patch.dict("os.environ", {"WERKZEUG_RUN_MAIN": "true"}):
-        my_lib.webapp.config.SCHEDULE_FILE_PATH.unlink(missing_ok=True)
+        if my_lib.webapp.config.SCHEDULE_FILE_PATH is not None:
+            my_lib.webapp.config.SCHEDULE_FILE_PATH.unlink(missing_ok=True)
 
         app = create_app(config, dummy_mode=True)
 
@@ -231,7 +239,7 @@ def gen_schedule_data():
     }
 
 
-def _check_log_content(log_list, expect_list):  # noqa: C901, PLR0912
+def _check_log_content(log_list, expect_list):
     """ログ内容をチェックする内部関数"""
     for i, expect in enumerate(reversed(expect_list)):
         if expect == "OPEN_MANUAL":
@@ -390,7 +398,7 @@ def mock_index_html(mocker):
 
 
 ######################################################################
-def test_liveness(client, config):  # noqa: ARG001
+def test_liveness(client, config):
     import healthz
 
     time.sleep(12)
@@ -399,7 +407,7 @@ def test_liveness(client, config):  # noqa: ARG001
         [
             {
                 "name": name,
-                "liveness_file": pathlib.Path(config["liveness"]["file"][name]),
+                "liveness_file": getattr(config.liveness.file, name),
                 "interval": 10,
             }
             for name in ["scheduler"]
@@ -410,7 +418,7 @@ def test_liveness(client, config):  # noqa: ARG001
 def test_time(time_machine):
     import rasp_shutter.control.scheduler
 
-    logging.debug("datetime.now()                        = %s", datetime.datetime.now())  # noqa: DTZ005
+    logging.debug("datetime.now()                        = %s", datetime.datetime.now())
     logging.debug(
         "datetime.now(%10s)              = %s",
         my_lib.time.get_tz(),
@@ -418,7 +426,7 @@ def test_time(time_machine):
     )
     logging.debug(
         "datetime.now().replace(...)           = %s",
-        datetime.datetime.now().replace(hour=0, minute=0, second=0),  # noqa: DTZ005
+        datetime.datetime.now().replace(hour=0, minute=0, second=0),
     )
     logging.debug(
         "datetime.now(%10s).replace(...) = %s",
@@ -430,7 +438,7 @@ def test_time(time_machine):
 
     logging.debug(
         "datetime.now()                        = %s",
-        datetime.datetime.now(),  # noqa: DTZ005
+        datetime.datetime.now(),
     )
     logging.debug("datetime.now(%10s)              = %s", my_lib.time.get_tz(), my_lib.time.now())
 
@@ -654,16 +662,16 @@ def test_valve_ctrl_manual_single_fail(client, mocker):
     import requests
 
     # NOTE: このテストだけは、制御の止め方を変える
-    def request_mock(url, timeout):  # noqa: ARG001
-        request_mock.i += 1
+    def request_mock(url, timeout):
+        request_mock.i += 1  # type: ignore[attr-defined]
         response = requests.models.Response()
-        if request_mock.i == 1:
+        if request_mock.i == 1:  # type: ignore[attr-defined]
             response.status_code = 500
         else:
             response.status_code = 200
         return response
 
-    request_mock.i = 0
+    request_mock.i = 0  # type: ignore[attr-defined]
 
     mocker.patch.dict(os.environ, {"DUMMY_MODE": "false"})
     mocker.patch("rasp_shutter.control.webapi.control.requests.get", side_effect=request_mock)
@@ -1874,7 +1882,7 @@ def test_sensor_2(client, mocker):
         return_value=my_lib.sensor_data.SensorDataResult(
             valid=True,
             value=[0],
-            time=[datetime.datetime.now(datetime.timezone.utc)],
+            time=[datetime.datetime.now(datetime.UTC)],
         ),
     )
 
@@ -1885,13 +1893,13 @@ def test_sensor_2(client, mocker):
 def test_sensor_dummy(client, mocker):
     # NOTE: 何かがまだ足りない
     def value_mock():
-        value_mock.i += 1
-        if value_mock.i == 1:
+        value_mock.i += 1  # type: ignore[attr-defined]
+        if value_mock.i == 1:  # type: ignore[attr-defined]
             return None
         else:
             return 1
 
-    value_mock.i = 0
+    value_mock.i = 0  # type: ignore[attr-defined]
 
     table_entry_mock = mocker.MagicMock()
     record_mock = mocker.MagicMock()
@@ -1904,7 +1912,7 @@ def test_sensor_dummy(client, mocker):
     mocker.patch.object(
         record_mock,
         "get_time",
-        return_value=datetime.datetime.now(datetime.timezone.utc),
+        return_value=datetime.datetime.now(datetime.UTC),
     )
     table_entry_mock.__iter__.return_value = [record_mock, record_mock]
     type(table_entry_mock).records = table_entry_mock

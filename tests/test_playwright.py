@@ -28,7 +28,7 @@ def _server_init(page, host, port, webserver):
 
     time.sleep(5)
 
-    page.on("console", lambda msg: print(msg.text))  # noqa: T201
+    page.on("console", lambda msg: print(msg.text))
     page.set_viewport_size({"width": 2400, "height": 1600})
 
     clear_control_history(host, port)
@@ -48,7 +48,7 @@ def wait_for_server_ready(host, port):
             pass
         time.sleep(1)
 
-    raise RuntimeError(f"サーバーが {TIMEOUT_SEC}秒以内に起動しませんでした。")  # noqa: TRY003, EM102
+    raise RuntimeError(f"サーバーが {TIMEOUT_SEC}秒以内に起動しませんでした。")
 
 
 def clear_log(page, host, port):
@@ -101,7 +101,7 @@ def get_log_count(page):
     return page.locator('//div[contains(@class,"log")]/div/div[2]').count()
 
 
-def click_and_check_log(page, host, port, test_id, expected_message, timeout_sec=10):  # noqa: PLR0913
+def click_and_check_log(page, host, port, test_id, expected_message, timeout_sec=10):
     """
     要素をクリックして新しいログメッセージを確認する
 
@@ -137,7 +137,7 @@ def bool_random():
     return random.random() >= 0.5  # noqa: S311
 
 
-def check_schedule(page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index):  # noqa: PLR0913
+def check_schedule(page, enable_schedule_index, schedule_time, solar_rad, lux, enable_wday_index):
     enable_checkbox = page.locator('//input[contains(@id,"-schedule-entry")]')
 
     for i, state in enumerate(["open", "close"]):
@@ -260,7 +260,7 @@ def clear_control_history(host, port):
 def test_time():
     import schedule
 
-    logging.debug("datetime.now()                        = %s", datetime.datetime.now())  # noqa: DTZ005
+    logging.debug("datetime.now()                        = %s", datetime.datetime.now())
     logging.debug(
         "datetime.now(%10s)              = %s",
         my_lib.time.get_tz(),
@@ -268,7 +268,7 @@ def test_time():
     )
     logging.debug(
         "datetime.now().replace(...)           = %s",
-        datetime.datetime.now().replace(hour=0, minute=0, second=0),  # noqa: DTZ005
+        datetime.datetime.now().replace(hour=0, minute=0, second=0),
     )
     logging.debug(
         "datetime.now(%10s).replace(...) = %s",
@@ -282,6 +282,7 @@ def test_time():
     job = schedule.every().day.at(job_time_str, my_lib.time.get_pytz()).do(lambda: True)
 
     idle_sec = schedule.idle_seconds()
+    assert idle_sec is not None
     logging.debug("Time to next jobs is %.1f sec", idle_sec)
     logging.debug("Next run is %s", job.next_run)
 
