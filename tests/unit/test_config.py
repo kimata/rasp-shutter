@@ -4,8 +4,8 @@
 
 import pathlib
 
+import my_lib.config
 import pytest
-import yaml
 
 
 class TestConfigLoad:
@@ -84,10 +84,8 @@ class TestConfigValidation:
 
     def test_invalid_yaml_syntax(self, tmp_path):
         """不正なYAML構文"""
-        import my_lib.config
-
         invalid_yaml = tmp_path / "invalid.yaml"
         invalid_yaml.write_text("invalid: yaml: syntax:")
 
-        with pytest.raises(yaml.YAMLError):
+        with pytest.raises(my_lib.config.ConfigParseError):
             my_lib.config.load(str(invalid_yaml), pathlib.Path("config.schema"))

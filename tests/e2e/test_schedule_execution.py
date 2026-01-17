@@ -5,17 +5,16 @@
 import datetime
 import logging
 import random
-import time
 
 import my_lib.time
 from playwright.sync_api import Page
 
 from tests.e2e.conftest import (
-    check_log,
     clear_log,
     click_and_check_log,
     get_current_server_time,
     set_mock_time,
+    wait_for_log,
 )
 
 SCHEDULE_AFTER_MIN = 1
@@ -76,9 +75,7 @@ class TestScheduleExecution:
         logging.info("Save schedule")
         click_and_check_log(page, host, port, "save", "スケジュールを更新")
 
-        time.sleep(15)
-
-        check_log(page, "スケジューラで閉めました", 10)
+        assert wait_for_log(page, "スケジューラで閉めました", timeout_sec=30.0)
 
 
 class TestTimeAPI:

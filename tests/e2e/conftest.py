@@ -140,6 +140,35 @@ def get_log_count(page: Page) -> int:
     return page.locator('//div[contains(@class,"log")]/div/div[2]').count()
 
 
+def wait_for_log(
+    page: Page,
+    expected_text: str,
+    timeout_sec: float = 30.0,
+    poll_interval_sec: float = 1.0,
+) -> bool:
+    """ログに指定テキストが現れるまでポーリング待機
+
+    Args:
+        page: Playwrightページオブジェクト
+        expected_text: 期待するログテキスト
+        timeout_sec: タイムアウト秒数
+        poll_interval_sec: ポーリング間隔秒数
+
+    Returns:
+        True: ログが見つかった, False: タイムアウト
+
+    """
+    log_locator = page.locator('//div[contains(@class,"log")]/div/div[2]')
+    start = time.time()
+    while time.time() - start < timeout_sec:
+        # 全ログエントリをチェック
+        for i in range(log_locator.count()):
+            if expected_text in log_locator.nth(i).inner_text():
+                return True
+        time.sleep(poll_interval_sec)
+    return False
+
+
 def check_log(
     page: Page,
     message: str,
