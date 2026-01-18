@@ -73,12 +73,13 @@ uv lock && uv sync
 ```bash
 uv sync                  # Python依存関係をインストール
 uv sync --upgrade        # 依存関係を最新バージョンにアップグレード
-uv run python flask/src/app.py    # Flaskサーバーを直接実行
+uv run python src/app.py    # Flaskサーバーを直接実行
 ```
 
 ### フロントエンド（Vue.js）
 
 ```bash
+cd frontend
 npm ci                   # 依存関係をインストール
 npm run dev             # 開発サーバー
 npm run build           # 本番ビルド
@@ -90,9 +91,9 @@ npm run format          # Prettierフォーマット
 
 ```bash
 # 開発モード
-uv run python flask/src/app.py -D    # デバッグモード
-uv run python flask/src/app.py -d    # ダミーモード（ハードウェアなしでCI/テスト用）
-uv run python flask/src/app.py -p 8080    # カスタムポート
+uv run python src/app.py -D    # デバッグモード
+uv run python src/app.py -d    # ダミーモード（ハードウェアなしでCI/テスト用）
+uv run python src/app.py -p 8080    # カスタムポート
 ```
 
 ### テスト
@@ -103,7 +104,7 @@ uv run pytest tests/test_basic.py    # 特定のテストファイルを実行
 uv run pytest tests/test_playwright.py    # E2Eブラウザテスト
 
 # Playwrightテストの場合、Flaskサーバーをダミーモードで起動する必要があります：
-DUMMY_MODE=true uv run python flask/src/app.py -d -p 5000 &
+DUMMY_MODE=true uv run python src/app.py -d -p 5000 &
 uv run pytest tests/test_playwright.py
 ```
 
@@ -512,29 +513,29 @@ now = datetime.datetime.now(datetime.UTC)
 ### 調査観点
 
 1. **Protocol等を使った型整備**
-    - `| None` の多用箇所で、型の絞り込みで削減可能か
-    - `isinstance()` の多用箇所で、Protocolで統一可能か
-    - 同じインターフェースを持つ複数クラスの共通化
+   - `| None` の多用箇所で、型の絞り込みで削減可能か
+   - `isinstance()` の多用箇所で、Protocolで統一可能か
+   - 同じインターフェースを持つ複数クラスの共通化
 
 2. **dict/TypedDict の dataclass 化**
-    - 辞書キーアクセスが頻繁で typo リスクがある箇所
-    - 不変性が必要な設定データ
-    - ただし、JSONシリアライズが容易なTypedDictが適切な場合もある
+   - 辞書キーアクセスが頻繁で typo リスクがある箇所
+   - 不変性が必要な設定データ
+   - ただし、JSONシリアライズが容易なTypedDictが適切な場合もある
 
 3. **コーディングパターンの統一**
-    - 同じ機能を異なる方法で実装している箇所
-    - エラーハンドリング、ログ出力、環境変数チェック等
+   - 同じ機能を異なる方法で実装している箇所
+   - エラーハンドリング、ログ出力、環境変数チェック等
 
 4. **my_lib 機能の活用**
-    - タイムゾーン処理: `my_lib.time` を使用
-    - ファイルI/O: `my_lib.serializer` を使用
-    - SQLite接続: `my_lib.sqlite_util` を使用
-    - タイムスタンプファイル: `my_lib.footprint` を使用
+   - タイムゾーン処理: `my_lib.time` を使用
+   - ファイルI/O: `my_lib.serializer` を使用
+   - SQLite接続: `my_lib.sqlite_util` を使用
+   - タイムスタンプファイル: `my_lib.footprint` を使用
 
 5. **パス管理**
-    - `pathlib.Path` を使用（文字列パスは避ける）
-    - `my_lib.webapp.config` の base_dir を活用
-    - ハードコーディングされたパスは設定に移動
+   - `pathlib.Path` を使用（文字列パスは避ける）
+   - `my_lib.webapp.config` の base_dir を活用
+   - ハードコーディングされたパスは設定に移動
 
 ### 見送り基準
 
@@ -544,3 +545,22 @@ now = datetime.datetime.now(datetime.UTC)
 - 実装コストが効果に見合わない
 - 過度な抽象化でかえって複雑になる
 - 外部ライブラリの仕様に依存している
+
+## 開発ワークフロー規約
+
+### コミット時の注意
+
+- 今回のセッションで作成し、プロジェクトが機能するのに必要なファイル以外は git add しないこと
+- 気になる点がある場合は追加して良いか質問すること
+
+### バグ修正の原則
+
+- 憶測に基づいて修正しないこと
+- 必ず原因を論理的に確定させた上で修正すること
+- 「念のため」の修正でコードを複雑化させないこと
+
+### コード修正時の確認事項
+
+- 関連するテストも修正すること
+- 関連するドキュメントも更新すること
+- mypy, pyright, ty がパスすることを確認すること
