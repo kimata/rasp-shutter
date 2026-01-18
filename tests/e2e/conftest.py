@@ -5,6 +5,7 @@ import datetime
 import logging
 import random
 import time
+from typing import Any
 
 import my_lib.time
 import pytest
@@ -294,7 +295,7 @@ def check_schedule(
 
 
 @pytest.fixture(autouse=True)
-def _server_init(page: Page, host: str, port: str, webserver) -> None:  # type: ignore[no-untyped-def]
+def _server_init(page: Page, host: str, port: str, webserver: Any) -> None:
     """サーバー初期化fixture"""
     # If webserver fixture was not used (server not auto-started), wait for manual server
     if webserver is None:

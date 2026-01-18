@@ -12,18 +12,19 @@ from __future__ import annotations
 
 import datetime
 import logging
+import pathlib
 import sqlite3
 import threading
-from pathlib import Path
 
 import my_lib.sqlite_util
 import my_lib.time
+import rasp_shutter.types
 
 
 class MetricsCollector:
     """シャッターメトリクス収集クラス"""
 
-    def __init__(self, db_path: Path):
+    def __init__(self, db_path: pathlib.Path):
         """
         コンストラクタ
 
@@ -88,7 +89,7 @@ class MetricsCollector:
         self,
         action: str,
         mode: str,
-        sensor_data: dict | None = None,
+        sensor_data: rasp_shutter.types.SensorData | None = None,
         timestamp: datetime.datetime | None = None,
     ):
         """
@@ -113,14 +114,14 @@ class MetricsCollector:
         altitude = None
 
         if sensor_data:
-            if sensor_data.get("lux", {}).get("valid"):
-                lux = sensor_data["lux"]["value"]
-            if sensor_data.get("solar_rad", {}).get("valid"):
-                solar_rad = sensor_data["solar_rad"]["value"]
-            if sensor_data.get("altitude", {}).get("valid"):
-                altitude = sensor_data["altitude"]["value"]
+            if sensor_data.lux.valid:
+                lux = sensor_data.lux.value
+            if sensor_data.solar_rad.valid:
+                solar_rad = sensor_data.solar_rad.value
+            if sensor_data.altitude.valid:
+                altitude = sensor_data.altitude.value
 
-        with self.lock, sqlite3.connect(self.db_path) as conn:
+        with self.lock, my_lib.sqlite_util.connect(self.db_path) as conn:
             # Python 3.12+: datetimeアダプターを明示的に設定
             conn.execute("BEGIN")
             # 個別操作として記録
@@ -148,7 +149,7 @@ class MetricsCollector:
 
         date = timestamp.date().isoformat()
 
-        with self.lock, sqlite3.connect(self.db_path) as conn:
+        with self.lock, my_lib.sqlite_util.connect(self.db_path) as conn:
             conn.execute(
                 """
                 INSERT INTO daily_failures (date, timestamp)
@@ -171,7 +172,7 @@ class MetricsCollector:
             操作メトリクスデータのリスト
 
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with my_lib.sqlite_util.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
                 """
@@ -197,7 +198,7 @@ class MetricsCollector:
             失敗メトリクスデータのリスト
 
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with my_lib.sqlite_util.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
                 """
@@ -218,7 +219,7 @@ class MetricsCollector:
         操作メトリクスデータのリスト
 
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with my_lib.sqlite_util.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
                 """
@@ -237,7 +238,7 @@ class MetricsCollector:
         失敗メトリクスデータのリスト
 
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with my_lib.sqlite_util.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
                 """
@@ -290,10 +291,10 @@ _collector_instance: MetricsCollector | None = None
 
 def get_collector(metrics_data_path) -> MetricsCollector:
     """メトリクス収集インスタンスを取得"""
-    global _collector_instance  # noqa: PLW0603
+    global _collector_instance
 
     if _collector_instance is None:
-        db_path = Path(metrics_data_path)
+        db_path = pathlib.Path(metrics_data_path)
         _collector_instance = MetricsCollector(db_path)
         logging.info("Metrics collector initialized: %s", db_path)
 
@@ -302,7 +303,7 @@ def get_collector(metrics_data_path) -> MetricsCollector:
 
 def reset_collector():
     """グローバルコレクタインスタンスをリセット (テスト用)"""
-    global _collector_instance  # noqa: PLW0603
+    global _collector_instance
     _collector_instance = None
 
 
@@ -310,7 +311,7 @@ def record_shutter_operation(
     action: str,
     mode: str,
     metrics_data_path,
-    sensor_data: dict | None = None,
+    sensor_data: rasp_shutter.types.SensorData | None = None,
     timestamp: datetime.datetime | None = None,
 ):
     """シャッター操作を記録（便利関数）"""

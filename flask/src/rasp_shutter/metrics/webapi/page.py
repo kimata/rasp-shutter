@@ -11,6 +11,7 @@ import datetime
 import io
 import json
 import logging
+import pathlib
 
 import my_lib.webapp.config
 import rasp_shutter.metrics.collector
@@ -38,9 +39,7 @@ def metrics_view():
                 status=503,
             )
 
-        from pathlib import Path
-
-        db_path = Path(metrics_data_path)
+        db_path = pathlib.Path(metrics_data_path)
         if not db_path.exists():
             return flask.Response(
                 f"<html><body><h1>メトリクスデータベースが見つかりません</h1>"
@@ -140,7 +139,7 @@ def generate_shutter_metrics_icon():
         )
 
     # 32x32に縮小してアンチエイリアス効果を得る
-    return img.resize((size, size), Image.LANCZOS)
+    return img.resize((size, size), Image.Resampling.LANCZOS)
 
 
 def calculate_data_period(operation_metrics: list[dict]) -> dict:
@@ -274,23 +273,24 @@ def generate_statistics(operation_metrics: list[dict], failure_metrics: list[dic
     auto_sensor_data.update(_collect_sensor_data_by_type(operation_metrics, "schedule"))
     manual_sensor_data = _collect_sensor_data_by_type(operation_metrics, "manual")
 
-    # カウント系データを集計
-    manual_open_total = sum(
-        1 for op in operation_metrics if op.get("operation_type") == "manual" and op.get("action") == "open"
-    )
-    manual_close_total = sum(
-        1 for op in operation_metrics if op.get("operation_type") == "manual" and op.get("action") == "close"
-    )
-    auto_open_total = sum(
-        1
-        for op in operation_metrics
-        if op.get("operation_type") in ["auto", "schedule"] and op.get("action") == "open"
-    )
-    auto_close_total = sum(
-        1
-        for op in operation_metrics
-        if op.get("operation_type") in ["auto", "schedule"] and op.get("action") == "close"
-    )
+    # カウント系データを集計（1回のループで全統計を計算）
+    manual_open_total = 0
+    manual_close_total = 0
+    auto_open_total = 0
+    auto_close_total = 0
+    for op in operation_metrics:
+        op_type = op.get("operation_type")
+        action = op.get("action")
+        if op_type == "manual":
+            if action == "open":
+                manual_open_total += 1
+            elif action == "close":
+                manual_close_total += 1
+        elif op_type in ["auto", "schedule"]:
+            if action == "open":
+                auto_open_total += 1
+            elif action == "close":
+                auto_close_total += 1
 
     # 日数を計算
     unique_dates = {op.get("date") for op in operation_metrics if op.get("date")}
@@ -470,7 +470,8 @@ def prepare_time_series_data(operation_metrics: list[dict]) -> dict:
     daily_last_operations = _extract_daily_last_operations(operation_metrics)
 
     # 日付リストを生成
-    unique_dates = sorted({op.get("date") for op in operation_metrics if op.get("date")})
+    date_set: set[str] = {op["date"] for op in operation_metrics if op.get("date")}
+    unique_dates = sorted(date_set)
 
     dates = []
     open_times = []

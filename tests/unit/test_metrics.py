@@ -31,17 +31,16 @@ class TestMetricsCollector:
         """操作記録のテスト"""
         import rasp_shutter.metrics.collector
 
+        from tests.fixtures.sensor_factory import SensorDataFactory
+
         collector = rasp_shutter.metrics.collector.MetricsCollector(temp_metrics_path)
 
         # 操作を記録
+        sensor_data = SensorDataFactory.custom(solar_rad=200, lux=2000, altitude=50)
         collector.record_shutter_operation(
             action="open",
             mode="manual",
-            sensor_data={
-                "solar_rad": {"valid": True, "value": 200},
-                "lux": {"valid": True, "value": 2000},
-                "altitude": {"valid": True, "value": 50},
-            },
+            sensor_data=sensor_data,
         )
 
         # 記録を確認

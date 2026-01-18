@@ -4,7 +4,10 @@
 テスト用のセンサーデータを生成するファクトリークラスを提供します。
 """
 
-from typing import Any, ClassVar
+import datetime
+from typing import ClassVar
+
+import rasp_shutter.types
 
 
 class SensorDataFactory:
@@ -25,7 +28,7 @@ class SensorDataFactory:
     }
 
     @classmethod
-    def bright(cls) -> dict[str, Any]:
+    def bright(cls) -> rasp_shutter.types.SensorData:
         """明るい状態のセンサーデータを生成
 
         Returns:
@@ -38,7 +41,7 @@ class SensorDataFactory:
         )
 
     @classmethod
-    def dark(cls) -> dict[str, Any]:
+    def dark(cls) -> rasp_shutter.types.SensorData:
         """暗い状態のセンサーデータを生成
 
         Returns:
@@ -59,7 +62,7 @@ class SensorDataFactory:
         solar_rad_valid: bool = True,
         lux_valid: bool = True,
         altitude_valid: bool = True,
-    ) -> dict[str, Any]:
+    ) -> rasp_shutter.types.SensorData:
         """カスタムセンサーデータを生成
 
         Args:
@@ -73,14 +76,22 @@ class SensorDataFactory:
         Returns:
             センサーデータ
         """
-        return {
-            "solar_rad": {"valid": solar_rad_valid, "value": solar_rad},
-            "lux": {"valid": lux_valid, "value": lux},
-            "altitude": {"valid": altitude_valid, "value": altitude},
-        }
+        now = datetime.datetime.now(datetime.UTC)
+
+        def create_sensor_value(value: float, valid: bool) -> rasp_shutter.types.SensorValue:
+            if valid:
+                return rasp_shutter.types.SensorValue.create_valid(value=value, time=now)
+            else:
+                return rasp_shutter.types.SensorValue.create_invalid()
+
+        return rasp_shutter.types.SensorData(
+            solar_rad=create_sensor_value(solar_rad, solar_rad_valid),
+            lux=create_sensor_value(lux, lux_valid),
+            altitude=create_sensor_value(altitude, altitude_valid),
+        )
 
     @classmethod
-    def invalid_lux(cls) -> dict[str, Any]:
+    def invalid_lux(cls) -> rasp_shutter.types.SensorData:
         """照度が無効なセンサーデータを生成
 
         Returns:
@@ -94,7 +105,7 @@ class SensorDataFactory:
         )
 
     @classmethod
-    def invalid_solar_rad(cls) -> dict[str, Any]:
+    def invalid_solar_rad(cls) -> rasp_shutter.types.SensorData:
         """日射量が無効なセンサーデータを生成
 
         Returns:
@@ -108,7 +119,7 @@ class SensorDataFactory:
         )
 
     @classmethod
-    def all_invalid(cls) -> dict[str, Any]:
+    def all_invalid(cls) -> rasp_shutter.types.SensorData:
         """すべてのセンサーが無効なデータを生成
 
         Returns:

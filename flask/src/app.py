@@ -125,7 +125,8 @@ def create_app(config: rasp_shutter.config.AppConfig, dummy_mode: bool = False) 
     app.config["CONFIG"] = config
     app.config["DUMMY_MODE"] = dummy_mode
 
-    app.json.compat = True
+    # Flask 2.2+のJSON互換性設定。tyはJSONProviderのcompat属性を認識しないため抑制
+    app.json.compat = True  # type: ignore[union-attr]
 
     app.register_blueprint(
         rasp_shutter.control.webapi.control.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
@@ -168,6 +169,8 @@ if __name__ == "__main__":
     import docopt
     import my_lib.logger
 
+    # docstringを使用（__doc__がNoneでないことを確認）
+    assert __doc__ is not None, "Module docstring is required"  # noqa: S101
     args = docopt.docopt(__doc__)
 
     config_file = args["-c"]

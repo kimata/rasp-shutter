@@ -1,32 +1,34 @@
 #!/usr/bin/env python3
+import dataclasses
 import datetime
 
 import flask_cors
 import my_lib.flask_util
 import my_lib.sensor_data
+import my_lib.time
 import my_lib.webapp.config
 import pysolar.solar
-import pytz
 import rasp_shutter.config
+import rasp_shutter.types
 
 import flask
 
 blueprint = flask.Blueprint("rasp-shutter-sensor", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
 
-def get_solar_altitude(config: rasp_shutter.config.AppConfig) -> dict:
+def get_solar_altitude(config: rasp_shutter.config.AppConfig) -> rasp_shutter.types.SensorValue:
+    # pysolar.solar.get_altitude() はUTC時刻を要求するため、明示的にUTCを使用
     now = datetime.datetime.now(datetime.UTC)
-    return {
-        "value": pysolar.solar.get_altitude(config.location.latitude, config.location.longitude, now),
-        "valid": True,
-        "time": now,
-    }
+    return rasp_shutter.types.SensorValue.create_valid(
+        value=pysolar.solar.get_altitude(config.location.latitude, config.location.longitude, now),
+        time=now,
+    )
 
 
-def get_sensor_data(config: rasp_shutter.config.AppConfig) -> dict:
-    timezone = pytz.timezone("Asia/Tokyo")
+def get_sensor_data(config: rasp_shutter.config.AppConfig) -> rasp_shutter.types.SensorData:
+    timezone = my_lib.time.get_zoneinfo()
 
-    sense_data: dict = {}
+    sensor_values: dict[str, rasp_shutter.types.SensorValue] = {}
     for field in ["lux", "solar_rad"]:
         sensor = getattr(config.sensor, field)
         data = my_lib.sensor_data.fetch_data(
@@ -38,20 +40,19 @@ def get_sensor_data(config: rasp_shutter.config.AppConfig) -> dict:
             last=True,
         )
         if data.valid:
-            sense_data[field] = {
-                "value": data.value[0],
+            sensor_values[field] = rasp_shutter.types.SensorValue.create_valid(
+                value=data.value[0],
                 # NOTE: タイムゾーン情報を削除しておく。
-                "time": timezone.localize(data.time[0].replace(tzinfo=None)),
-                "valid": True,
-            }
+                time=data.time[0].replace(tzinfo=timezone),
+            )
         else:
-            sense_data[field] = {
-                "valid": False,
-            }
+            sensor_values[field] = rasp_shutter.types.SensorValue.create_invalid()
 
-    sense_data["altitude"] = get_solar_altitude(config)
-
-    return sense_data
+    return rasp_shutter.types.SensorData(
+        lux=sensor_values["lux"],
+        solar_rad=sensor_values["solar_rad"],
+        altitude=get_solar_altitude(config),
+    )
 
 
 @blueprint.route("/api/sensor", methods=["GET"])
@@ -59,4 +60,4 @@ def get_sensor_data(config: rasp_shutter.config.AppConfig) -> dict:
 @flask_cors.cross_origin()
 def api_sensor_data() -> flask.Response:
     config: rasp_shutter.config.AppConfig = flask.current_app.config["CONFIG"]
-    return flask.jsonify(get_sensor_data(config))
+    return flask.jsonify(dataclasses.asdict(get_sensor_data(config)))

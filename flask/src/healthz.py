@@ -39,6 +39,8 @@ if __name__ == "__main__":
     import my_lib.config
     import my_lib.logger
 
+    # docstringを使用（__doc__がNoneでないことを確認）
+    assert __doc__ is not None, "Module docstring is required"  # noqa: S101
     args = docopt.docopt(__doc__)
 
     config_file = args["-c"]

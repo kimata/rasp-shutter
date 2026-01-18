@@ -5,14 +5,17 @@
 """
 
 import logging
-import os
 import threading
 import time
-from typing import Any
 
 import my_lib.footprint
+import my_lib.notify.slack
 import my_lib.time
 import my_lib.webapp.config
+import rasp_shutter.control.config
+import rasp_shutter.control.scheduler
+import rasp_shutter.control.webapi.control
+import rasp_shutter.util
 
 import flask
 
@@ -31,14 +34,8 @@ def _get_event(event_name: str) -> threading.Event:
         return _events[event_name]
 
 
-def _check_dummy_mode() -> tuple[dict[str, Any], int] | None:
-    """DUMMY_MODEチェック"""
-    if os.environ.get("DUMMY_MODE", "false") != "true":
-        return {"error": "Test API is only available in DUMMY_MODE"}, 403
-    return None
-
-
 @blueprint.route("/api/test/sync/wait/<event_name>", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
 def wait_for_event(event_name: str):
     """
     イベントの完了を待機
@@ -52,10 +49,6 @@ def wait_for_event(event_name: str):
     Returns:
         JSON: 待機結果
     """
-    error = _check_dummy_mode()
-    if error:
-        return error
-
     timeout = flask.request.args.get("timeout", 30, type=float)
 
     event = _get_event(event_name)
@@ -81,6 +74,7 @@ def wait_for_event(event_name: str):
 
 
 @blueprint.route("/api/test/sync/signal/<event_name>", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
 def signal_event(event_name: str):
     """
     イベント完了をシグナル
@@ -91,10 +85,6 @@ def signal_event(event_name: str):
     Returns:
         JSON: シグナル結果
     """
-    error = _check_dummy_mode()
-    if error:
-        return error
-
     event = _get_event(event_name)
     event.set()
 
@@ -108,6 +98,7 @@ def signal_event(event_name: str):
 
 
 @blueprint.route("/api/test/sync/clear/<event_name>", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
 def clear_event(event_name: str):
     """
     イベントをクリア
@@ -118,10 +109,6 @@ def clear_event(event_name: str):
     Returns:
         JSON: クリア結果
     """
-    error = _check_dummy_mode()
-    if error:
-        return error
-
     event = _get_event(event_name)
     event.clear()
 
@@ -135,6 +122,7 @@ def clear_event(event_name: str):
 
 
 @blueprint.route("/api/test/scheduler/state", methods=["GET"])
+@rasp_shutter.util.require_dummy_mode
 def get_scheduler_state():
     """
     スケジューラーの状態を取得
@@ -142,19 +130,14 @@ def get_scheduler_state():
     Returns:
         JSON: スケジューラー状態
     """
-    error = _check_dummy_mode()
-    if error:
-        return error
-
-    import rasp_shutter.control.scheduler
-
     scheduler = rasp_shutter.control.scheduler.get_scheduler()
     schedule_data = rasp_shutter.control.scheduler.get_schedule_data()
 
     jobs = [
         {
             "next_run": job.next_run.isoformat() if job.next_run else None,
-            "job_func": job.job_func.__name__ if job.job_func else None,
+            # partialオブジェクトの場合__name__がないためgetattr使用
+            "job_func": getattr(job.job_func, "__name__", str(job.job_func)) if job.job_func else None,
         }
         for job in scheduler.get_jobs()
     ]
@@ -172,6 +155,7 @@ def get_scheduler_state():
 
 
 @blueprint.route("/api/test/scheduler/trigger", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
 def trigger_scheduler():
     """
     スケジューラーのジョブを即座に実行
@@ -182,12 +166,6 @@ def trigger_scheduler():
     Returns:
         JSON: 実行結果
     """
-    error = _check_dummy_mode()
-    if error:
-        return error
-
-    import rasp_shutter.control.scheduler
-
     scheduler = rasp_shutter.control.scheduler.get_scheduler()
 
     job_index = flask.request.args.get("job_index", type=int)
@@ -222,6 +200,7 @@ def trigger_scheduler():
 
 
 @blueprint.route("/api/test/scheduler/wait_auto_control", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
 def wait_auto_control():
     """
     自動制御の完了を待機
@@ -232,12 +211,6 @@ def wait_auto_control():
     Returns:
         JSON: 待機結果
     """
-    error = _check_dummy_mode()
-    if error:
-        return error
-
-    import rasp_shutter.control.scheduler
-
     timeout = flask.request.args.get("timeout", 30.0, type=float)
 
     success = rasp_shutter.control.scheduler.wait_for_auto_control_completion(timeout)
@@ -249,6 +222,7 @@ def wait_auto_control():
 
 
 @blueprint.route("/api/test/state/shutter", methods=["GET"])
+@rasp_shutter.util.require_dummy_mode
 def get_shutter_state():
     """
     シャッターの詳細状態を取得
@@ -256,17 +230,10 @@ def get_shutter_state():
     Returns:
         JSON: シャッター状態
     """
-    error = _check_dummy_mode()
-    if error:
-        return error
-
-    import rasp_shutter.control.config
-    import rasp_shutter.control.webapi.control
-
     config = flask.current_app.config["CONFIG"]
 
     states = []
-    for index in range(len(config.shutter)):
+    for index, shutter in enumerate(config.shutter):
         open_elapsed = my_lib.footprint.elapsed(
             rasp_shutter.control.webapi.control.exec_stat_file("open", index)
         )
@@ -277,9 +244,7 @@ def get_shutter_state():
         states.append(
             {
                 "index": index,
-                "name": config.shutter[index].name
-                if hasattr(config.shutter[index], "name")
-                else f"shutter_{index}",
+                "name": shutter.name if hasattr(shutter, "name") else f"shutter_{index}",
                 "open_elapsed_sec": open_elapsed,
                 "close_elapsed_sec": close_elapsed,
             }
@@ -301,6 +266,7 @@ def get_shutter_state():
 
 
 @blueprint.route("/api/test/state/reset", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
 def reset_test_state():
     """
     テスト状態をリセット
@@ -308,14 +274,6 @@ def reset_test_state():
     Returns:
         JSON: リセット結果
     """
-    error = _check_dummy_mode()
-    if error:
-        return error
-
-    import my_lib.notify.slack
-    import rasp_shutter.control.config
-    import rasp_shutter.control.webapi.control
-
     config = flask.current_app.config["CONFIG"]
 
     # 制御統計をクリア
@@ -346,6 +304,7 @@ def reset_test_state():
 
 
 @blueprint.route("/api/ctrl/clear", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
 def clear_control_log():
     """
     制御ログをクリア（E2Eテスト用）
@@ -353,12 +312,6 @@ def clear_control_log():
     Returns:
         JSON: クリア結果
     """
-    error = _check_dummy_mode()
-    if error:
-        return error
-
-    import rasp_shutter.control.webapi.control
-
     rasp_shutter.control.webapi.control.cmd_hist.clear()
 
     return {
@@ -368,6 +321,7 @@ def clear_control_log():
 
 
 @blueprint.route("/api/test/wait_condition", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
 def wait_condition():
     """
     条件が満たされるまで待機
@@ -380,10 +334,6 @@ def wait_condition():
     Returns:
         JSON: 待機結果
     """
-    error = _check_dummy_mode()
-    if error:
-        return error
-
     data = flask.request.get_json()
     if not data:
         return {"error": "JSON body required"}, 400
@@ -394,8 +344,6 @@ def wait_condition():
 
     if not condition_type or expected_value is None:
         return {"error": "type and value are required"}, 400
-
-    import rasp_shutter.control.webapi.control
 
     start_time = time.time()
     poll_interval = 0.1

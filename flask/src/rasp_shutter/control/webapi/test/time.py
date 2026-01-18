@@ -2,10 +2,12 @@
 
 import datetime
 import logging
-import os
 
 import my_lib.time
 import my_lib.webapp.config
+import rasp_shutter.control.scheduler
+import rasp_shutter.control.webapi.schedule
+import rasp_shutter.util
 import time_machine
 
 import flask
@@ -18,6 +20,7 @@ _traveler = None
 
 
 @blueprint.route("/api/test/time/set/<timestamp>", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
 def set_mock_time(timestamp):
     """
     テスト用時刻を設定するAPI
@@ -29,11 +32,7 @@ def set_mock_time(timestamp):
         JSON: 設定された時刻情報
 
     """
-    global _traveler  # noqa: PLW0603
-
-    # DUMMY_MODE でない場合は拒否
-    if os.environ.get("DUMMY_MODE", "false") != "true":
-        return {"error": "Test API is only available in DUMMY_MODE"}, 403
+    global _traveler
 
     try:
         # タイムスタンプの解析
@@ -66,6 +65,7 @@ def set_mock_time(timestamp):
 
 
 @blueprint.route("/api/test/time/advance/<int:seconds>", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
 def advance_mock_time(seconds):
     """
     モック時刻を指定秒数進める
@@ -77,11 +77,7 @@ def advance_mock_time(seconds):
         JSON: 更新された時刻情報
 
     """
-    global _traveler  # noqa: PLW0603
-
-    # DUMMY_MODE でない場合は拒否
-    if os.environ.get("DUMMY_MODE", "false") != "true":
-        return {"error": "Test API is only available in DUMMY_MODE"}, 403
+    global _traveler
 
     if _traveler is None:
         return {"error": "Mock time not set. Use /api/test/time/set first"}, 400
@@ -99,12 +95,11 @@ def advance_mock_time(seconds):
 
     # スケジューラーに現在のスケジュールを再読み込みさせる
     try:
-        import rasp_shutter.control.scheduler
-        from rasp_shutter.control.webapi.schedule import schedule_queue
-
         current_schedule = rasp_shutter.control.scheduler.schedule_load()
-        schedule_queue.put(current_schedule)
-        logging.info("Forced scheduler reload with current schedule")
+        schedule_queue = rasp_shutter.control.webapi.schedule.get_schedule_queue()
+        if schedule_queue is not None:
+            schedule_queue.put(current_schedule)
+            logging.info("Forced scheduler reload with current schedule")
     except Exception as e:
         logging.warning("Failed to force scheduler reload: %s", e)
 
@@ -120,6 +115,7 @@ def advance_mock_time(seconds):
 
 
 @blueprint.route("/api/test/time/reset", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
 def reset_mock_time():
     """
     モック時刻をリセットして実際の時刻に戻す
@@ -128,11 +124,7 @@ def reset_mock_time():
         JSON: リセット結果
 
     """
-    global _traveler  # noqa: PLW0603
-
-    # DUMMY_MODE でない場合は拒否
-    if os.environ.get("DUMMY_MODE", "false") != "true":
-        return {"error": "Test API is only available in DUMMY_MODE"}, 403
+    global _traveler
 
     if _traveler:
         _traveler.stop()
@@ -144,6 +136,7 @@ def reset_mock_time():
 
 
 @blueprint.route("/api/test/time/current", methods=["GET"])
+@rasp_shutter.util.require_dummy_mode
 def get_current_time():
     """
     現在の時刻（モック時刻または実時刻）を取得
@@ -152,10 +145,6 @@ def get_current_time():
         JSON: 現在時刻情報
 
     """
-    # DUMMY_MODE でない場合は拒否
-    if os.environ.get("DUMMY_MODE", "false") != "true":
-        return {"error": "Test API is only available in DUMMY_MODE"}, 403
-
     current_time = my_lib.time.now()
 
     return {

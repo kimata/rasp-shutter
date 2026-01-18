@@ -2,11 +2,11 @@
 import datetime
 import enum
 import logging
-import os
 import re
 import threading
 import time
 import traceback
+from typing import Any
 
 import my_lib.footprint
 import my_lib.serializer
@@ -17,6 +17,8 @@ import rasp_shutter.config
 import rasp_shutter.control.config
 import rasp_shutter.control.webapi.control
 import rasp_shutter.control.webapi.sensor
+import rasp_shutter.types
+import rasp_shutter.util
 import schedule
 
 
@@ -28,19 +30,24 @@ class BRIGHTNESS_STATE(enum.IntEnum):
 
 RETRY_COUNT = 3
 
-schedule_lock = None
-schedule_data = None
+# schedule ライブラリの曜日メソッド名（日曜始まり、wday[0]=日曜 に対応）
+WEEKDAY_METHODS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+
+# 時刻フォーマット検証用パターン（HH:MM形式）
+SCHEDULE_TIME_PATTERN = re.compile(r"\d{2}:\d{2}")
+
 should_terminate = threading.Event()
 
 # Worker-specific instances for pytest-xdist parallel execution
-_scheduler_instances = {}
-_schedule_data_instances = {}
-_auto_control_events = {}
+_scheduler_instances: dict[str, schedule.Scheduler] = {}
+_schedule_data_instances: dict[str, rasp_shutter.types.ScheduleData | None] = {}
+_schedule_lock_instances: dict[str, threading.Lock] = {}
+_auto_control_events: dict[str, threading.Event] = {}
 
 
-def get_scheduler():
+def get_scheduler() -> schedule.Scheduler:
     """Get worker-specific scheduler instance for pytest-xdist parallel execution"""
-    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    worker_id = rasp_shutter.util.get_worker_id()
 
     if worker_id not in _scheduler_instances:
         # Create a new scheduler instance for this worker
@@ -49,9 +56,19 @@ def get_scheduler():
     return _scheduler_instances[worker_id]
 
 
+def get_schedule_lock() -> threading.Lock:
+    """Get worker-specific schedule lock for pytest-xdist parallel execution"""
+    worker_id = rasp_shutter.util.get_worker_id()
+
+    if worker_id not in _schedule_lock_instances:
+        _schedule_lock_instances[worker_id] = threading.Lock()
+
+    return _schedule_lock_instances[worker_id]
+
+
 def get_auto_control_event():
     """テスト同期用のワーカー固有自動制御イベントを取得"""
-    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    worker_id = rasp_shutter.util.get_worker_id()
 
     if worker_id not in _auto_control_events:
         _auto_control_events[worker_id] = threading.Event()
@@ -62,14 +79,14 @@ def get_auto_control_event():
 def _signal_auto_control_completed():
     """自動制御サイクルの完了をシグナル（テスト用）"""
     # テスト環境でのみイベントを設定
-    if os.environ.get("PYTEST_CURRENT_TEST"):
+    if rasp_shutter.util.is_pytest_running():
         event = get_auto_control_event()
         event.set()
 
 
 def wait_for_auto_control_completion(timeout=5.0):
     """自動制御の完了を待機（テスト用）"""
-    if not os.environ.get("PYTEST_CURRENT_TEST"):
+    if not rasp_shutter.util.is_pytest_running():
         return True
 
     event = get_auto_control_event()
@@ -77,9 +94,9 @@ def wait_for_auto_control_completion(timeout=5.0):
     return event.wait(timeout)
 
 
-def get_schedule_data():
+def get_schedule_data() -> rasp_shutter.types.ScheduleData | None:
     """Get worker-specific schedule data for pytest-xdist parallel execution"""
-    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    worker_id = rasp_shutter.util.get_worker_id()
 
     if worker_id not in _schedule_data_instances:
         _schedule_data_instances[worker_id] = None
@@ -87,17 +104,17 @@ def get_schedule_data():
     return _schedule_data_instances[worker_id]
 
 
-def set_schedule_data(data):
+def set_schedule_data(data: rasp_shutter.types.ScheduleData | dict[str, Any] | None) -> None:
     """Set worker-specific schedule data for pytest-xdist parallel execution"""
-    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
-    _schedule_data_instances[worker_id] = data
+    worker_id = rasp_shutter.util.get_worker_id()
+    _schedule_data_instances[worker_id] = data  # type: ignore[assignment]
 
 
-def init():
-    global schedule_lock
+def init() -> None:
     global should_terminate
 
-    schedule_lock = threading.Lock()
+    # ワーカー固有のロックを初期化
+    get_schedule_lock()
     should_terminate.clear()
 
 
@@ -107,52 +124,74 @@ def term():
     should_terminate.set()
 
 
-def brightness_text(sense_data, cur_schedule_data):
-    text = [
-        "{sensor}: current {current:.1f} {cmp} threshold {threshold:.1f}".format(
-            sensor=sensor,
-            current=sense_data[sensor]["value"],
-            threshold=cur_schedule_data[sensor],
-            cmp=">"
-            if sense_data[sensor]["value"] > cur_schedule_data[sensor]
-            else ("<" if sense_data[sensor]["value"] < cur_schedule_data[sensor] else "="),
-        )
-        for sensor in ["solar_rad", "lux", "altitude"]
-    ]
+def brightness_text(
+    sense_data: rasp_shutter.types.SensorData,
+    cur_schedule_data: rasp_shutter.types.ScheduleEntry | dict[str, Any],
+) -> str:
+    # TypedDictへの動的アクセスを避けるため、dictに展開
+    schedule_dict: dict[str, Any] = {**cur_schedule_data}
+
+    def sensor_text(sensor: str) -> str:
+        sensor_value = getattr(sense_data, sensor)
+        current = sensor_value.value
+        threshold = schedule_dict[sensor]
+        if current > threshold:
+            cmp = ">"
+        elif current < threshold:
+            cmp = "<"
+        else:
+            cmp = "="
+        return f"{sensor}: current {current:.1f} {cmp} threshold {threshold:.1f}"
+
+    text = [sensor_text(sensor) for sensor in ["solar_rad", "lux", "altitude"]]
 
     return ", ".join(text)
 
 
-def check_brightness(sense_data, action):
-    if (not sense_data["lux"]["valid"]) or (not sense_data["solar_rad"]["valid"]):
+def check_brightness(sense_data: rasp_shutter.types.SensorData, action: str) -> BRIGHTNESS_STATE:
+    if not sense_data.lux.valid or not sense_data.solar_rad.valid:
         return BRIGHTNESS_STATE.UNKNOWN
 
     schedule_data = get_schedule_data()
+    assert schedule_data is not None, "Schedule data not initialized"  # noqa: S101
+
+    # validがTrueの場合、valueはNoneではない
+    lux_value = sense_data.lux.value
+    solar_rad_value = sense_data.solar_rad.value
+    altitude_value = sense_data.altitude.value
+    assert lux_value is not None and solar_rad_value is not None  # noqa: S101
+    assert altitude_value is not None  # noqa: S101
 
     if action == "close":
+        close_data = schedule_data["close"]
         if (
-            (sense_data["lux"]["value"] < schedule_data[action]["lux"])
-            or (sense_data["solar_rad"]["value"] < schedule_data[action]["solar_rad"])
-            or (sense_data["altitude"]["value"] < schedule_data[action]["altitude"])
+            lux_value < close_data["lux"]
+            or solar_rad_value < close_data["solar_rad"]
+            or altitude_value < close_data["altitude"]
         ):
-            logging.info("Getting darker %s", brightness_text(sense_data, schedule_data[action]))
+            logging.info("Getting darker %s", brightness_text(sense_data, close_data))
             return BRIGHTNESS_STATE.DARK
         else:
             return BRIGHTNESS_STATE.BRIGHT
     else:
+        open_data = schedule_data["open"]
         if (
-            (sense_data["lux"]["value"] > schedule_data[action]["lux"])
-            and (sense_data["solar_rad"]["value"] > schedule_data[action]["solar_rad"])
-            and (sense_data["altitude"]["value"] > schedule_data[action]["altitude"])
+            lux_value > open_data["lux"]
+            and solar_rad_value > open_data["solar_rad"]
+            and altitude_value > open_data["altitude"]
         ):
-            logging.info("Getting brighter %s", brightness_text(sense_data, schedule_data[action]))
+            logging.info("Getting brighter %s", brightness_text(sense_data, open_data))
             return BRIGHTNESS_STATE.BRIGHT
         else:
             return BRIGHTNESS_STATE.DARK
 
 
 def exec_shutter_control_impl(
-    config: rasp_shutter.config.AppConfig, state: str, mode: str, sense_data: dict, user: str
+    config: rasp_shutter.config.AppConfig,
+    state: str,
+    mode: rasp_shutter.control.webapi.control.CONTROL_MODE,
+    sense_data: rasp_shutter.types.SensorData,
+    user: str,
 ) -> bool:
     try:
         # NOTE: Web 経由だと認証つけた場合に困るので、直接関数を呼ぶ
@@ -160,15 +199,18 @@ def exec_shutter_control_impl(
             config, list(range(len(config.shutter))), state, mode, sense_data, user
         )
         return True
-    except Exception as e:
-        logging.warning(e)
-        logging.warning(traceback.format_exc())
+    except Exception:
+        logging.exception("Failed to control shutter")
 
     return False
 
 
 def exec_shutter_control(
-    config: rasp_shutter.config.AppConfig, state: str, mode: str, sense_data: dict, user: str
+    config: rasp_shutter.config.AppConfig,
+    state: str,
+    mode: rasp_shutter.control.webapi.control.CONTROL_MODE,
+    sense_data: rasp_shutter.types.SensorData,
+    user: str,
 ) -> bool:
     logging.debug("Execute shutter control")
 
@@ -185,24 +227,21 @@ def shutter_auto_open(config: rasp_shutter.config.AppConfig) -> None:
     logging.debug("try auto open")
 
     schedule_data = get_schedule_data()
+    assert schedule_data is not None, "Schedule data not initialized"  # noqa: S101
     if not schedule_data["open"]["is_active"]:
         logging.debug("inactive")
         return
 
-    elapsed_pendiing_open = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_PENDING_OPEN)
-    if elapsed_pendiing_open > 6 * 60 * 60:
+    elapsed_pending_open = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_PENDING_OPEN)
+    if elapsed_pending_open > rasp_shutter.control.config.ELAPSED_PENDING_OPEN_MAX_SEC:
         # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない。
         logging.debug("NOT pending")
         return
 
-    if (
-        my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE)
-        < rasp_shutter.control.config.EXEC_INTERVAL_AUTO_MIN * 60
-    ):
+    elapsed_auto_close = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE)
+    if elapsed_auto_close < rasp_shutter.control.config.EXEC_INTERVAL_AUTO_MIN * 60:
         # NOTE: 自動で閉めてから時間が経っていない場合は、処理を行わない。
-        logging.debug(
-            "just closed before %d", my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE)
-        )
+        logging.debug("just closed before %d", elapsed_auto_close)
         return
 
     sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
@@ -222,27 +261,22 @@ def shutter_auto_open(config: rasp_shutter.config.AppConfig) -> None:
     else:
         logging.debug(
             "Skip pendding open (solar_rad: %.1f W/m^2, lux: %.1f LUX)",
-            sense_data["solar_rad"]["value"] if sense_data["solar_rad"]["valid"] else -1,
-            sense_data["lux"]["value"] if sense_data["lux"]["valid"] else -1,
+            sense_data.solar_rad.value if sense_data.solar_rad.valid else -1,
+            sense_data.lux.value if sense_data.lux.valid else -1,
         )
 
 
-def conv_schedule_time_to_datetime(schedule_time):
-    return (
-        datetime.datetime.strptime(
-            my_lib.time.now().strftime("%Y/%m/%d ") + schedule_time,
-            "%Y/%m/%d %H:%M",
-        )
-    ).replace(
-        tzinfo=my_lib.time.get_zoneinfo(),
-        day=my_lib.time.now().day,
-    )
+def conv_schedule_time_to_datetime(schedule_time: str) -> datetime.datetime:
+    now = my_lib.time.now()
+    time_obj = datetime.datetime.strptime(schedule_time, "%H:%M").time()
+    return datetime.datetime.combine(now.date(), time_obj, tzinfo=my_lib.time.get_zoneinfo())
 
 
 def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
     logging.debug("try auto close")
 
     schedule_data = get_schedule_data()
+    assert schedule_data is not None, "Schedule data not initialized"  # noqa: S101
     if not schedule_data["close"]["is_active"]:
         logging.debug("inactive")
         return
@@ -262,22 +296,21 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
         # NOTE: スケジュールで閉めていた場合は処理しない
         logging.debug("after close time")
         return
-    elif my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE) <= 12 * 60 * 60:
+    elif (
+        my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE)
+        <= rasp_shutter.control.config.ELAPSED_AUTO_CLOSE_MAX_SEC
+    ):
         # NOTE: 12時間以内に自動で閉めていた場合は処理しない
         logging.debug("already close")
         return
 
     for index in range(len(config.shutter)):
-        if (
-            my_lib.footprint.elapsed(rasp_shutter.control.webapi.control.exec_stat_file("open", index))
-            < rasp_shutter.control.config.EXEC_INTERVAL_AUTO_MIN * 60
-        ):
+        elapsed_open = my_lib.footprint.elapsed(
+            rasp_shutter.control.webapi.control.exec_stat_file("open", index)
+        )
+        if elapsed_open < rasp_shutter.control.config.EXEC_INTERVAL_AUTO_MIN * 60:
             # NOTE: 自動で開けてから時間が経っていない場合は、処理を行わない。
-            logging.debug(
-                "just opened before %d sec (%d)",
-                my_lib.footprint.elapsed(rasp_shutter.control.webapi.control.exec_stat_file("open", index)),
-                index,
-            )
+            logging.debug("just opened before %d sec (%d)", elapsed_open, index)
             return
 
     sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
@@ -299,7 +332,10 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
 
         # NOTE: まだ明るくなる可能性がある時間帯の場合、再度自動的に開けるようにする
         hour = my_lib.time.now().hour
-        if (hour > 5) and (hour < 13):
+        if (
+            hour > rasp_shutter.control.config.HOUR_MORNING_START
+            and hour < rasp_shutter.control.config.HOUR_PENDING_OPEN_END
+        ):
             logging.info("Set Pending OPEN")
             my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN)
 
@@ -307,19 +343,20 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
         # NOTE: pending close の制御は無いのでここには来ない。
         logging.debug(
             "Skip pendding close (solar_rad: %.1f W/m^2, lux: %.1f LUX)",
-            sense_data["solar_rad"]["value"] if sense_data["solar_rad"]["valid"] else -1,
-            sense_data["lux"]["value"] if sense_data["lux"]["valid"] else -1,
+            sense_data.solar_rad.value if sense_data.solar_rad.valid else -1,
+            sense_data.lux.value if sense_data.lux.valid else -1,
         )
 
 
 def shutter_auto_control(config: rasp_shutter.config.AppConfig) -> None:
     hour = my_lib.time.now().hour
+    cfg = rasp_shutter.control.config
 
     # NOTE: 時間帯によって自動制御の内容を分ける
-    if (hour > 5) and (hour < 12):
+    if hour > cfg.HOUR_MORNING_START and hour < cfg.HOUR_AUTO_OPEN_END:
         shutter_auto_open(config)
 
-    if (hour > 5) and (hour < 20):
+    if hour > cfg.HOUR_MORNING_START and hour < cfg.HOUR_AUTO_CLOSE_END:
         shutter_auto_close(config)
 
     # テスト同期用の完了シグナル
@@ -334,17 +371,14 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
     if check_brightness(sense_data, state) == BRIGHTNESS_STATE.UNKNOWN:
         error_sensor = []
 
-        if not sense_data["solar_rad"]["valid"]:
+        if not sense_data.solar_rad.valid:
             error_sensor.append("日射センサ")
-        if not sense_data["lux"]["valid"]:
+        if not sense_data.lux.valid:
             error_sensor.append("照度センサ")
 
-        my_lib.webapp.log.error(
-            "😵 {error_sensor}の値が不明なので{state}るのを見合わせました。".format(
-                error_sensor="と".join(error_sensor),
-                state="開け" if state == "open" else "閉め",
-            )
-        )
+        error_sensor_text = "と".join(error_sensor)
+        state_text = rasp_shutter.types.state_to_action_text(state)
+        my_lib.webapp.log.error(f"😵 {error_sensor_text}の値が不明なので{state_text}るのを見合わせました。")
         _signal_auto_control_completed()
         return
 
@@ -386,7 +420,15 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
     _signal_auto_control_completed()
 
 
-def schedule_validate(schedule_data):
+SCHEDULE_FIELD_TYPES: dict[str, type] = {
+    "is_active": bool,
+    "lux": int,
+    "altitude": int,
+    "solar_rad": int,
+}
+
+
+def schedule_validate(schedule_data: dict) -> bool:
     if len(schedule_data) != 2:
         logging.warning("Count of entry is Invalid: %d", len(schedule_data))
         return False
@@ -396,42 +438,40 @@ def schedule_validate(schedule_data):
             if key not in entry:
                 logging.warning("Does not contain %s", key)
                 return False
-        if type(entry["is_active"]) is not bool:
-            logging.warning("Type of is_active is invalid: %s", type(entry["is_active"]))
-            return False
-        if type(entry["lux"]) is not int:
-            logging.warning("Type of lux is invalid: %s", type(entry["lux"]))
-            return False
-        if type(entry["altitude"]) is not int:
-            logging.warning("Type of altitude is invalid: %s", type(entry["altitude"]))
-            return False
-        if type(entry["solar_rad"]) is not int:
-            logging.warning("Type of solar_rad is invalid: %s", type(entry["solar_rad"]))
-            return False
-        if not re.compile(r"\d{2}:\d{2}").search(entry["time"]):
+
+        # 辞書ベースのループで型チェック
+        for field, expected_type in SCHEDULE_FIELD_TYPES.items():
+            if not isinstance(entry.get(field), expected_type):
+                logging.warning("Type of %s is invalid: %s", field, type(entry.get(field)))
+                return False
+
+        if not SCHEDULE_TIME_PATTERN.search(entry["time"]):
             logging.warning("Format of time is invalid: %s", entry["time"])
             return False
         if len(entry["wday"]) != 7:
             logging.warning("Count of wday is Invalid: %d", len(entry["wday"]))
             return False
         for i, wday_flag in enumerate(entry["wday"]):
-            if type(wday_flag) is not bool:
+            if not isinstance(wday_flag, bool):
                 logging.warning("Type of wday[%d] is Invalid: %s", i, type(entry["wday"][i]))
                 return False
     return True
 
 
-def schedule_store(schedule_data):
-    global schedule_lock
+def schedule_store(schedule_data: dict) -> None:
+    schedule_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
+    assert schedule_path is not None, "SCHEDULE_FILE_PATH not configured"  # noqa: S101
+
     try:
-        with schedule_lock:
-            my_lib.serializer.store(my_lib.webapp.config.SCHEDULE_FILE_PATH, schedule_data)
+        with get_schedule_lock():
+            my_lib.serializer.store(schedule_path, schedule_data)
     except Exception:
         logging.exception("Failed to save schedule settings.")
         my_lib.webapp.log.error("😵 スケジュール設定の保存に失敗しました。")
 
 
 def gen_schedule_default():
+    _cfg = rasp_shutter.control.config
     schedule_data = {
         "is_active": False,
         "time": "00:00",
@@ -442,19 +482,29 @@ def gen_schedule_default():
     }
 
     return {
-        "open": schedule_data | {"time": "08:00", "solar_rad": 150, "lux": 1000},
-        "close": schedule_data | {"time": "17:00", "solar_rad": 80, "lux": 1200},
+        "open": schedule_data
+        | {
+            "time": _cfg.DEFAULT_OPEN_TIME,
+            "solar_rad": _cfg.DEFAULT_OPEN_SOLAR_RAD,
+            "lux": _cfg.DEFAULT_OPEN_LUX,
+        },
+        "close": schedule_data
+        | {
+            "time": _cfg.DEFAULT_CLOSE_TIME,
+            "solar_rad": _cfg.DEFAULT_CLOSE_SOLAR_RAD,
+            "lux": _cfg.DEFAULT_CLOSE_LUX,
+        },
     }
 
 
-def schedule_load():
-    global schedule_lock
-
+def schedule_load() -> dict:
     schedule_default = gen_schedule_default()
+    schedule_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
+    assert schedule_path is not None, "SCHEDULE_FILE_PATH not configured"  # noqa: S101
 
     try:
-        with schedule_lock:
-            schedule_data = my_lib.serializer.load(my_lib.webapp.config.SCHEDULE_FILE_PATH, schedule_default)
+        with get_schedule_lock():
+            schedule_data = my_lib.serializer.load(schedule_path, schedule_default)
             if schedule_validate(schedule_data):
                 return schedule_data
     except Exception:
@@ -472,34 +522,12 @@ def set_schedule(config: rasp_shutter.config.AppConfig, schedule_data: dict) -> 
         if not entry["is_active"]:
             continue
 
-        if entry["wday"][0]:
-            scheduler.every().sunday.at(entry["time"], my_lib.time.get_pytz()).do(
-                shutter_schedule_control, config, state
-            )
-        if entry["wday"][1]:
-            scheduler.every().monday.at(entry["time"], my_lib.time.get_pytz()).do(
-                shutter_schedule_control, config, state
-            )
-        if entry["wday"][2]:
-            scheduler.every().tuesday.at(entry["time"], my_lib.time.get_pytz()).do(
-                shutter_schedule_control, config, state
-            )
-        if entry["wday"][3]:
-            scheduler.every().wednesday.at(entry["time"], my_lib.time.get_pytz()).do(
-                shutter_schedule_control, config, state
-            )
-        if entry["wday"][4]:
-            scheduler.every().thursday.at(entry["time"], my_lib.time.get_pytz()).do(
-                shutter_schedule_control, config, state
-            )
-        if entry["wday"][5]:
-            scheduler.every().friday.at(entry["time"], my_lib.time.get_pytz()).do(
-                shutter_schedule_control, config, state
-            )
-        if entry["wday"][6]:
-            scheduler.every().saturday.at(entry["time"], my_lib.time.get_pytz()).do(
-                shutter_schedule_control, config, state
-            )
+        for i, wday_method_name in enumerate(WEEKDAY_METHODS):
+            if entry["wday"][i]:
+                wday_method = getattr(scheduler.every(), wday_method_name)
+                wday_method.at(entry["time"], my_lib.time.get_pytz()).do(
+                    shutter_schedule_control, config, state
+                )
 
     for job in scheduler.get_jobs():
         logging.info("Next run: %s", job.next_run)

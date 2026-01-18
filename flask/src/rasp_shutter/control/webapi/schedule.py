@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import json
 import multiprocessing
-import os
 import threading
 import urllib.parse
 
@@ -11,14 +10,17 @@ import my_lib.webapp.config
 import my_lib.webapp.event
 import my_lib.webapp.log
 import rasp_shutter.control.scheduler
+import rasp_shutter.types
+import rasp_shutter.util
 
 import flask
 
 blueprint = flask.Blueprint("rasp-shutter-schedule", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
-_schedule_lock = {}
-_schedule_queue = {}
-_worker_thread = {}
+_schedule_lock: dict[str, threading.RLock] = {}
+# multiprocessing.Queue のジェネリック型引数は実行時に検証されないため
+_schedule_queue: dict[str, multiprocessing.Queue[dict[str, bool]]] = {}
+_worker_thread: dict[str, threading.Thread] = {}
 
 WDAY_STR = ["日", "月", "火", "水", "木", "金", "土"]
 
@@ -33,14 +35,14 @@ def term():
 
     rasp_shutter.control.scheduler.term()
     get_worker_thread().join()
-    del _worker_thread[get_worker_id()]
+    del _worker_thread[rasp_shutter.util.get_worker_id()]
 
 
 def init_impl(config):
     if get_worker_thread() is not None:
-        raise ValueError("worker should be None")  # noqa: TRY003
+        raise ValueError("worker should be None")
 
-    worker_id = get_worker_id()
+    worker_id = rasp_shutter.util.get_worker_id()
 
     _schedule_queue[worker_id] = multiprocessing.Queue()
     _schedule_lock[worker_id] = threading.RLock()
@@ -56,40 +58,35 @@ def init_impl(config):
     _worker_thread[worker_id].start()
 
 
-def get_worker_id():
-    return os.environ.get("PYTEST_XDIST_WORKER", "")
-
-
 def get_schedule_lock():
-    return _schedule_lock.get(get_worker_id(), None)
+    return _schedule_lock.get(rasp_shutter.util.get_worker_id(), None)
 
 
 def get_schedule_queue():
-    return _schedule_queue.get(get_worker_id(), None)
+    return _schedule_queue.get(rasp_shutter.util.get_worker_id(), None)
 
 
 def get_worker_thread():
-    return _worker_thread.get(get_worker_id(), None)
+    return _worker_thread.get(rasp_shutter.util.get_worker_id(), None)
 
 
-def wday_str_list(wday_list):
+def wday_str_list(wday_list: list[bool]) -> list[str]:
     wday_str = WDAY_STR
 
-    return [wday_str[i] for i in range(len(wday_list)) if wday_list[i]]
+    return [wday_str[i] for i, is_active in enumerate(wday_list) if is_active]
 
 
-def schedule_entry_str(name, entry):
-    return "{name} {time} {solar_rad} W/mm^2 {lux} LUX {altitude} deg {wday}".format(
-        name=name.upper(),
-        time=entry["time"],
-        solar_rad=entry["solar_rad"],
-        lux=entry["lux"],
-        altitude=entry["altitude"],
-        wday=",".join(wday_str_list(entry["wday"])),
-    )
+def schedule_entry_str(name: str, entry: rasp_shutter.types.ScheduleEntry) -> str:
+    name_upper = name.upper()
+    time = entry["time"]
+    solar_rad = entry["solar_rad"]
+    lux = entry["lux"]
+    altitude = entry["altitude"]
+    wday = ",".join(wday_str_list(entry["wday"]))
+    return f"{name_upper} {time} {solar_rad} W/mm^2 {lux} LUX {altitude} deg {wday}"
 
 
-def schedule_str(schedule_data):
+def schedule_str(schedule_data: dict) -> str:
     str_buf = []
     for name in ["open", "close"]:
         entry = schedule_data[name]
@@ -132,11 +129,8 @@ def api_schedule_ctrl():
             my_lib.webapp.event.notify_event(my_lib.webapp.event.EVENT_TYPE.SCHEDULE)
 
             user = my_lib.flask_util.auth_user(flask.request)
-            my_lib.webapp.log.info(
-                "📅 スケジュールを更新しました。\n{schedule}\n{by}".format(
-                    schedule=schedule_str(schedule_data),
-                    by=f"by {user}" if user != "" else "",
-                )
-            )
+            schedule_text = schedule_str(schedule_data)
+            by_text = f"by {user}" if user != "" else ""
+            my_lib.webapp.log.info(f"📅 スケジュールを更新しました。\n{schedule_text}\n{by_text}")
 
     return flask.jsonify(rasp_shutter.control.scheduler.schedule_load())

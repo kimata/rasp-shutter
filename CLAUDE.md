@@ -216,3 +216,331 @@ use_value(value)  # type: ignore
 ```
 
 **例外:** テストコードでは、モックオブジェクトの使用など型チェックが困難な場合に `# type: ignore` を使用可能です。
+
+### 型定義
+
+センサーデータやAPIレスポンスには `rasp_shutter.types` で定義された TypedDict を使用する。
+
+```python
+# 推奨
+import rasp_shutter.types
+
+def get_sensor_data(config: AppConfig) -> rasp_shutter.types.SensorData:
+    ...
+
+# 非推奨
+def get_sensor_data(config: AppConfig) -> dict:
+    ...
+```
+
+### 型比較
+
+型チェックには `isinstance()` を使用する。`type(x) is T` は避ける。
+
+```python
+# 推奨
+if not isinstance(entry["is_active"], bool):
+    return False
+
+# 非推奨
+if type(entry["is_active"]) is not bool:
+    return False
+```
+
+### 文字列フォーマット
+
+f 文字列を優先的に使用する。`.format()` は避ける。
+
+```python
+# 推奨
+message = f"シャッター{name}を{state}ました。"
+
+# 非推奨
+message = "シャッター{name}を{state}ました。".format(name=name, state=state)
+```
+
+### ループスタイル
+
+- `range(len(x))` は index のみを使用する場合に限り許容
+- index と value の両方を使用する場合は `enumerate()` を使用
+
+```python
+# 推奨: index と value の両方を使用
+for i, item in enumerate(items):
+    result[i] = process(item)
+
+# 許容: index のみを使用
+for i in range(len(items)):
+    items[i] = None
+```
+
+### 条件式
+
+- 不要な括弧は削除する（`if (a) or (b):` → `if a or b:`）
+- 三項演算子のネストは避け、辞書マッピングまたは関数を使用
+
+```python
+# 推奨: 辞書マッピング
+MODE_TO_STR = {
+    CONTROL_MODE.MANUAL: "manual",
+    CONTROL_MODE.SCHEDULE: "schedule",
+    CONTROL_MODE.AUTO: "auto",
+}
+mode_str = MODE_TO_STR[mode]
+
+# 非推奨: ネストした三項演算子
+mode_str = "manual" if mode == CONTROL_MODE.MANUAL else "schedule" if mode == CONTROL_MODE.SCHEDULE else "auto"
+```
+
+### 設定値の辞書管理
+
+複数の関連する設定値をまとめる場合は、タプルではなくNamedTupleを使用する。
+
+```python
+# 推奨: NamedTupleで意図を明確化
+import typing
+
+class ModeConfig(typing.NamedTuple):
+    divisor: float
+    threshold: float
+    description: str
+
+MODE_CONFIG = {
+    MODE.A: ModeConfig(60, 5, "手動"),
+    MODE.B: ModeConfig(3600, 1, "自動"),
+}
+config = MODE_CONFIG[mode]
+if value / config.divisor < config.threshold:
+    ...
+
+# 非推奨: 素のタプルで意図が不明確
+MODE_CONFIG = {
+    MODE.A: (60, 5, "手動"),
+    MODE.B: (3600, 1, "自動"),
+}
+divisor, threshold, desc = MODE_CONFIG[mode]
+```
+
+### 型チェックのループ化
+
+同じパターンの型チェックが繰り返される場合は、辞書とループで統一する。
+
+```python
+# 推奨: 辞書ベースのループ
+FIELD_TYPES = {"name": str, "count": int, "active": bool}
+for field, expected_type in FIELD_TYPES.items():
+    if not isinstance(data.get(field), expected_type):
+        return False
+
+# 非推奨: 同じパターンの繰り返し
+if not isinstance(data["name"], str):
+    return False
+if not isinstance(data["count"], int):
+    return False
+if not isinstance(data["active"], bool):
+    return False
+```
+
+### 共通関数
+
+- 重複するロジックは共通関数化し、`types.py` または適切なモジュールに配置
+
+```python
+# 推奨: 共通関数を使用
+import rasp_shutter.types
+state_text = rasp_shutter.types.state_to_action_text(state)
+
+# 非推奨: 同じロジックを複数箇所に記述
+state_text = "開け" if state == "open" else "閉め"
+```
+
+### 環境変数チェック
+
+- 環境変数の判定は専用のヘルパー関数を使用する
+- 同じ判定ロジックを複数箇所に書かない
+
+```python
+# 推奨
+import rasp_shutter.util
+if rasp_shutter.util.is_dummy_mode():
+    ...
+
+# 非推奨
+import os
+if os.environ.get("DUMMY_MODE", "false") == "true":
+    ...
+```
+
+### ワーカーID取得
+
+pytest-xdist の並列実行で使用するワーカーID取得には `rasp_shutter.util.get_worker_id()` を使用する。
+
+```python
+# 推奨
+import rasp_shutter.util
+worker_id = rasp_shutter.util.get_worker_id()
+
+# 非推奨
+import os
+worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+```
+
+### テストAPIのDUMMY_MODEチェック
+
+テスト用APIでのDUMMY_MODEチェックには `@rasp_shutter.util.require_dummy_mode` デコレータを使用する。
+
+```python
+# 推奨: デコレータを使用
+import rasp_shutter.util
+
+@blueprint.route("/api/test/example", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
+def test_example():
+    # DUMMY_MODEチェック不要、直接ロジックを記述
+    return {"success": True}
+
+# 非推奨: インラインでの判定
+@blueprint.route("/api/test/example", methods=["POST"])
+def test_example():
+    error = rasp_shutter.util.check_dummy_mode_for_api()
+    if error:
+        return error
+    return {"success": True}
+```
+
+### テスト環境判定
+
+pytest実行中かどうかの判定には `rasp_shutter.util.is_pytest_running()` を使用する。
+
+```python
+# 推奨
+import rasp_shutter.util
+if rasp_shutter.util.is_pytest_running():
+    ...
+
+# 非推奨
+import os
+if os.environ.get("PYTEST_CURRENT_TEST"):
+    ...
+```
+
+### 定数管理
+
+- 時間に関する定数は `control/config.py` に集約する
+- マジックナンバーは避け、意味のある定数名を使用する
+
+```python
+# 推奨
+import rasp_shutter.control.config
+if hour > rasp_shutter.control.config.HOUR_MORNING_START:
+    ...
+
+# 非推奨
+if hour > 5:
+    ...
+```
+
+### 正規表現パターン
+
+繰り返し使用する正規表現パターンは、モジュールレベルでコンパイル済み定数として定義する。
+
+```python
+# 推奨: コンパイル済みパターンを定数として定義
+SCHEDULE_TIME_PATTERN = re.compile(r"\d{2}:\d{2}")
+
+def validate_time(time_str: str) -> bool:
+    return bool(SCHEDULE_TIME_PATTERN.search(time_str))
+
+# 非推奨: 毎回コンパイル
+def validate_time(time_str: str) -> bool:
+    return bool(re.compile(r"\d{2}:\d{2}").search(time_str))
+```
+
+### type: ignore の使用
+
+`# type: ignore` を使用する場合は、必ず理由をコメントで記載する。
+
+```python
+# 推奨: 理由を記載
+# functools.wraps で型情報が保持されないため
+return decorated_function  # type: ignore[return-value]
+
+# 非推奨: 理由なし
+return decorated_function  # type: ignore
+```
+
+### パス管理
+
+- ファイルパスの構築は専用関数を使用する
+- テンプレート文字列 + format() の2段階処理は避ける
+
+```python
+# 推奨
+import rasp_shutter.control.config
+path = rasp_shutter.control.config.get_exec_stat_path(state, index)
+
+# 非推奨
+import pathlib
+path = pathlib.Path(str(TEMPLATE[state]).format(index=index))
+```
+
+### タイムゾーン
+
+- タイムゾーン処理は `my_lib.time` APIを使用する
+- `pytz.timezone()` の直接呼び出しは避ける
+- 外部ライブラリがUTC時刻を要求する場合は、コメントで理由を明記する
+
+```python
+# 推奨
+import my_lib.time
+tz = my_lib.time.get_zoneinfo()
+now = my_lib.time.now()
+
+# 非推奨
+import pytz
+tz = pytz.timezone("Asia/Tokyo")
+
+# UTC時刻が必要な場合はコメントで理由を明記
+# pysolar.solar.get_altitude() はUTC時刻を要求するため、明示的にUTCを使用
+now = datetime.datetime.now(datetime.UTC)
+```
+
+## リファクタリング調査の方針
+
+コードのリファクタリング機会を評価する際は、以下の観点で調査を行い、**メリットがデメリットを上回る場合のみ**実施する。
+
+### 調査観点
+
+1. **Protocol等を使った型整備**
+    - `| None` の多用箇所で、型の絞り込みで削減可能か
+    - `isinstance()` の多用箇所で、Protocolで統一可能か
+    - 同じインターフェースを持つ複数クラスの共通化
+
+2. **dict/TypedDict の dataclass 化**
+    - 辞書キーアクセスが頻繁で typo リスクがある箇所
+    - 不変性が必要な設定データ
+    - ただし、JSONシリアライズが容易なTypedDictが適切な場合もある
+
+3. **コーディングパターンの統一**
+    - 同じ機能を異なる方法で実装している箇所
+    - エラーハンドリング、ログ出力、環境変数チェック等
+
+4. **my_lib 機能の活用**
+    - タイムゾーン処理: `my_lib.time` を使用
+    - ファイルI/O: `my_lib.serializer` を使用
+    - SQLite接続: `my_lib.sqlite_util` を使用
+    - タイムスタンプファイル: `my_lib.footprint` を使用
+
+5. **パス管理**
+    - `pathlib.Path` を使用（文字列パスは避ける）
+    - `my_lib.webapp.config` の base_dir を活用
+    - ハードコーディングされたパスは設定に移動
+
+### 見送り基準
+
+以下の場合は改善を見送る：
+
+- 影響範囲が広く、既存の安定動作を損なうリスクがある
+- 実装コストが効果に見合わない
+- 過度な抽象化でかえって複雑になる
+- 外部ライブラリの仕様に依存している

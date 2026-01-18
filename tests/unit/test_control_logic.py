@@ -92,11 +92,13 @@ class TestSensorText:
         """有効なセンサーデータのテキスト生成"""
         import rasp_shutter.control.webapi.control
 
-        sense_data = {
-            "solar_rad": {"valid": True, "value": 200.5},
-            "lux": {"valid": True, "value": 1500.3},
-            "altitude": {"valid": True, "value": 30.2},
-        }
+        from tests.fixtures.sensor_factory import SensorDataFactory
+
+        sense_data = SensorDataFactory.custom(
+            solar_rad=200.5,
+            lux=1500.3,
+            altitude=30.2,
+        )
 
         result = rasp_shutter.control.webapi.control.sensor_text(sense_data)
 
@@ -104,20 +106,14 @@ class TestSensorText:
         assert "1500.3" in result
         assert "30.2" in result
 
-    def test_sensor_text_with_invalid_data(self):
-        """無効なセンサーデータのテキスト生成"""
+    def test_sensor_text_with_none_data(self):
+        """センサーデータがNoneの場合"""
         import rasp_shutter.control.webapi.control
 
-        sense_data = {
-            "solar_rad": {"valid": False, "value": 0},
-            "lux": {"valid": False, "value": 0},
-            "altitude": {"valid": True, "value": 30},
-        }
+        result = rasp_shutter.control.webapi.control.sensor_text(None)
 
-        result = rasp_shutter.control.webapi.control.sensor_text(sense_data)
-
-        # 無効なデータでもテキストは生成される
-        assert result is not None
+        # Noneの場合は空文字列を返す
+        assert result == ""
 
 
 class TestCmdHist:

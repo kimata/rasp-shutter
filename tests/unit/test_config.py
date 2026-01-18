@@ -52,8 +52,11 @@ class TestConfigLoad:
 
         assert hasattr(config.slack, "bot_token")
         # SlackErrorOnlyConfigの場合はerror属性を持つ
+        # hasattrで確認してもpyrightは型を絞り込まないため、getattrを使用
         if hasattr(config.slack, "error"):
-            assert hasattr(config.slack.error, "channel")  # type: ignore[union-attr]
+            error_config = getattr(config.slack, "error", None)
+            assert error_config is not None
+            assert hasattr(error_config, "channel")
 
 
 class TestToMyLibWebappConfig:

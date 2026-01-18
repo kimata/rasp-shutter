@@ -10,24 +10,25 @@ from typing import Any, ClassVar
 import my_lib.time
 
 
+class _Defaults:
+    """デフォルト値を保持する内部クラス"""
+
+    OPEN_TIME: str = "07:01"
+    OPEN_SOLAR_RAD: int = 150
+    OPEN_LUX: int = 1000
+    OPEN_ALTITUDE: int = 10
+
+    CLOSE_TIME: str = "17:01"
+    CLOSE_SOLAR_RAD: int = 80
+    CLOSE_LUX: int = 1200
+    CLOSE_ALTITUDE: int = 15
+
+
 class ScheduleFactory:
     """スケジュールデータ生成ファクトリー"""
 
-    # デフォルトのスケジュール設定
-    DEFAULTS: ClassVar[dict[str, Any]] = {
-        "open": {
-            "time": "07:01",
-            "solar_rad": 150,
-            "lux": 1000,
-            "altitude": 10,
-        },
-        "close": {
-            "time": "17:01",
-            "solar_rad": 80,
-            "lux": 1200,
-            "altitude": 15,
-        },
-    }
+    # デフォルト値への参照
+    _defaults: ClassVar[type[_Defaults]] = _Defaults
 
     @classmethod
     def create(
@@ -65,27 +66,22 @@ class ScheduleFactory:
         if wday is None:
             wday = [True] * 7
 
+        d = cls._defaults
         return {
             "open": {
                 "is_active": open_active,
-                "time": open_time or cls.DEFAULTS["open"]["time"],
-                "solar_rad": open_solar_rad
-                if open_solar_rad is not None
-                else cls.DEFAULTS["open"]["solar_rad"],
-                "lux": open_lux if open_lux is not None else cls.DEFAULTS["open"]["lux"],
-                "altitude": open_altitude if open_altitude is not None else cls.DEFAULTS["open"]["altitude"],
+                "time": open_time if open_time is not None else d.OPEN_TIME,
+                "solar_rad": open_solar_rad if open_solar_rad is not None else d.OPEN_SOLAR_RAD,
+                "lux": open_lux if open_lux is not None else d.OPEN_LUX,
+                "altitude": open_altitude if open_altitude is not None else d.OPEN_ALTITUDE,
                 "wday": wday.copy(),
             },
             "close": {
                 "is_active": close_active,
-                "time": close_time or cls.DEFAULTS["close"]["time"],
-                "solar_rad": close_solar_rad
-                if close_solar_rad is not None
-                else cls.DEFAULTS["close"]["solar_rad"],
-                "lux": close_lux if close_lux is not None else cls.DEFAULTS["close"]["lux"],
-                "altitude": close_altitude
-                if close_altitude is not None
-                else cls.DEFAULTS["close"]["altitude"],
+                "time": close_time if close_time is not None else d.CLOSE_TIME,
+                "solar_rad": close_solar_rad if close_solar_rad is not None else d.CLOSE_SOLAR_RAD,
+                "lux": close_lux if close_lux is not None else d.CLOSE_LUX,
+                "altitude": close_altitude if close_altitude is not None else d.CLOSE_ALTITUDE,
                 "wday": wday.copy(),
             },
         }
