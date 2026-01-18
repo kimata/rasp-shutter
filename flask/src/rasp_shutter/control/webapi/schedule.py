@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import json
 import multiprocessing
 import threading
@@ -18,7 +20,6 @@ import flask
 blueprint = flask.Blueprint("rasp-shutter-schedule", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
 _schedule_lock: dict[str, threading.RLock] = {}
-# multiprocessing.Queue のジェネリック型引数は実行時に検証されないため
 _schedule_queue: dict[str, multiprocessing.Queue[dict[str, bool]]] = {}
 _worker_thread: dict[str, threading.Thread] = {}
 
@@ -30,11 +31,12 @@ def init(config):
 
 
 def term():
-    if get_worker_thread() is None:
+    worker_thread = get_worker_thread()
+    if worker_thread is None:
         return
 
     rasp_shutter.control.scheduler.term()
-    get_worker_thread().join()
+    worker_thread.join()
     del _worker_thread[rasp_shutter.util.get_worker_id()]
 
 
@@ -113,7 +115,12 @@ def api_schedule_ctrl():
             my_lib.webapp.log.error("😵 スケジュールの指定が不正です。")
             return flask.jsonify(rasp_shutter.control.scheduler.schedule_load())
 
-        with get_schedule_lock():
+        schedule_lock = get_schedule_lock()
+        schedule_queue = get_schedule_queue()
+        assert schedule_lock is not None  # noqa: S101
+        assert schedule_queue is not None  # noqa: S101
+
+        with schedule_lock:
             schedule_data = json.loads(data)
 
             endpoint = urllib.parse.urljoin(
@@ -123,7 +130,7 @@ def api_schedule_ctrl():
 
             for entry in schedule_data.values():
                 entry["endpoint"] = endpoint
-            get_schedule_queue().put(schedule_data)
+            schedule_queue.put(schedule_data)
 
             rasp_shutter.control.scheduler.schedule_store(schedule_data)
             my_lib.webapp.event.notify_event(my_lib.webapp.event.EVENT_TYPE.SCHEDULE)
