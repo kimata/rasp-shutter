@@ -37,19 +37,19 @@ build-vue:
     before_script: []
 
     script:
-        - npm ci --cache .npm --prefer-offline
-        - npm run build
+        - cd frontend && npm ci --cache .npm --prefer-offline
+        - cd frontend && npm run build
     artifacts:
         paths:
-            - dist/
+            - frontend/dist/
     cache:
         - key:
               files:
-                  - package-lock.json
+                  - frontend/package-lock.json
           fallback_keys:
               - npm-cache-${CI_PROJECT_ID}
           paths:
-              - .npm/
+              - frontend/.npm/
 
 build-image:
     stage: build
@@ -167,7 +167,7 @@ test-playwright:
         - mv hems-config/rasp-shutter.yaml config.yaml
 
         - uv run playwright install --with-deps chromium
-        - env TEST=true uv run python ./flask/src/app.py -d 2>&1 > flask_log.txt &
+        - env TEST=true uv run python ./src/app.py -d 2>&1 > flask_log.txt &
         - >
             uv run pytest tests/e2e/ --no-cov
             --junit-xml=reports/playwright-junit.xml
@@ -224,7 +224,7 @@ test-playwright:
             --name ${CI_JOB_NAME}-${CI_JOB_ID} --label job=${CI_PROJECT_NAME}-${CI_JOB_NAME}
             --network ${DOCKER_NETWORK} --publish :5000 --env TEST=true
             ${CI_REGISTRY_IMAGE}:${TAG}
-            ./flask/src/app.py ${CONFIG_ARGS}
+            ./src/app.py ${CONFIG_ARGS}
 
         - echo "Container started, checking status..."
         - docker ps -a --filter name=${CI_JOB_NAME}-${CI_JOB_ID}
@@ -321,7 +321,7 @@ test-healthz-docker:
             docker run --rm --detach=true
             --name ${CI_JOB_NAME}-${CI_JOB_ID} --label job=${CI_PROJECT_NAME}-${CI_JOB_NAME}
             --network ${DOCKER_NETWORK} --publish :5000
-            ${CI_REGISTRY_IMAGE}:${TAG} ./flask/src/app.py -d
+            ${CI_REGISTRY_IMAGE}:${TAG} ./src/app.py -d
 
         - echo "Container started, checking status..."
         - docker ps -a --filter name=${CI_JOB_NAME}-${CI_JOB_ID}
@@ -350,7 +350,7 @@ test-healthz-docker:
         # ヘルスチェック実行
         - echo "App is ready, running health check..."
         - docker logs ${CI_JOB_NAME}-${CI_JOB_ID} > flask_log.txt
-        - docker exec ${CI_JOB_NAME}-${CI_JOB_ID} ./flask/src/healthz.py
+        - docker exec ${CI_JOB_NAME}-${CI_JOB_ID} ./src/healthz.py
 
         # クリーンアップ
         - docker stop ${CI_JOB_NAME}-${CI_JOB_ID} || true
