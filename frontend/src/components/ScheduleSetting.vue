@@ -1,33 +1,32 @@
 <template>
-    <div class="row mb-4 mt-4">
-        <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
-            <h2>自動</h2>
-            <div class="row schedule-setting">
-                <div class="col-lg-6 col-md-12">
-                    <ScheduleEntry label="オープン" name="open" v-model="current.open" />
-                </div>
-                <div class="col-lg-6 col-md-12">
-                    <ScheduleEntry label="クローズ" name="close" v-model="current.close" />
-                </div>
+    <div class="mb-4 mt-4">
+        <h2>自動</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+                <ScheduleEntry label="オープン" name="open" v-model="current.open" />
             </div>
-            <div class="mt-4 mb-2">
-                <button
-                    type="button"
-                    class="btn btn-success col-12"
-                    @click="save()"
-                    v-bind:disabled="!isChanged"
-                    data-testid="save"
-                >
-                    <i class="bi bi-save" />
-                    保存
-                </button>
+            <div>
+                <ScheduleEntry label="クローズ" name="close" v-model="current.close" />
             </div>
+        </div>
+        <div class="mt-4 mb-2">
+            <button
+                type="button"
+                class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2"
+                @click="save()"
+                v-bind:disabled="!isChanged"
+                data-testid="save"
+            >
+                <CloudArrowUpIcon class="w-5 h-5" />
+                保存
+            </button>
         </div>
     </div>
 </template>
 
 <script>
 import axios from "axios";
+import { CloudArrowUpIcon } from "@heroicons/vue/24/outline";
 import AppConfig from "../mixins/AppConfig.js";
 import ScheduleEntry from "./ScheduleEntry.vue";
 
@@ -36,6 +35,7 @@ export default {
     mixins: [AppConfig],
     components: {
         ScheduleEntry,
+        CloudArrowUpIcon,
     },
     compatConfig: { MODE: 3 },
     data() {

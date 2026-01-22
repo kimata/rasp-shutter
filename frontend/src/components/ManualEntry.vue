@@ -1,25 +1,25 @@
 <template>
-    <div class="container control-entry">
+    <div class="control-entry">
         <h3>{{ this.name }}</h3>
-        <div class="row">
-            <div class="col-6">
+        <div class="flex gap-2">
+            <div class="w-1/2">
                 <button
-                    class="btn btn-success w-100"
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2"
                     @click="control('open')"
                     v-bind:data-testid="'open-' + index"
                 >
-                    <i class="bi bi-arrow-up-circle" />
+                    <ArrowUpCircleIcon class="w-5 h-5" />
                     上げる
                 </button>
             </div>
 
-            <div class="col-6">
+            <div class="w-1/2">
                 <button
-                    class="btn btn-success w-100"
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2"
                     @click="control('close')"
                     v-bind:data-testid="'close-' + index"
                 >
-                    <i class="bi bi-arrow-down-circle" />
+                    <ArrowDownCircleIcon class="w-5 h-5" />
                     下げる
                 </button>
             </div>
@@ -29,12 +29,17 @@
 
 <script>
 import axios from "axios";
+import { ArrowUpCircleIcon, ArrowDownCircleIcon } from "@heroicons/vue/24/outline";
 import AppConfig from "../mixins/AppConfig.js";
 
 export default {
-    namex: "manual-entry",
+    name: "manual-entry",
     props: ["name", "index"],
     mixins: [AppConfig],
+    components: {
+        ArrowUpCircleIcon,
+        ArrowDownCircleIcon,
+    },
     compatConfig: { MODE: 3 },
     methods: {
         control: function (mode) {

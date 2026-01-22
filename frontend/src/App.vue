@@ -1,6 +1,6 @@
 <template>
     <div id="app">
-        <div class="container">
+        <div class="max-w-4xl mx-auto px-4">
             <app-header></app-header>
             <manual-control />
             <schedule-setting />
@@ -63,9 +63,6 @@ h3 {
     opacity: 0.7;
 }
 
-.btn-success {
-    background: #28a745 !important;
-}
 input[type="checkbox"] {
     accent-color: #23903c;
 }

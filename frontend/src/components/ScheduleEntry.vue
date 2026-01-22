@@ -1,8 +1,8 @@
 <template>
-    <div class="container">
+    <div>
         <h3>{{ label }}</h3>
-        <div class="row">
-            <div class="switchToggle mt-1 col-sm-6">
+        <div class="flex">
+            <div class="switchToggle mt-1">
                 <input
                     type="checkbox"
                     v-bind:id="name + '-schedule-entry'"
@@ -14,92 +14,75 @@
             </div>
         </div>
 
-        <div class="row">
+        <div>
             <h3>時刻</h3>
-            <div class="form-group">
-                <div class="input-group" v-bind:id="name + '-schedule-entry-time'">
-                    <input
-                        type="time"
-                        class="form-control"
-                        name="time"
-                        v-model="entry.time"
-                        v-bind:disabled="!entry.is_active"
-                        @input="emit()"
-                    />
-                    <div class="input-group-append">
-                        <div class="input-group-text time-icon"></div>
-                    </div>
-                </div>
+            <div class="input-group" v-bind:id="name + '-schedule-entry-time'">
+                <input
+                    type="time"
+                    class="form-input flex-1 rounded-l border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    name="time"
+                    v-model="entry.time"
+                    v-bind:disabled="!entry.is_active"
+                    @input="emit()"
+                />
+                <div class="input-group-text time-icon rounded-r border border-l-0 border-gray-300 bg-gray-100 px-3 py-2"></div>
             </div>
         </div>
-        <div class="row mt-3">
-            <small v-if="name == 'open'" class="text-success">午前、高度・日射・照度が共に上回ったら開きます。</small>
-            <small v-else class="text-success">高度・日射・照度のいずれかが下回ったら閉じます。</small>
+        <div class="mt-3">
+            <small v-if="name == 'open'" class="text-green-600">午前、高度・日射・照度が共に上回ったら開きます。</small>
+            <small v-else class="text-green-600">高度・日射・照度のいずれかが下回ったら閉じます。</small>
         </div>
-        <div class="row">
+        <div>
             <h3>日射閾値</h3>
-            <div class="form-group">
-                <div class="input-group" v-bind:id="name + '-schedule-entry-solar_rad'">
-                    <input
-                        type="number"
-                        class="form-control text-end"
-                        name="sorlar_rad"
-                        v-model="entry.solar_rad"
-                        v-bind:disabled="!entry.is_active"
-                        @input="emit()"
-                    />
-                    <div class="input-group-append">
-                        <div class="input-group-text" style="width: 4em">W/m<sup>2</sup></div>
-                    </div>
-                </div>
+            <div class="input-group" v-bind:id="name + '-schedule-entry-solar_rad'">
+                <input
+                    type="number"
+                    class="form-input flex-1 rounded-l border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-green-500"
+                    name="sorlar_rad"
+                    v-model="entry.solar_rad"
+                    v-bind:disabled="!entry.is_active"
+                    @input="emit()"
+                />
+                <div class="input-group-text rounded-r border border-l-0 border-gray-300 bg-gray-100 px-3 py-2 w-16">W/m<sup>2</sup></div>
             </div>
         </div>
 
-        <div class="row">
+        <div>
             <h3>照度閾値</h3>
-            <div class="form-group">
-                <div class="input-group" v-bind:id="name + '-schedule-entry-lux'">
-                    <input
-                        type="number"
-                        class="form-control text-end"
-                        name="lux"
-                        v-model="entry.lux"
-                        v-bind:disabled="!entry.is_active"
-                        @input="emit()"
-                    />
-                    <div class="input-group-append">
-                        <div class="input-group-text" style="width: 4em">LUX</div>
-                    </div>
-                </div>
+            <div class="input-group" v-bind:id="name + '-schedule-entry-lux'">
+                <input
+                    type="number"
+                    class="form-input flex-1 rounded-l border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-green-500"
+                    name="lux"
+                    v-model="entry.lux"
+                    v-bind:disabled="!entry.is_active"
+                    @input="emit()"
+                />
+                <div class="input-group-text rounded-r border border-l-0 border-gray-300 bg-gray-100 px-3 py-2 w-16">LUX</div>
             </div>
         </div>
 
-        <div class="row">
+        <div>
             <h3>太陽高度閾値</h3>
-            <div class="form-group">
-                <div class="input-group" v-bind:id="name + '-schedule-entry-altitude'">
-                    <input
-                        type="number"
-                        class="form-control text-end"
-                        name="altitude"
-                        v-model="entry.altitude"
-                        v-bind:disabled="!entry.is_active"
-                        @input="emit()"
-                    />
-                    <div class="input-group-append">
-                        <div class="input-group-text" style="width: 4em">度</div>
-                    </div>
-                </div>
+            <div class="input-group" v-bind:id="name + '-schedule-entry-altitude'">
+                <input
+                    type="number"
+                    class="form-input flex-1 rounded-l border border-gray-300 px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-green-500"
+                    name="altitude"
+                    v-model="entry.altitude"
+                    v-bind:disabled="!entry.is_active"
+                    @input="emit()"
+                />
+                <div class="input-group-text rounded-r border border-l-0 border-gray-300 bg-gray-100 px-3 py-2 w-16">度</div>
             </div>
         </div>
 
-        <div class="row">
+        <div>
             <h3>曜日</h3>
-            <div v-bind:id="name + '-schedule-entry-wday'">
+            <div v-bind:id="name + '-schedule-entry-wday'" class="flex flex-wrap gap-2">
                 <span
                     v-for="(wday, i) in ['日', '月', '火', '水', '木', '金', '土']"
                     :key="name + '-wday-' + i"
-                    class="me-2"
                 >
                     <input
                         type="checkbox"
@@ -108,6 +91,7 @@
                         v-model="entry.wday[i]"
                         @click="changeWday($event, i)"
                         @change="emit()"
+                        class="mr-1"
                     />
                     <label v-bind:for="name + '-wday-' + i">{{ wday }}</label>
                 </span>
@@ -156,9 +140,8 @@ export default {
 </script>
 
 <style scoped>
-.input-group > .input-group-append > .input-group-text {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+.input-group {
+    display: flex;
 }
 
 .switchToggle input[type="checkbox"] {
@@ -191,15 +174,15 @@ export default {
 }
 .switchToggle input:checked + label,
 .switchToggle input:checked + input + label {
-    background: #28a745;
+    background: #16a34a;
 }
 .switchToggle input + label:before,
 .switchToggle input + input + label:before {
-    content: "OFF";
+    content: "無効";
     position: absolute;
     top: 3px;
     left: 35px;
-    width: 26px;
+    width: 40px;
     height: 26px;
     border-radius: 90px;
     transition: 0.3s;
@@ -208,11 +191,11 @@ export default {
 }
 .switchToggle input:checked + label:before,
 .switchToggle input:checked + input + label:before {
-    content: "ON";
+    content: "有効";
     position: absolute;
     top: 3px;
     left: 10px;
-    width: 26px;
+    width: 40px;
     height: 26px;
     border-radius: 90px;
     transition: 0.3s;
@@ -234,32 +217,5 @@ export default {
 
 .time-icon:before {
     content: "\1f55b";
-}
-
-.sun-icon:after {
-    content: "\1f31e";
-}
-
-.lux-icon:after {
-    content: "\1f4a1";
-}
-
-.fa-arrow-down:before {
-    content: "\25BC";
-}
-
-.fa-arrow-up:before {
-    content: "\25B2";
-}
-
-.switchToggle input + label:before,
-.switchToggle input + input + label:before {
-    content: "無効";
-    width: 40px;
-}
-.switchToggle input:checked + label:before,
-.switchToggle input:checked + input + label:before {
-    content: "有効";
-    width: 40px;
 }
 </style>

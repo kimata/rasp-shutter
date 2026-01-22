@@ -1,9 +1,7 @@
 <template>
     <header>
-        <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
-            <div class="bg-light p-5 rounded jumbotron">
-                <h1>シャッター制御</h1>
-            </div>
+        <div class="bg-gray-100 p-8 rounded-lg jumbotron mb-8">
+            <h1 class="text-2xl font-bold -mt-3">シャッター制御</h1>
         </div>
     </header>
 </template>
@@ -21,10 +19,5 @@ export default {
     background-repeat: no-repeat;
     background-size: auto 4em;
     background-position: 95%;
-    margin-bottom: 2em;
-}
-.jumbotron h1 {
-    font-size: 2rem;
-    margin-top: -0.8em;
 }
 </style>

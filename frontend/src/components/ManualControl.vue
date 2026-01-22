@@ -1,13 +1,11 @@
 <template>
-    <div class="row mb-4 mt-4">
-        <div class="col-xl-6 offset-xl-3 col-lg-8 offset-lg-2 col-md-10 offset-md-1">
-            <h2>手動</h2>
-            <div class="schedule-setting">
-                <p v-if="shutter_list.length == 0">シャッター一覧を読み込み中...</p>
-                <div v-else class="row">
-                    <div v-for="(name, index) in shutter_list" :key="index" class="col-lg-6 col-md-12">
-                        <ManualEntry v-bind:name="name" v-bind:index="index" />
-                    </div>
+    <div class="mb-4 mt-4">
+        <h2>手動</h2>
+        <div>
+            <p v-if="shutter_list.length == 0">シャッター一覧を読み込み中...</p>
+            <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div v-for="(name, index) in shutter_list" :key="index">
+                    <ManualEntry v-bind:name="name" v-bind:index="index" />
                 </div>
             </div>
         </div>
