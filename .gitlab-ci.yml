@@ -3,6 +3,8 @@ image: gitlab.green-rabbit.net:5050/kimata/local-ubuntu:260104_3efe597c
 variables:
     UV_LINK_MODE: copy
     UV_CACHE_DIR: .uv-cache
+    UV_EXTRA_INDEX_URL: "http://proxy:3141/simple/"
+    UV_INSECURE_HOST: "proxy"
 
 default:
     before_script:
@@ -84,42 +86,20 @@ build-image:
     # after_script:
     #     - docker buildx rm ${BUILDER} || true
 
-test-prepare:
-    stage: build
+test-walk-through:
+    stage: test
 
     needs: []
 
-    script:
+    before_script:
         - uv sync --locked --no-editable
 
-        - |
-            now=$(date +%s)
-            threshold=$((60*60*1))  # 1時間
+    script:
+        - >
+            uv run pytest tests/unit/ tests/integration/
+            --junit-xml=reports/junit-report.xml --maxfail=1 --dist=loadgroup
 
-            for net in $(docker network ls --format '{{.Name}}'); do
-                if [[ "$net" == "bridge" || "$net" == "host" || "$net" == "none" ]]; then
-                    continue
-                fi
-
-                attached=$(docker network inspect "$net" --format '{{json .Containers}}')
-                if [[ "$attached" != "{}" ]]; then
-                    continue
-                fi
-
-                created=$(docker network inspect "$net" --format '{{.Created}}')
-                created_fixed=$(echo "$created" | sed -E 's/\.[0-9]+//; s/ [A-Z]+$//')
-                created_ts=$(date --date="$created_fixed" +%s)
-
-                if [[ -n "$created_ts" && $((now - created_ts)) -gt $threshold ]]; then
-                    echo "Removing unused network: $net (created at $created)"
-                    docker network rm "$net" || true
-                fi
-            done
-
-    artifacts:
-        paths:
-            - ${UV_CACHE_DIR}
-        expire_in: 1 hour
+    coverage: '/TOTAL.*\s+(\d+%)/'
 
     cache:
         - key:
@@ -129,19 +109,6 @@ test-prepare:
               - uv-cache-${CI_PROJECT_ID}
           paths:
               - ${UV_CACHE_DIR}
-
-test-walk-through:
-    stage: test
-
-    needs:
-        - test-prepare
-
-    script:
-        - >
-            uv run pytest tests/unit/ tests/integration/
-            --junit-xml=reports/junit-report.xml --maxfail=1 --dist=loadgroup
-
-    coverage: '/TOTAL.*\s+(\d+%)/'
 
     artifacts:
         when: always
@@ -159,7 +126,9 @@ test-playwright:
 
     needs:
         - build-vue
-        - test-prepare
+
+    before_script:
+        - uv sync --locked --no-editable
 
     script:
         - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/hems-config.git
@@ -172,9 +141,16 @@ test-playwright:
             --junit-xml=reports/playwright-junit.xml
 
     cache:
-        key: playwright-${CI_PROJECT_ID}
-        paths:
-            - .cache/ms-playwright/
+        - key:
+              files:
+                  - uv.lock
+          fallback_keys:
+              - uv-cache-${CI_PROJECT_ID}
+          paths:
+              - ${UV_CACHE_DIR}
+        - key: playwright-${CI_PROJECT_ID}
+          paths:
+              - .cache/ms-playwright/
 
     artifacts:
         when: always
@@ -192,10 +168,12 @@ test-playwright:
     needs:
         - generate-tag
         - build-image
-        - test-prepare
 
     variables:
         CONFIG_ARGS: "-d"
+
+    before_script:
+        - uv sync --locked --no-editable
 
     script:
         # クリーンアップ: 古いコンテナを停止
@@ -262,9 +240,16 @@ test-playwright:
         - docker network rm ${DOCKER_NETWORK} || true
 
     cache:
-        key: playwright-${CI_PROJECT_ID}
-        paths:
-            - .cache/ms-playwright/
+        - key:
+              files:
+                  - uv.lock
+          fallback_keys:
+              - uv-cache-${CI_PROJECT_ID}
+          paths:
+              - ${UV_CACHE_DIR}
+        - key: playwright-${CI_PROJECT_ID}
+          paths:
+              - .cache/ms-playwright/
 
     artifacts:
         when: always
