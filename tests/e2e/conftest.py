@@ -256,7 +256,7 @@ def clear_log(page: Page, host: str, port: str) -> None:
 
 def get_log_count(page: Page) -> int:
     """現在のログ数を取得"""
-    return page.locator('//div[contains(@class,"log")]/div/div[2]').count()
+    return page.locator('//div[contains(@class,"log-message")]').count()
 
 
 def wait_for_log(
@@ -277,7 +277,7 @@ def wait_for_log(
         True: ログが見つかった, False: タイムアウト
 
     """
-    log_locator = page.locator('//div[contains(@class,"log")]/div/div[2]')
+    log_locator = page.locator('//div[contains(@class,"log-message")]')
     start = time.time()
     while time.time() - start < timeout_sec:
         # 全ログエントリをチェック
@@ -304,7 +304,7 @@ def check_log(
         initial_log_count: 操作前のログ数（指定された場合は新しいログの追加を待機）
 
     """
-    log_locator = page.locator('//div[contains(@class,"log")]/div/div[2]')
+    log_locator = page.locator('//div[contains(@class,"log-message")]')
 
     if initial_log_count is None:
         time.sleep(5)
@@ -324,7 +324,7 @@ def check_log(
     expect(log_locator.first).to_contain_text(message, timeout=timeout_sec * 1000)
 
     # NOTE: ログクリアする場合、ログの内容が変化しているので、ここで再取得する
-    log_list = page.locator('//div[contains(@class,"log")]/div/div[2]')
+    log_list = page.locator('//div[contains(@class,"log-message")]')
     for i in range(log_list.count()):
         expect(log_list.nth(i)).not_to_contain_text("失敗")
         expect(log_list.nth(i)).not_to_contain_text("エラー")
