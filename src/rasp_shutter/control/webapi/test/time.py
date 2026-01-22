@@ -8,8 +8,6 @@ import my_lib.time
 import my_lib.webapp.config
 import time_machine
 
-import rasp_shutter.control.scheduler
-import rasp_shutter.control.webapi.schedule
 import rasp_shutter.util
 
 blueprint = flask.Blueprint("rasp-shutter-test-time", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
@@ -93,15 +91,10 @@ def advance_mock_time(seconds):
     _traveler = time_machine.travel(new_mock_time)
     _traveler.start()
 
-    # スケジューラーに現在のスケジュールを再読み込みさせる
-    try:
-        current_schedule = rasp_shutter.control.scheduler.schedule_load()
-        schedule_queue = rasp_shutter.control.webapi.schedule.get_schedule_queue()
-        if schedule_queue is not None:
-            schedule_queue.put(current_schedule)
-            logging.info("Forced scheduler reload with current schedule")
-    except Exception as e:
-        logging.warning("Failed to force scheduler reload: %s", e)
+    # NOTE: スケジュールの強制リロードは行わない。
+    # 時刻を進めた後にスケジュールをリロードすると、Python schedule ライブラリが
+    # 既に過ぎた時刻のジョブを「明日」にスケジュールしてしまう。
+    # 既存のジョブはそのまま維持し、scheduler.run_pending() で評価させる。
 
     current_time = my_lib.time.now()
     logging.info("Mock time advanced to: %s", current_time)
