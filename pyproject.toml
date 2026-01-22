@@ -1,6 +1,6 @@
 [project]
 name = "rasp-shutter"
-version = "0.1.0"
+dynamic = ["version"]
 description = "電動シャッターを自動制御するアプリです。"
 authors = [
     { name = "KIMATA Tetsuya", email = "kimata@green-rabbit.net" }
