@@ -11,7 +11,6 @@ import datetime
 import io
 import json
 import logging
-import pathlib
 
 import flask
 import my_lib.webapp.config
@@ -28,18 +27,7 @@ def metrics_view():
     try:
         # 設定からメトリクスデータパスを取得
         config = flask.current_app.config["CONFIG"]
-        metrics_data_path = config.get("metrics", {}).get("data")
-
-        # データベースファイルの存在確認
-        if not metrics_data_path:
-            return flask.Response(
-                "<html><body><h1>メトリクス設定が見つかりません</h1>"
-                "<p>config.yamlでmetricsセクションが設定されていません。</p></body></html>",
-                mimetype="text/html",
-                status=503,
-            )
-
-        db_path = pathlib.Path(metrics_data_path)
+        db_path = config.metrics.data
         if not db_path.exists():
             return flask.Response(
                 f"<html><body><h1>メトリクスデータベースが見つかりません</h1>"
@@ -50,7 +38,7 @@ def metrics_view():
             )
 
         # メトリクス収集器を取得
-        collector = rasp_shutter.metrics.collector.get_collector(metrics_data_path)
+        collector = rasp_shutter.metrics.collector.get_collector(db_path)
 
         # 全期間のデータを取得
         operation_metrics = collector.get_all_operation_metrics()

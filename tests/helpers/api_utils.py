@@ -226,6 +226,23 @@ class SensorAPI:
         return _get_json(response)
 
 
+class MetricsAPI:
+    """メトリクスAPIヘルパー"""
+
+    def __init__(self, client: "FlaskClient"):
+        self.client = client
+        self.url_prefix = my_lib.webapp.config.URL_PREFIX
+
+    def get_page(self) -> tuple[int, str]:
+        """メトリクスページを取得
+
+        Returns:
+            (ステータスコード, レスポンスボディ) のタプル
+        """
+        response = self.client.get(f"{self.url_prefix}/api/metrics")
+        return response.status_code, response.data.decode("utf-8")
+
+
 class SystemAPI:
     """システム情報APIヘルパー"""
 
