@@ -320,7 +320,4 @@ def _server_init(page: Page, host: str, port: str, webserver: Any) -> None:
     # これにより前のテストの時間設定が影響しない
     reset_mock_time(host, port)
 
-    # テスト状態をリセット（制御統計、自動制御状態、Slack通知履歴、制御ログ）
-    reset_test_state(host, port)
-
     clear_control_history(host, port)
