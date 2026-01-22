@@ -73,6 +73,7 @@ export default {
             sensor: {
                 lux: { valid: false },
                 solar_rad: { valid: false },
+                altitude: { valid: false },
             },
             animatingValues: {},
             displayValues: {},
