@@ -5,6 +5,7 @@ rasp-shutter 制御用設定定数
 時間定数、パス定数など制御に関わる設定を集約管理します。
 """
 
+import os
 import pathlib
 
 import my_lib.webapp.config
@@ -24,11 +25,13 @@ def _get_stat_dir() -> pathlib.Path:
 # ======================================================================
 # パス定数（プロパティ形式 - 動的評価）
 # ======================================================================
-class _DynamicPath:
+class _DynamicPath(os.PathLike[str]):
     """動的に評価されるPathプロパティ
 
     モジュールレベル定数として使用しながら、アクセス時に
     my_lib.webapp.config.STAT_DIR_PATH を参照する。
+
+    os.PathLike[str] を継承しているため、pathlib.Path() で変換可能。
     """
 
     def __init__(self, subpath: str):
@@ -55,6 +58,10 @@ class _DynamicPath:
 
     def unlink(self, missing_ok: bool = False) -> None:
         pathlib.Path(self).unlink(missing_ok=missing_ok)
+
+    def to_path(self) -> pathlib.Path:
+        """pathlib.Pathとして返す（型チェッカー対応用）"""
+        return pathlib.Path(self)
 
 
 STAT_PENDING_OPEN = _DynamicPath("pending/open")

@@ -188,6 +188,10 @@ if __name__ == "__main__":
     with contextlib.suppress(PermissionError):
         os.setpgrp()
 
+    # シグナルハンドラを登録（Kubernetes rollout時のSIGTERMに対応）
+    signal.signal(signal.SIGTERM, sig_handler)
+    signal.signal(signal.SIGINT, sig_handler)
+
     # 異常終了時のクリーンアップ処理を登録
     def cleanup_on_exit() -> None:
         try:

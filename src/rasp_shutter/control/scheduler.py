@@ -330,13 +330,13 @@ def shutter_auto_open(config: rasp_shutter.config.AppConfig) -> None:
         logging.debug("inactive")
         return
 
-    elapsed_pending_open = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_PENDING_OPEN)
+    elapsed_pending_open = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
     if elapsed_pending_open > rasp_shutter.control.config.ELAPSED_PENDING_OPEN_MAX_SEC:
         # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない。
         logging.debug("NOT pending")
         return
 
-    elapsed_auto_close = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE)
+    elapsed_auto_close = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
     if elapsed_auto_close < rasp_shutter.control.config.EXEC_INTERVAL_AUTO_MIN * 60:
         # NOTE: 自動で閉めてから時間が経っていない場合は、処理を行わない。
         logging.debug("just closed before %d", elapsed_auto_close)
@@ -354,8 +354,8 @@ def shutter_auto_open(config: rasp_shutter.config.AppConfig) -> None:
             sense_data,
             "sensor",
         )
-        my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN)
-        my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE)
+        my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+        my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
     else:
         logging.debug(
             "Skip pendding open (solar_rad: %.1f W/m^2, lux: %.1f LUX)",
@@ -389,7 +389,7 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
         return
     elif (
         my_lib.time.now() <= conv_schedule_time_to_datetime(schedule_data["open"]["time"])
-    ) or my_lib.footprint.exists(rasp_shutter.control.config.STAT_PENDING_OPEN):
+    ) or my_lib.footprint.exists(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path()):
         # NOTE: 開ける時刻よりも早い場合は処理しない
         logging.debug("before open time")
         return
@@ -398,7 +398,7 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
         logging.debug("after close time")
         return
     elif (
-        my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE)
+        my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
         <= rasp_shutter.control.config.ELAPSED_AUTO_CLOSE_MAX_SEC
     ):
         # NOTE: 12時間以内に自動で閉めていた場合は処理しない
@@ -429,7 +429,7 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
             "sensor",
         )
         logging.info("Set Auto CLOSE")
-        my_lib.footprint.update(rasp_shutter.control.config.STAT_AUTO_CLOSE)
+        my_lib.footprint.update(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
 
         # NOTE: まだ明るくなる可能性がある時間帯の場合、再度自動的に開けるようにする
         hour = my_lib.time.now().hour
@@ -438,7 +438,7 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
             and hour < rasp_shutter.control.config.HOUR_PENDING_OPEN_END
         ):
             logging.info("Set Pending OPEN")
-            my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN)
+            my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
 
     else:  # pragma: no cover
         # NOTE: pending close の制御は無いのでここには来ない。
@@ -497,7 +497,7 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
 
             # NOTE: 暗いので開けれなかったことを通知
             logging.info("Set Pending OPEN")
-            my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN)
+            my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
         else:
             # NOTE: ここにきたときのみ、スケジュールに従って開ける
             exec_shutter_control(
@@ -508,7 +508,7 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
                 "scheduler",
             )
     else:
-        my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN)
+        my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
         exec_shutter_control(
             config,
             state,

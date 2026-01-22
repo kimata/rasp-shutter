@@ -84,18 +84,29 @@ def init() -> None:
 
 
 # 公開API: 制御履歴の取得・クリア用
-cmd_hist = type(
-    "CmdHist",
-    (),
-    {
-        "__iter__": lambda self: iter(_get_cmd_hist()),
-        "__len__": lambda self: len(_get_cmd_hist()),
-        "__getitem__": lambda self, key: _get_cmd_hist()[key],
-        "append": lambda self, item: _get_cmd_hist().append(item),
-        "clear": lambda self: _clear_cmd_hist(),
-        "copy": lambda self: _get_cmd_hist().copy(),
-    },
-)()
+class _CmdHistWrapper:
+    """ワーカー固有の制御履歴へのアクセスを提供するラッパークラス"""
+
+    def __iter__(self):
+        return iter(_get_cmd_hist())
+
+    def __len__(self) -> int:
+        return len(_get_cmd_hist())
+
+    def __getitem__(self, key: int) -> dict:
+        return _get_cmd_hist()[key]
+
+    def append(self, item: dict) -> None:
+        _get_cmd_hist().append(item)
+
+    def clear(self) -> None:
+        _clear_cmd_hist()
+
+    def copy(self) -> list[dict]:
+        return _get_cmd_hist().copy()
+
+
+cmd_hist = _CmdHistWrapper()
 
 
 def time_str(time_val: float) -> str:
@@ -145,8 +156,8 @@ def clean_stat_exec(config: rasp_shutter.config.AppConfig) -> None:
         my_lib.footprint.clear(exec_stat_file("open", index))
         my_lib.footprint.clear(exec_stat_file("close", index))
 
-    my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN)
-    my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE)
+    my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+    my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
 
 
 def get_shutter_state(config: rasp_shutter.config.AppConfig) -> rasp_shutter.types.ShutterStateResponse:
@@ -258,11 +269,11 @@ def set_shutter_state(
         if mode != CONTROL_MODE.MANUAL:
             # NOTE: 手動以外でシャッターを開けた場合は、
             # 自動で閉じた履歴を削除する。
-            my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE)
+            my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
     else:
         # NOTE: シャッターを閉じる指示がされた場合は、
         # 暗くて延期されていた開ける制御を取り消す。
-        my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN)
+        my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
 
     with control_lock:
         for index in index_list:

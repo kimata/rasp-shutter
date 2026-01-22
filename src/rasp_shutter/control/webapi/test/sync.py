@@ -311,10 +311,10 @@ def get_shutter_state():
             }
         )
 
-    pending_open = my_lib.footprint.exists(rasp_shutter.control.config.STAT_PENDING_OPEN)
-    pending_open_elapsed = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_PENDING_OPEN)
+    pending_open = my_lib.footprint.exists(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+    pending_open_elapsed = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
 
-    auto_close_elapsed = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE)
+    auto_close_elapsed = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
 
     return {
         "success": True,
