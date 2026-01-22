@@ -1,23 +1,23 @@
 <template>
     <div class="mb-4">
         <h2>実行ログ</h2>
-        <div class="log">
-            <p v-if="log.length == 0">ログがありません。</p>
-            <div v-else>
+        <div class="log mt-4">
+            <p v-if="log.length == 0" class="text-gray-500 text-center py-4">ログがありません。</p>
+            <div v-else class="space-y-3">
                 <div
                     v-for="(entry, index) in log.slice((page - 1) * pageSize, page * pageSize)"
                     :key="index"
-                    class="mb-2"
+                    class="bg-gray-50 border border-gray-200 rounded-lg p-3"
                 >
-                    <div class="font-bold">
-                        {{ entry.date }}
-                        <small class="text-gray-500">({{ entry.fromNow }})</small>
+                    <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                        <span class="font-medium text-gray-800">{{ entry.date }}</span>
+                        <span class="text-gray-400">|</span>
+                        <span class="text-gray-500">{{ entry.fromNow }}</span>
                     </div>
                     <div
-                        class="log-message mb-1"
+                        class="log-message text-gray-700"
                         v-html="entry.message.replace(/\^2/g, '<sup>2</sup>').replace(/\n/g, '<br/>')"
                     ></div>
-                    <hr class="border-t-2 border-dashed border-gray-400 my-2" />
                 </div>
 
                 <!-- Pagination -->
