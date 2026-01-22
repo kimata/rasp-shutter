@@ -1,6 +1,9 @@
 <template>
     <div class="mb-4 mt-4">
-        <h2>自動</h2>
+        <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <ClockIcon class="w-6 h-6 text-green-600" />
+            自動
+        </h2>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
                 <ScheduleEntry label="オープン" name="open" v-model="current.open" />
@@ -47,7 +50,7 @@
 
 <script>
 import axios from "axios";
-import { CloudArrowUpIcon } from "@heroicons/vue/24/outline";
+import { CloudArrowUpIcon, ClockIcon } from "@heroicons/vue/24/outline";
 import AppConfig from "../mixins/AppConfig.js";
 import ScheduleEntry from "./ScheduleEntry.vue";
 
@@ -57,6 +60,7 @@ export default {
     components: {
         ScheduleEntry,
         CloudArrowUpIcon,
+        ClockIcon,
     },
     compatConfig: { MODE: 3 },
     data() {

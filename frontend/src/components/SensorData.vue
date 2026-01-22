@@ -1,6 +1,9 @@
 <template>
     <div class="mb-4">
-        <h2>センサー値</h2>
+        <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <SignalIcon class="w-6 h-6 text-green-600" />
+            センサー値
+        </h2>
         <div class="mt-4 mb-2">
             <table class="w-full">
                 <thead>
@@ -39,6 +42,7 @@
 
 <script>
 import axios from "axios";
+import { SignalIcon } from "@heroicons/vue/24/outline";
 
 import "dayjs/locale/ja";
 import dayjs from "dayjs";
@@ -64,6 +68,9 @@ const SENSOR_DEF = {
 export default {
     name: "sensor-data",
     mixins: [AppConfig],
+    components: {
+        SignalIcon,
+    },
     data() {
         return {
             sensor: {

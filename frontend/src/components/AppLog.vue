@@ -1,6 +1,9 @@
 <template>
     <div class="mb-4">
-        <h2>実行ログ</h2>
+        <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <ClipboardDocumentListIcon class="w-6 h-6 text-green-600" />
+            実行ログ
+        </h2>
         <div class="log mt-4">
             <p v-if="log.length == 0" class="text-gray-500 text-center py-4">ログがありません。</p>
             <div v-else class="space-y-3">
@@ -74,7 +77,7 @@
 
 <script>
 import axios from "axios";
-import { XCircleIcon } from "@heroicons/vue/24/outline";
+import { XCircleIcon, ClipboardDocumentListIcon } from "@heroicons/vue/24/outline";
 
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -91,6 +94,7 @@ export default {
     mixins: [AppConfig],
     components: {
         XCircleIcon,
+        ClipboardDocumentListIcon,
     },
     data() {
         return {

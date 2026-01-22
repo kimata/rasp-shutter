@@ -1,6 +1,9 @@
 <template>
     <div class="mb-4 mt-4">
-        <h2>手動</h2>
+        <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <HandRaisedIcon class="w-6 h-6 text-green-600" />
+            手動
+        </h2>
         <div>
             <p v-if="shutter_list.length == 0">シャッター一覧を読み込み中...</p>
             <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -15,6 +18,7 @@
 <script>
 import ManualEntry from "./ManualEntry.vue";
 import axios from "axios";
+import { HandRaisedIcon } from "@heroicons/vue/24/outline";
 import AppConfig from "../mixins/AppConfig.js";
 
 export default {
@@ -27,6 +31,7 @@ export default {
     },
     components: {
         ManualEntry,
+        HandRaisedIcon,
     },
     compatConfig: { MODE: 3 },
     created() {
