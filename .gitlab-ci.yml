@@ -137,7 +137,7 @@ test-playwright:
         - uv run playwright install --with-deps chromium
         - env TEST=true uv run python ./src/app.py -d 2>&1 > flask_log.txt &
         - >
-            uv run pytest tests/e2e/ --no-cov
+            uv run pytest tests/e2e/ --no-cov -n 0
             --junit-xml=reports/playwright-junit.xml
 
     cache:
@@ -230,7 +230,7 @@ test-playwright:
             fi
 
         - >
-            uv run pytest tests/e2e/ --no-cov
+            uv run pytest tests/e2e/ --no-cov -n 0
             --junit-xml=reports/playwright-docker-junit.xml
             --host ${APP_HOST} --port ${APP_PORT}
 

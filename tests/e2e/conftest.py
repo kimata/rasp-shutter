@@ -184,7 +184,10 @@ def wait_scheduler_loop(host: str, port: str, sequence: int, timeout: float = 10
         True: シーケンスが進んだ, False: タイムアウト
 
     """
-    api_url = APP_URL_TMPL.format(host=host, port=port) + f"api/test/scheduler/wait_loop?sequence={sequence}&timeout={timeout}"
+    api_url = (
+        APP_URL_TMPL.format(host=host, port=port)
+        + f"api/test/scheduler/wait_loop?sequence={sequence}&timeout={timeout}"
+    )
     try:
         response = requests.post(api_url, timeout=timeout + 5)
         if response.status_code == 200:
@@ -428,6 +431,10 @@ def _server_init(page: Page, host: str, port: str, webserver: Any) -> None:
     # スケジューラのジョブとスケジュールデータをリセット
     # これにより前のテストで設定したスケジュールが影響しない
     reset_schedule(host, port)
+
+    # テスト状態をリセット（実行統計ファイル、Slack履歴等）
+    # これにより前のテストのシャッター操作履歴（footprint）が影響しない
+    reset_test_state(host, port)
 
     # 制御履歴をクリア
     # NOTE: webappログはテスト内でclear_logを呼び出してUIからクリアする
