@@ -5,11 +5,13 @@
 import datetime
 import logging
 import random
+import time
 
 import my_lib.time
 from playwright.sync_api import Page
 
 from tests.e2e.conftest import (
+    advance_mock_time,
     clear_log,
     click_and_check_log,
     get_current_server_time,
@@ -74,6 +76,11 @@ class TestScheduleExecution:
 
         logging.info("Save schedule")
         click_and_check_log(page, host, port, "save", "スケジュールを更新")
+
+        # NOTE: スケジュール保存後、モック時間を12:01以降に進めてスケジュールを発火させる
+        # スケジューラがスケジュール更新を認識するまで待機してから時間を進める
+        time.sleep(2)  # スケジューラがキューを処理するのを待つ
+        advance_mock_time(host, port, 20)  # 12:00:45 + 20秒 = 12:01:05
 
         assert wait_for_log(page, "スケジューラで閉めました", timeout_sec=30.0)
 

@@ -127,6 +127,16 @@ def clear_control_history(host: str, port: str) -> bool:
         return False
 
 
+def reset_test_state(host: str, port: str) -> bool:
+    """テスト用APIを使用してテスト状態をリセット"""
+    api_url = APP_URL_TMPL.format(host=host, port=port) + "api/test/state/reset"
+    try:
+        response = requests.post(api_url, timeout=5)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
+
+
 def clear_log(page: Page, host: str, port: str) -> None:
     """ログをクリア"""
     page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
@@ -305,5 +315,12 @@ def _server_init(page: Page, host: str, port: str, webserver: Any) -> None:
 
     page.on("console", lambda msg: print(msg.text))
     page.set_viewport_size({"width": 2400, "height": 1600})
+
+    # 各テスト前にモック時間をリセットして実時間に戻す
+    # これにより前のテストの時間設定が影響しない
+    reset_mock_time(host, port)
+
+    # テスト状態をリセット（制御統計、自動制御状態、Slack通知履歴、制御ログ）
+    reset_test_state(host, port)
 
     clear_control_history(host, port)
