@@ -58,6 +58,10 @@ metadata:
         app: rasp-shutter
 spec:
     replicas: 1
+    # ReadWriteOnce PVC を使用しているため、Recreate ストラテジーを使用
+    # RollingUpdate だと新旧 Pod が同時に PVC をマウントしようとしてデッドロックになる
+    strategy:
+        type: Recreate
     selector:
         matchLabels:
             app: rasp-shutter
