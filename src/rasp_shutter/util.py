@@ -25,25 +25,6 @@ def is_dummy_mode() -> bool:
     return os.environ.get("DUMMY_MODE", "false") == "true"
 
 
-def get_worker_id(default: str = "main") -> str:
-    """pytest-xdist のワーカーIDを取得
-
-    pytest-xdist による並列実行時に各ワーカーを識別するためのIDを返す
-    環境変数 PYTEST_XDIST_WORKER が設定されていない場合は default を返す
-
-    Parameters
-    ----------
-    default : str
-        ワーカーIDが設定されていない場合のデフォルト値（デフォルト: "main"）
-
-    Returns
-    -------
-        str: ワーカーID
-
-    """
-    return os.environ.get("PYTEST_XDIST_WORKER", default)
-
-
 def check_dummy_mode_for_api() -> tuple[dict[str, str], int] | None:
     """テストAPIのDUMMY_MODEチェック
 

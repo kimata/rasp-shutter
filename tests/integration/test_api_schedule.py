@@ -9,6 +9,7 @@ import my_lib.webapp.config
 from tests.fixtures.schedule_factory import ScheduleFactory
 from tests.helpers.api_utils import ScheduleAPI
 from tests.helpers.assertions import LogChecker, SlackChecker
+from tests.helpers.time_utils import setup_midnight_time
 
 
 class TestScheduleRead:
@@ -83,10 +84,17 @@ class TestScheduleUpdate:
 
 
 class TestScheduleValidation:
-    """スケジュールバリデーションテスト"""
+    """スケジュールバリデーションテスト
 
-    def test_schedule_ctrl_invalid_missing_open(self, client):
+    NOTE: time_machineで深夜に設定し、センサーベースの自動制御が発動しないようにする。
+    自動制御はHOUR_MORNING_START=5以降に実行されるため、3時に設定。
+    setup_midnight_time()でスケジューラループ完了を待ってからログをクリア。
+    """
+
+    def test_schedule_ctrl_invalid_missing_open(self, client, time_machine):
         """openキーが欠けている場合"""
+        setup_midnight_time(client, time_machine)
+
         schedule_api = ScheduleAPI(client)
         log_checker = LogChecker(client)
 
@@ -96,8 +104,10 @@ class TestScheduleValidation:
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
-    def test_schedule_ctrl_invalid_missing_is_active(self, client):
+    def test_schedule_ctrl_invalid_missing_is_active(self, client, time_machine):
         """is_activeキーが欠けている場合"""
+        setup_midnight_time(client, time_machine)
+
         schedule_api = ScheduleAPI(client)
         log_checker = LogChecker(client)
 
@@ -107,8 +117,10 @@ class TestScheduleValidation:
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
-    def test_schedule_ctrl_invalid_is_active_type(self, client):
+    def test_schedule_ctrl_invalid_is_active_type(self, client, time_machine):
         """is_activeの型が不正な場合"""
+        setup_midnight_time(client, time_machine)
+
         schedule_api = ScheduleAPI(client)
         log_checker = LogChecker(client)
 
@@ -118,8 +130,10 @@ class TestScheduleValidation:
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
-    def test_schedule_ctrl_invalid_lux_type(self, client):
+    def test_schedule_ctrl_invalid_lux_type(self, client, time_machine):
         """luxの型が不正な場合"""
+        setup_midnight_time(client, time_machine)
+
         schedule_api = ScheduleAPI(client)
         log_checker = LogChecker(client)
 
@@ -129,8 +143,10 @@ class TestScheduleValidation:
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
-    def test_schedule_ctrl_invalid_solar_rad_type(self, client):
+    def test_schedule_ctrl_invalid_solar_rad_type(self, client, time_machine):
         """solar_radの型が不正な場合"""
+        setup_midnight_time(client, time_machine)
+
         schedule_api = ScheduleAPI(client)
         log_checker = LogChecker(client)
 
@@ -140,8 +156,10 @@ class TestScheduleValidation:
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
-    def test_schedule_ctrl_invalid_time_format(self, client):
+    def test_schedule_ctrl_invalid_time_format(self, client, time_machine):
         """timeの形式が不正な場合"""
+        setup_midnight_time(client, time_machine)
+
         schedule_api = ScheduleAPI(client)
         log_checker = LogChecker(client)
 
@@ -151,8 +169,10 @@ class TestScheduleValidation:
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
-    def test_schedule_ctrl_invalid_wday_length(self, client):
+    def test_schedule_ctrl_invalid_wday_length(self, client, time_machine):
         """wdayの長さが不正な場合"""
+        setup_midnight_time(client, time_machine)
+
         schedule_api = ScheduleAPI(client)
         log_checker = LogChecker(client)
 
@@ -162,8 +182,10 @@ class TestScheduleValidation:
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
-    def test_schedule_ctrl_invalid_wday_element_type(self, client):
+    def test_schedule_ctrl_invalid_wday_element_type(self, client, time_machine):
         """wdayの要素の型が不正な場合"""
+        setup_midnight_time(client, time_machine)
+
         schedule_api = ScheduleAPI(client)
         log_checker = LogChecker(client)
         slack_checker = SlackChecker()

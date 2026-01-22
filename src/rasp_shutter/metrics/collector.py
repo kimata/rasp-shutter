@@ -18,6 +18,7 @@ import threading
 
 import my_lib.sqlite_util
 import my_lib.time
+
 import rasp_shutter.types
 
 

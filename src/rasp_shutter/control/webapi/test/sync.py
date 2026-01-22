@@ -8,16 +8,16 @@ import logging
 import threading
 import time
 
+import flask
 import my_lib.footprint
 import my_lib.notify.slack
 import my_lib.time
 import my_lib.webapp.config
+
 import rasp_shutter.control.config
 import rasp_shutter.control.scheduler
 import rasp_shutter.control.webapi.control
 import rasp_shutter.util
-
-import flask
 
 blueprint = flask.Blueprint("rasp-shutter-test-sync", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
@@ -221,6 +221,67 @@ def wait_auto_control():
     }
 
 
+@blueprint.route("/api/test/scheduler/loop_sequence", methods=["GET"])
+@rasp_shutter.util.require_dummy_mode
+def get_loop_sequence():
+    """
+    現在のループシーケンス番号を取得
+
+    Returns:
+        JSON: シーケンス番号
+    """
+    import my_lib.pytest_util
+
+    worker_id = my_lib.pytest_util.get_worker_id()
+    sequence = rasp_shutter.control.scheduler.get_loop_sequence()
+
+    logging.debug("get_loop_sequence: worker_id=%s, sequence=%d", worker_id, sequence)
+
+    return {
+        "success": True,
+        "sequence": sequence,
+        "worker_id": worker_id,
+        "current_time": my_lib.time.now().isoformat(),
+    }
+
+
+@blueprint.route("/api/test/scheduler/wait_loop", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
+def wait_loop():
+    """
+    指定シーケンス番号より大きくなるまで待機
+
+    Query Params:
+        sequence: 待機開始時のシーケンス番号
+        timeout: タイムアウト秒数（デフォルト: 10）
+
+    Returns:
+        JSON: 待機結果
+    """
+    sequence = flask.request.args.get("sequence", 0, type=int)
+    timeout = flask.request.args.get("timeout", 10.0, type=float)
+
+    success = rasp_shutter.control.scheduler.wait_for_loop_after(sequence, timeout)
+    current_sequence = rasp_shutter.control.scheduler.get_loop_sequence()
+
+    if success:
+        return {
+            "success": True,
+            "waited": True,
+            "start_sequence": sequence,
+            "current_sequence": current_sequence,
+            "current_time": my_lib.time.now().isoformat(),
+        }
+    else:
+        return {
+            "success": False,
+            "waited": False,
+            "start_sequence": sequence,
+            "current_sequence": current_sequence,
+            "error": "Timeout waiting for scheduler loop",
+        }, 408
+
+
 @blueprint.route("/api/test/state/shutter", methods=["GET"])
 @rasp_shutter.util.require_dummy_mode
 def get_shutter_state():
@@ -345,11 +406,12 @@ def wait_condition():
     if not condition_type or expected_value is None:
         return {"error": "type and value are required"}, 400
 
-    start_time = time.time()
+    # NOTE: time.perf_counter() を使用（time_machine の影響を受けない）
+    start_time = time.perf_counter()
     poll_interval = 0.1
     current_value = None
 
-    while time.time() - start_time < timeout:
+    while time.perf_counter() - start_time < timeout:
         if condition_type == "ctrl_log_count":
             current_value = len(rasp_shutter.control.webapi.control.cmd_hist)
         elif condition_type == "shutter_state":
@@ -363,7 +425,7 @@ def wait_condition():
                 "success": True,
                 "condition_met": True,
                 "current_value": current_value,
-                "elapsed_sec": time.time() - start_time,
+                "elapsed_sec": time.perf_counter() - start_time,
             }
 
         time.sleep(poll_interval)

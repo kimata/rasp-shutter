@@ -2,16 +2,16 @@
 import dataclasses
 import datetime
 
+import flask
 import flask_cors
 import my_lib.flask_util
 import my_lib.sensor_data
 import my_lib.time
 import my_lib.webapp.config
 import pysolar.solar
+
 import rasp_shutter.config
 import rasp_shutter.types
-
-import flask
 
 blueprint = flask.Blueprint("rasp-shutter-sensor", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 

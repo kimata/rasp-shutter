@@ -6,16 +6,16 @@ import multiprocessing
 import threading
 import urllib.parse
 
+import flask
 import flask_cors
 import my_lib.flask_util
+import my_lib.pytest_util
 import my_lib.webapp.config
 import my_lib.webapp.event
 import my_lib.webapp.log
+
 import rasp_shutter.control.scheduler
 import rasp_shutter.types
-import rasp_shutter.util
-
-import flask
 
 blueprint = flask.Blueprint("rasp-shutter-schedule", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
@@ -37,14 +37,14 @@ def term():
 
     rasp_shutter.control.scheduler.term()
     worker_thread.join()
-    del _worker_thread[rasp_shutter.util.get_worker_id()]
+    del _worker_thread[my_lib.pytest_util.get_worker_id()]
 
 
 def init_impl(config):
     if get_worker_thread() is not None:
         raise ValueError("worker should be None")
 
-    worker_id = rasp_shutter.util.get_worker_id()
+    worker_id = my_lib.pytest_util.get_worker_id()
 
     _schedule_queue[worker_id] = multiprocessing.Queue()
     _schedule_lock[worker_id] = threading.RLock()
@@ -61,15 +61,15 @@ def init_impl(config):
 
 
 def get_schedule_lock():
-    return _schedule_lock.get(rasp_shutter.util.get_worker_id(), None)
+    return _schedule_lock.get(my_lib.pytest_util.get_worker_id(), None)
 
 
 def get_schedule_queue():
-    return _schedule_queue.get(rasp_shutter.util.get_worker_id(), None)
+    return _schedule_queue.get(my_lib.pytest_util.get_worker_id(), None)
 
 
 def get_worker_thread():
-    return _worker_thread.get(rasp_shutter.util.get_worker_id(), None)
+    return _worker_thread.get(my_lib.pytest_util.get_worker_id(), None)
 
 
 def wday_str_list(wday_list: list[bool]) -> list[str]:

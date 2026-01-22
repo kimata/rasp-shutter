@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import my_lib.footprint
 import my_lib.notify.slack
+import my_lib.pytest_util
 import my_lib.webapp.config
 import my_lib.webapp.log
 
@@ -55,9 +56,7 @@ class StateManager:
 
     def clear_schedule_file(self) -> None:
         """スケジュールファイルをクリア"""
-        import os
-
-        worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+        worker_id = my_lib.pytest_util.get_worker_id()
         original_schedule_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
         if original_schedule_path is not None:
             worker_schedule_path = original_schedule_path.parent / f"schedule_{worker_id}.dat"
@@ -71,24 +70,13 @@ class StateManager:
         rasp_shutter.metrics.collector.reset_collector()
 
 
-def get_worker_id() -> str:
-    """pytest-xdistのワーカーIDを取得
-
-    Returns:
-        ワーカーID（"main" または "gw0", "gw1", ...）
-    """
-    import os
-
-    return os.environ.get("PYTEST_XDIST_WORKER", "main")
-
-
 def get_worker_schedule_path():
     """ワーカー固有のスケジュールファイルパスを取得
 
     Returns:
         スケジュールファイルのパス
     """
-    worker_id = get_worker_id()
+    worker_id = my_lib.pytest_util.get_worker_id()
     original_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
     if original_path is not None:
         return original_path.parent / f"schedule_{worker_id}.dat"

@@ -13,11 +13,11 @@ import json
 import logging
 import pathlib
 
+import flask
 import my_lib.webapp.config
-import rasp_shutter.metrics.collector
 from PIL import Image, ImageDraw
 
-import flask
+import rasp_shutter.metrics.collector
 
 blueprint = flask.Blueprint("metrics", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 

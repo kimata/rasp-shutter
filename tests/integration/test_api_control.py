@@ -7,13 +7,19 @@ import time
 
 from tests.helpers.api_utils import CtrlLogAPI, ShutterAPI
 from tests.helpers.assertions import CtrlLogChecker, LogChecker, SlackChecker
+from tests.helpers.time_utils import setup_midnight_time
 
 
 class TestShutterControlRead:
-    """シャッター制御状態読み取りテスト"""
+    """シャッター制御状態読み取りテスト
 
-    def test_shutter_ctrl_read(self, client):
+    NOTE: time_machineで深夜に設定し、センサーベースの自動制御が発動しないようにする。
+    """
+
+    def test_shutter_ctrl_read(self, client, time_machine):
         """シャッター状態を読み取れる"""
+        setup_midnight_time(client, time_machine)
+
         shutter_api = ShutterAPI(client)
         ctrl_checker = CtrlLogChecker(client)
         log_checker = LogChecker(client)
@@ -27,8 +33,10 @@ class TestShutterControlRead:
         log_checker.wait_and_check(["CLEAR"])
         slack_checker.check_no_error()
 
-    def test_shutter_list(self, client):
+    def test_shutter_list(self, client, time_machine):
         """シャッターリストを取得できる"""
+        setup_midnight_time(client, time_machine)
+
         shutter_api = ShutterAPI(client)
 
         result = shutter_api.get_list()
@@ -37,10 +45,15 @@ class TestShutterControlRead:
 
 
 class TestShutterControlManual:
-    """シャッター手動制御テスト"""
+    """シャッター手動制御テスト
 
-    def test_shutter_ctrl_manual_single_open_close(self, client):
+    NOTE: time_machineで深夜に設定し、センサーベースの自動制御が発動しないようにする。
+    """
+
+    def test_shutter_ctrl_manual_single_open_close(self, client, time_machine):
         """単一シャッターの手動開閉"""
+        setup_midnight_time(client, time_machine)
+
         shutter_api = ShutterAPI(client)
         ctrl_checker = CtrlLogChecker(client)
         log_checker = LogChecker(client)
@@ -62,8 +75,10 @@ class TestShutterControlManual:
         log_checker.wait_and_check(["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
         slack_checker.check_no_error()
 
-    def test_shutter_ctrl_manual_second_shutter(self, client):
+    def test_shutter_ctrl_manual_second_shutter(self, client, time_machine):
         """2番目のシャッターの手動開閉"""
+        setup_midnight_time(client, time_machine)
+
         shutter_api = ShutterAPI(client)
         ctrl_checker = CtrlLogChecker(client)
         log_checker = LogChecker(client)
@@ -85,8 +100,10 @@ class TestShutterControlManual:
         log_checker.wait_and_check(["CLEAR", "OPEN_MANUAL", "CLOSE_MANUAL"])
         slack_checker.check_no_error()
 
-    def test_shutter_ctrl_manual_all(self, client):
+    def test_shutter_ctrl_manual_all(self, client, time_machine):
         """全シャッターの手動操作"""
+        setup_midnight_time(client, time_machine)
+
         shutter_api = ShutterAPI(client)
         ctrl_checker = CtrlLogChecker(client)
         log_checker = LogChecker(client)
@@ -178,10 +195,15 @@ class TestShutterControlManual:
 
 
 class TestShutterControlFailure:
-    """シャッター制御失敗テスト"""
+    """シャッター制御失敗テスト
 
-    def test_shutter_ctrl_manual_fail(self, client, mocker):
+    NOTE: time_machineで深夜に設定し、センサーベースの自動制御が発動しないようにする。
+    """
+
+    def test_shutter_ctrl_manual_fail(self, client, time_machine, mocker):
         """制御失敗時の動作"""
+        setup_midnight_time(client, time_machine)
+
         import requests
 
         shutter_api = ShutterAPI(client)
@@ -211,11 +233,17 @@ class TestShutterControlFailure:
 
 
 class TestShutterStateInconsistent:
-    """シャッター状態不整合テスト"""
+    """シャッター状態不整合テスト
 
-    def test_shutter_ctrl_inconsistent_read(self, client, config):
+    NOTE: time_machineで深夜に設定し、センサーベースの自動制御が発動しないようにする。
+    """
+
+    def test_shutter_ctrl_inconsistent_read(self, client, time_machine, config):
         """open/close両方のファイルが存在する場合の状態判定"""
+        setup_midnight_time(client, time_machine)
+
         import my_lib.footprint
+
         import rasp_shutter.control.webapi.control
 
         shutter_api = ShutterAPI(client)

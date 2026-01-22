@@ -60,7 +60,7 @@ def webserver(request):
     env["TEST"] = "true"
 
     server_process = subprocess.Popen(  # noqa: S603
-        ["/usr/bin/env", "uv", "run", "python", "flask/src/app.py", "-d", "-p", str(port)],
+        ["/usr/bin/env", "uv", "run", "python", "src/app.py", "-d", "-p", str(port)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -148,9 +148,32 @@ def env_mock():
         {
             "TEST": "true",
             "NO_COLORED_LOGS": "true",
+            "DUMMY_MODE": "true",
         },
     ) as fixture:
         yield fixture
+
+
+# === 要因分離テスト用フィクスチャ ===
+# 環境変数で有効化: ISOLATE_LOG=true, ISOLATE_SQLITE=true, ISOLATE_FILEIO=true
+
+
+@pytest.fixture(scope="session", autouse=True)
+def isolate_log_system():
+    """ログシステム (my_lib.webapp.log) の SyncManager を無効化
+
+    SyncManager を使用しないバージョンのログシステムに置き換えて、
+    SyncManager が不安定性の原因かどうかを確認する。
+    """
+    import os
+
+    if os.environ.get("ISOLATE_LOG") != "true":
+        yield
+        return
+
+    # SyncManager の初期化をスキップする（_init_impl を no-op にする）
+    with unittest.mock.patch("my_lib.webapp.log._manager._init_impl", return_value=None):
+        yield
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -173,6 +196,27 @@ def slack_mock():
         yield fixture
 
 
+@pytest.fixture(scope="session", autouse=True)
+def sensor_data_mock():
+    """センサーデータ取得をセッションレベルでモック
+
+    テスト間のギャップでスケジューラスレッドが get_sensor_data() を呼び出した際に、
+    モックされていないInfluxDB HTTPリクエストがブロックするのを防ぐ。
+
+    個別のテストは mock_sensor_data フィクスチャで戻り値をカスタマイズできる。
+    """
+    from tests.fixtures.sensor_factory import SensorDataFactory
+
+    # デフォルトは明るい状態を返す
+    default_data = SensorDataFactory.bright()
+
+    with unittest.mock.patch(
+        "rasp_shutter.control.webapi.sensor.get_sensor_data",
+        return_value=default_data,
+    ) as fixture:
+        yield fixture
+
+
 @pytest.fixture(scope="session")
 def config():
     """設定を読み込む"""
@@ -182,31 +226,36 @@ def config():
 
 
 @pytest.fixture(autouse=True)
-def _clear(config):
-    """各テスト前に状態をクリア"""
+def _clear(app, config):  # app is dependency only, not used directly
+    """各テスト前に状態をクリア
+
+    NOTE: app fixtureに依存することで、ワーカー固有のパス設定が
+    この fixture より先に実行されることを保証する。
+    app 引数は直接使用しないが、fixture実行順序の制御に必要。
+    """
     import my_lib.footprint
     import my_lib.notify.slack
     import my_lib.webapp.config
-    import rasp_shutter.config
 
-    # NOTE: 最初にmy_lib.webapp.config.init()を呼び出す必要がある
-    # rasp_shutter.control.configがmy_lib.webapp.config.STAT_DIR_PATHを参照するため
-    my_lib.webapp.config.init(rasp_shutter.config.to_my_lib_webapp_config(config))
-
+    # NOTE: my_lib.webapp.config.init() は app fixture で既に呼ばれている
+    # ワーカー固有のパスも app fixture で設定済みなので、ここでは呼ばない
+    # rasp_shutter.control.config は動的にパスを評価するため、ここでのインポートは不要
     # init()後にインポートする必要があるモジュール
     import rasp_shutter.control.config
+    import rasp_shutter.control.scheduler
     import rasp_shutter.metrics.collector
 
     my_lib.footprint.clear(config.liveness.file.scheduler)
 
+    # Clear scheduler jobs to prevent test interference
+    # NOTE: スケジューラのジョブはセッションスコープで共有されるため、
+    # 各テスト前にクリアして前のテストのスケジュールが影響しないようにする
+    rasp_shutter.control.scheduler.clear_scheduler_jobs()
+
     # Clear schedule file to ensure clean state for each test
-    # Use worker-specific schedule file paths for parallel execution
-    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
-    original_schedule_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
-    if original_schedule_path is not None:
-        worker_schedule_path = original_schedule_path.parent / f"schedule_{worker_id}.dat"
-        my_lib.webapp.config.SCHEDULE_FILE_PATH = worker_schedule_path
-        worker_schedule_path.unlink(missing_ok=True)
+    # NOTE: ワーカー固有のパスは app fixture で設定済み
+    if my_lib.webapp.config.SCHEDULE_FILE_PATH is not None:
+        my_lib.webapp.config.SCHEDULE_FILE_PATH.unlink(missing_ok=True)
 
     my_lib.notify.slack._interval_clear()
     my_lib.notify.slack._hist_clear()
@@ -216,6 +265,10 @@ def _clear(config):
 
     rasp_shutter.control.webapi.control.clean_stat_exec(config)
     rasp_shutter.control.config.STAT_AUTO_CLOSE.unlink(missing_ok=True)
+    rasp_shutter.control.config.STAT_PENDING_OPEN.unlink(missing_ok=True)
+
+    # Clear control log (worker-specific)
+    rasp_shutter.control.webapi.control._clear_cmd_hist()
 
     # Reset metrics collector singleton to prevent database connection leaks
     rasp_shutter.metrics.collector.reset_collector()
@@ -230,13 +283,48 @@ def _clear(config):
 @pytest.fixture(scope="session")
 def app(config):
     """Flaskアプリを作成"""
+    import dataclasses
+
     import my_lib.webapp.config
     import my_lib.webapp.log
+
     import rasp_shutter.config
     from app import create_app
 
+    # ワーカー固有のパスを設定（並列テスト実行時の競合を回避）
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+
+    # メトリクスDBパスをワーカー固有に変更（SQLiteロック競合を回避）
+    # NOTE: frozen dataclassなのでdataclasses.replaceで新しいconfigを作成
+    original_metrics_path = config.metrics.data
+    worker_metrics_path = original_metrics_path.parent / f"metrics_{worker_id}.db"
+    worker_metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    new_metrics = dataclasses.replace(config.metrics, data=worker_metrics_path)
+    config = dataclasses.replace(config, metrics=new_metrics)
+
     # NOTE: rasp_shutter.control.webapi.scheduleはmy_lib.webapp.config.init()の後にインポート
     my_lib.webapp.config.init(rasp_shutter.config.to_my_lib_webapp_config(config))
+
+    # ワーカー固有のパスを設定（init()後に上書き）
+    if my_lib.webapp.config.SCHEDULE_FILE_PATH is not None:
+        original_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
+        worker_schedule_path = original_path.parent / f"schedule_{worker_id}.dat"
+        # 親ディレクトリを作成（存在しない場合）
+        worker_schedule_path.parent.mkdir(parents=True, exist_ok=True)
+        my_lib.webapp.config.SCHEDULE_FILE_PATH = worker_schedule_path
+
+    if my_lib.webapp.config.LOG_DIR_PATH is not None:
+        original_path = my_lib.webapp.config.LOG_DIR_PATH
+        worker_log_path = original_path.parent / f"log_{worker_id}.db"
+        # 親ディレクトリを作成（存在しない場合）
+        worker_log_path.parent.mkdir(parents=True, exist_ok=True)
+        my_lib.webapp.config.LOG_DIR_PATH = worker_log_path
+
+    if my_lib.webapp.config.STAT_DIR_PATH is not None:
+        original_path = my_lib.webapp.config.STAT_DIR_PATH
+        worker_stat_path = original_path.parent / f"rasp-shutter-{worker_id}"
+        worker_stat_path.mkdir(parents=True, exist_ok=True)
+        my_lib.webapp.config.STAT_DIR_PATH = worker_stat_path
 
     # init()後にインポートする必要があるモジュール
     import rasp_shutter.control.webapi.schedule
@@ -269,8 +357,9 @@ def client(app):
     assert response.status_code == 200
 
     # Wait for clear to complete
-    start_time = time.time()
-    while time.time() - start_time < 5.0:
+    # NOTE: time.perf_counter() を使用（time_machine の影響を受けない）
+    start_time = time.perf_counter()
+    while time.perf_counter() - start_time < 5.0:
         response = test_client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_view")
         if response.status_code == 200:
             log_list = response.json["data"]
@@ -291,20 +380,26 @@ def client(app):
 
 
 @pytest.fixture
-def mock_sensor_data(mocker):
-    """センサーデータをモックするfixture"""
+def mock_sensor_data(sensor_data_mock):
+    """センサーデータをモックするfixture
+
+    セッションスコープの sensor_data_mock の戻り値をテストごとにカスタマイズする。
+    テスト終了時に自動的にデフォルト値に戻される。
+    """
     from tests.fixtures.sensor_factory import SensorDataFactory
+
+    # テスト開始時のデフォルト値を保存
+    original_return_value = sensor_data_mock.return_value
 
     def _mock(initial_value=None):
         if initial_value is None:
             initial_value = SensorDataFactory.bright()
 
-        sensor_mock = mocker.patch("rasp_shutter.control.webapi.sensor.get_sensor_data")
-        sensor_mock.return_value = initial_value
-        mocker.patch(
-            "rasp_shutter.control.scheduler.rasp_shutter.control.webapi.sensor.get_sensor_data",
-            side_effect=lambda _: sensor_mock.return_value,
-        )
-        return sensor_mock
+        # セッションスコープのモックの戻り値を変更
+        sensor_data_mock.return_value = initial_value
+        return sensor_data_mock
 
-    return _mock
+    yield _mock
+
+    # テスト終了時にデフォルト値に戻す
+    sensor_data_mock.return_value = original_return_value

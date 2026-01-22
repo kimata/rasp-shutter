@@ -74,17 +74,18 @@ class LogChecker:
         Raises:
             AssertionError: タイムアウトまたは検証失敗
         """
-        start_time = time.time()
+        # NOTE: time.perf_counter() を使用（time_machine の影響を受けない）
+        start_time = time.perf_counter()
 
         # 期待するログ数が揃うまで待機
-        while time.time() - start_time < timeout_sec:
+        while time.perf_counter() - start_time < timeout_sec:
             log_list = self.get_logs()
             if len(log_list) >= len(expect_list):
                 break
             time.sleep(poll_interval_sec)
 
         log_list = self.get_logs()
-        elapsed = time.time() - start_time
+        elapsed = time.perf_counter() - start_time
 
         assert len(log_list) == len(expect_list), (
             f"ログ数が期待値と異なります。期待: {len(expect_list)} 実際: {len(log_list)} "
@@ -152,9 +153,10 @@ class CtrlLogChecker:
         Raises:
             AssertionError: タイムアウトまたは検証失敗
         """
-        start_time = time.time()
+        # NOTE: time.perf_counter() を使用（time_machine の影響を受けない）
+        start_time = time.perf_counter()
 
-        while time.time() - start_time < timeout_sec:
+        while time.perf_counter() - start_time < timeout_sec:
             log_list = self.get_logs()
             if log_list == expect:
                 return
@@ -164,7 +166,7 @@ class CtrlLogChecker:
             time.sleep(poll_interval_sec)
 
         log_list = self.get_logs()
-        elapsed = time.time() - start_time
+        elapsed = time.perf_counter() - start_time
 
         logging.debug("Control log: %s", log_list)
 

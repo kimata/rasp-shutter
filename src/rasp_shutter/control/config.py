@@ -10,19 +10,55 @@ import pathlib
 import my_lib.webapp.config
 
 
-def _get_stat_dir_path() -> pathlib.Path:
-    """STAT_DIR_PATHを取得（Noneの場合はデフォルトパスを返す）"""
+def _get_stat_dir() -> pathlib.Path:
+    """STAT_DIR_PATHを動的に取得（Noneの場合はデフォルトパスを返す）
+
+    NOTE: モジュール読み込み時ではなく、呼び出し時に評価する。
+    これにより、pytest-xdist並列実行時にワーカー固有のパスを使用できる。
+    """
     if my_lib.webapp.config.STAT_DIR_PATH is not None:
         return my_lib.webapp.config.STAT_DIR_PATH
     return pathlib.Path("data")
 
 
 # ======================================================================
-# パス定数
+# パス定数（プロパティ形式 - 動的評価）
 # ======================================================================
-_stat_dir = _get_stat_dir_path()
-STAT_PENDING_OPEN = _stat_dir / "pending" / "open"
-STAT_AUTO_CLOSE = _stat_dir / "auto" / "close"
+class _DynamicPath:
+    """動的に評価されるPathプロパティ
+
+    モジュールレベル定数として使用しながら、アクセス時に
+    my_lib.webapp.config.STAT_DIR_PATH を参照する。
+    """
+
+    def __init__(self, subpath: str):
+        self._subpath = subpath
+
+    def __fspath__(self) -> str:
+        return str(_get_stat_dir() / self._subpath)
+
+    def __truediv__(self, other: str) -> pathlib.Path:
+        return pathlib.Path(self) / other
+
+    def __str__(self) -> str:
+        return self.__fspath__()
+
+    def __repr__(self) -> str:
+        return f"_DynamicPath({self._subpath!r})"
+
+    @property
+    def parent(self) -> pathlib.Path:
+        return pathlib.Path(self).parent
+
+    def exists(self) -> bool:
+        return pathlib.Path(self).exists()
+
+    def unlink(self, missing_ok: bool = False) -> None:
+        pathlib.Path(self).unlink(missing_ok=missing_ok)
+
+
+STAT_PENDING_OPEN = _DynamicPath("pending/open")
+STAT_AUTO_CLOSE = _DynamicPath("auto/close")
 
 # ======================================================================
 # 時間帯定数（時）
@@ -82,4 +118,4 @@ def get_exec_stat_path(state: str, index: int) -> pathlib.Path:
         pathlib.Path: 状態ファイルのパス
 
     """
-    return _stat_dir / "exe" / f"{index}_{state}"
+    return _get_stat_dir() / "exe" / f"{index}_{state}"

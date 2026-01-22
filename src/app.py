@@ -19,6 +19,7 @@ import os
 import signal
 import sys
 
+import flask
 import flask_cors
 import my_lib.proc_util
 import my_lib.webapp.base
@@ -26,9 +27,8 @@ import my_lib.webapp.config
 import my_lib.webapp.event
 import my_lib.webapp.log
 import my_lib.webapp.util
-import rasp_shutter.config
 
-import flask
+import rasp_shutter.config
 
 SCHEMA_CONFIG = "config.schema"
 

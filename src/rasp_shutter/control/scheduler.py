@@ -9,17 +9,19 @@ import traceback
 from typing import Any
 
 import my_lib.footprint
+import my_lib.pytest_util
 import my_lib.serializer
 import my_lib.time
 import my_lib.webapp.config
 import my_lib.webapp.log
+import schedule
+
 import rasp_shutter.config
 import rasp_shutter.control.config
 import rasp_shutter.control.webapi.control
 import rasp_shutter.control.webapi.sensor
 import rasp_shutter.types
 import rasp_shutter.util
-import schedule
 
 
 class BRIGHTNESS_STATE(enum.IntEnum):
@@ -44,10 +46,15 @@ _schedule_data_instances: dict[str, rasp_shutter.types.ScheduleData | None] = {}
 _schedule_lock_instances: dict[str, threading.Lock] = {}
 _auto_control_events: dict[str, threading.Event] = {}
 
+# ワーカー固有のループシーケンス番号（テスト同期用）
+_loop_sequence: dict[str, int] = {}
+_loop_condition: dict[str, threading.Condition] = {}
+_loop_condition_lock = threading.Lock()
+
 
 def get_scheduler() -> schedule.Scheduler:
     """Get worker-specific scheduler instance for pytest-xdist parallel execution"""
-    worker_id = rasp_shutter.util.get_worker_id()
+    worker_id = my_lib.pytest_util.get_worker_id()
 
     if worker_id not in _scheduler_instances:
         # Create a new scheduler instance for this worker
@@ -58,7 +65,7 @@ def get_scheduler() -> schedule.Scheduler:
 
 def get_schedule_lock() -> threading.Lock:
     """Get worker-specific schedule lock for pytest-xdist parallel execution"""
-    worker_id = rasp_shutter.util.get_worker_id()
+    worker_id = my_lib.pytest_util.get_worker_id()
 
     if worker_id not in _schedule_lock_instances:
         _schedule_lock_instances[worker_id] = threading.Lock()
@@ -66,9 +73,40 @@ def get_schedule_lock() -> threading.Lock:
     return _schedule_lock_instances[worker_id]
 
 
+def clear_scheduler_jobs() -> None:
+    """スケジューラのジョブとスケジュールデータをクリア（テスト用）
+
+    テスト間でスケジューラの状態が干渉しないようにするため、
+    各テスト開始前に呼び出す。
+    """
+    worker_id = my_lib.pytest_util.get_worker_id()
+
+    # スケジューラインスタンスのジョブをクリア
+    if worker_id in _scheduler_instances:
+        scheduler = _scheduler_instances[worker_id]
+        scheduler.clear()
+        logging.debug("Cleared scheduler jobs for worker %s", worker_id)
+
+    # スケジュールデータをクリア
+    if worker_id in _schedule_data_instances:
+        _schedule_data_instances[worker_id] = None
+        logging.debug("Cleared schedule data for worker %s", worker_id)
+
+
+def reset_loop_sequence() -> None:
+    """ループシーケンス番号をリセット（テスト用）
+
+    テスト間でシーケンス番号が累積しないようにリセットする。
+    """
+    worker_id = my_lib.pytest_util.get_worker_id()
+    if worker_id in _loop_sequence:
+        _loop_sequence[worker_id] = 0
+        logging.debug("Reset loop sequence for worker %s", worker_id)
+
+
 def get_auto_control_event():
     """テスト同期用のワーカー固有自動制御イベントを取得"""
-    worker_id = rasp_shutter.util.get_worker_id()
+    worker_id = my_lib.pytest_util.get_worker_id()
 
     if worker_id not in _auto_control_events:
         _auto_control_events[worker_id] = threading.Event()
@@ -94,9 +132,64 @@ def wait_for_auto_control_completion(timeout=5.0):
     return event.wait(timeout)
 
 
+def _get_loop_condition() -> threading.Condition:
+    """ループ完了通知用のConditionを取得（スレッドセーフ）"""
+    worker_id = my_lib.pytest_util.get_worker_id()
+    with _loop_condition_lock:
+        if worker_id not in _loop_condition:
+            _loop_condition[worker_id] = threading.Condition()
+        return _loop_condition[worker_id]
+
+
+def get_loop_sequence() -> int:
+    """現在のループシーケンス番号を取得"""
+    worker_id = my_lib.pytest_util.get_worker_id()
+    return _loop_sequence.get(worker_id, 0)
+
+
+def _increment_loop_sequence() -> None:
+    """ループシーケンス番号をインクリメントして通知"""
+    worker_id = my_lib.pytest_util.get_worker_id()
+    condition = _get_loop_condition()
+    with condition:
+        _loop_sequence[worker_id] = _loop_sequence.get(worker_id, 0) + 1
+        condition.notify_all()
+
+
+def wait_for_loop_after(sequence: int, timeout: float = 10.0) -> bool:
+    """指定シーケンス番号より大きくなるまで待機
+
+    Args:
+        sequence: 待機開始時のシーケンス番号
+        timeout: タイムアウト秒数
+
+    Returns:
+        成功したら True、タイムアウトしたら False
+    """
+    # NOTE: threading.Condition を使用して効率的に待機する。
+    # _increment_loop_sequence() が notify_all() を呼ぶので、
+    # シーケンス番号がインクリメントされた時点で即座に待機が終了する。
+    # time_machine の影響を避けるため、time.perf_counter() でタイムアウトをチェックし、
+    # Condition.wait() は短い間隔で呼び出す。
+    condition = _get_loop_condition()
+    start = time.perf_counter()  # time_machineの影響を受けない
+    poll_interval = 0.1  # 100ms間隔でCondition.waitを呼び出す
+
+    with condition:
+        while time.perf_counter() - start < timeout:
+            if get_loop_sequence() > sequence:
+                return True
+            # NOTE: Condition.wait() を使用することで、notify_all() 呼び出し時に
+            # 即座に起床する。poll_interval は time_machine の影響を受ける可能性があるが、
+            # 外側の time.perf_counter() チェックでタイムアウトを正確に管理する。
+            condition.wait(timeout=poll_interval)
+
+    return get_loop_sequence() > sequence
+
+
 def get_schedule_data() -> rasp_shutter.types.ScheduleData | None:
     """Get worker-specific schedule data for pytest-xdist parallel execution"""
-    worker_id = rasp_shutter.util.get_worker_id()
+    worker_id = my_lib.pytest_util.get_worker_id()
 
     if worker_id not in _schedule_data_instances:
         _schedule_data_instances[worker_id] = None
@@ -106,7 +199,7 @@ def get_schedule_data() -> rasp_shutter.types.ScheduleData | None:
 
 def set_schedule_data(data: rasp_shutter.types.ScheduleData | dict[str, Any] | None) -> None:
     """Set worker-specific schedule data for pytest-xdist parallel execution"""
-    worker_id = rasp_shutter.util.get_worker_id()
+    worker_id = my_lib.pytest_util.get_worker_id()
     _schedule_data_instances[worker_id] = data  # type: ignore[assignment]
 
 
@@ -153,7 +246,9 @@ def check_brightness(sense_data: rasp_shutter.types.SensorData, action: str) -> 
         return BRIGHTNESS_STATE.UNKNOWN
 
     schedule_data = get_schedule_data()
-    assert schedule_data is not None, "Schedule data not initialized"  # noqa: S101
+    if schedule_data is None:
+        # テスト間のクリア中は不明として扱う
+        return BRIGHTNESS_STATE.UNKNOWN
 
     # validがTrueの場合、valueはNoneではない
     lux_value = sense_data.lux.value
@@ -227,7 +322,10 @@ def shutter_auto_open(config: rasp_shutter.config.AppConfig) -> None:
     logging.debug("try auto open")
 
     schedule_data = get_schedule_data()
-    assert schedule_data is not None, "Schedule data not initialized"  # noqa: S101
+    if schedule_data is None:
+        # テスト間のクリア中は何もしない
+        logging.debug("Schedule data not set, skipping auto open")
+        return
     if not schedule_data["open"]["is_active"]:
         logging.debug("inactive")
         return
@@ -276,7 +374,10 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
     logging.debug("try auto close")
 
     schedule_data = get_schedule_data()
-    assert schedule_data is not None, "Schedule data not initialized"  # noqa: S101
+    if schedule_data is None:
+        # テスト間のクリア中は何もしない
+        logging.debug("Schedule data not set, skipping auto close")
+        return
     if not schedule_data["close"]["is_active"]:
         logging.debug("inactive")
         return
@@ -551,7 +652,9 @@ def set_schedule(config: rasp_shutter.config.AppConfig, schedule_data: dict) -> 
 def schedule_worker(config: rasp_shutter.config.AppConfig, queue) -> None:
     global should_terminate
 
-    sleep_sec = 0.5
+    # DUMMY_MODEではより短い間隔でループして、テストの応答性を向上
+    # 本番環境では0.5秒、テスト環境では0.1秒
+    sleep_sec = 0.1 if rasp_shutter.util.is_dummy_mode() else 0.5
     scheduler = get_scheduler()
 
     liveness_file = config.liveness.file.scheduler
@@ -570,25 +673,46 @@ def schedule_worker(config: rasp_shutter.config.AppConfig, queue) -> None:
             scheduler.clear()
             break
 
+        run_pending_elapsed = 0.0
         try:
+            loop_start = time.perf_counter()
+
             if not queue.empty():
                 schedule_data = queue.get()
                 set_schedule_data(schedule_data)
                 set_schedule(config, schedule_data)
                 schedule_store(schedule_data)
 
-            idle_sec = scheduler.idle_seconds
-            if idle_sec is not None:
-                hours, remainder = divmod(idle_sec, 3600)
-                minutes, seconds = divmod(remainder, 60)
+            idle_sec = scheduler.idle_seconds  # noqa: F841
 
+            run_pending_start = time.perf_counter()
             scheduler.run_pending()
+            run_pending_elapsed = time.perf_counter() - run_pending_start
 
-            logging.debug("Sleep %.1f sec...", sleep_sec)
             time.sleep(sleep_sec)
+
+            loop_elapsed = time.perf_counter() - loop_start
+
+            # 1秒以上かかった場合は警告ログを出力
+            if loop_elapsed > 1.0:
+                logging.warning(
+                    "Scheduler loop took %.2fs (run_pending: %.2fs, sequence: %d)",
+                    loop_elapsed,
+                    run_pending_elapsed,
+                    get_loop_sequence(),
+                )
         except OverflowError:  # pragma: no cover
             # NOTE: テストする際、freezer 使って日付をいじるとこの例外が発生する
             logging.debug(traceback.format_exc())
+        except Exception:  # pragma: no cover
+            # NOTE: その他の例外（ログシステムのBrokenPipeError、IOErrorなど）が発生しても
+            # スケジューラループを継続する。例外でループが停止すると、テストの同期が
+            # 取れなくなり、タイムアウトエラーが発生する。
+            logging.warning("Exception in scheduler loop, continuing: %s", traceback.format_exc())
+        finally:
+            # NOTE: 例外が発生してもシーケンス番号を更新する。
+            # テスト同期で使用されるため、ループが動いていることを常に示す必要がある。
+            _increment_loop_sequence()
 
         if i % (10 / sleep_sec) == 0:
             my_lib.footprint.update(liveness_file)

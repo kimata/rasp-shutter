@@ -6,19 +6,20 @@ import pathlib
 import threading
 import typing
 
+import flask
 import my_lib.flask_util
 import my_lib.footprint
+import my_lib.pytest_util
 import my_lib.webapp.config
 import my_lib.webapp.log
+import requests
+
 import rasp_shutter.config
 import rasp_shutter.control.config
 import rasp_shutter.control.webapi.sensor
 import rasp_shutter.metrics.collector
 import rasp_shutter.types
 import rasp_shutter.util
-import requests
-
-import flask
 
 
 class SHUTTER_STATE(enum.IntEnum):
@@ -59,12 +60,42 @@ MODE_INTERVAL_CONFIG: dict[CONTROL_MODE, ModeIntervalConfig] = {
 blueprint = flask.Blueprint("rasp-shutter-control", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
 control_lock = threading.Lock()
-cmd_hist: list[dict] = []
+
+# ワーカー固有の制御履歴（pytest-xdist並列実行対応）
+_cmd_hist: dict[str, list[dict]] = {}
+
+
+def _get_cmd_hist() -> list[dict]:
+    """ワーカー固有の制御履歴リストを取得"""
+    worker_id = my_lib.pytest_util.get_worker_id()
+    if worker_id not in _cmd_hist:
+        _cmd_hist[worker_id] = []
+    return _cmd_hist[worker_id]
+
+
+def _clear_cmd_hist() -> None:
+    """ワーカー固有の制御履歴をクリア"""
+    worker_id = my_lib.pytest_util.get_worker_id()
+    _cmd_hist[worker_id] = []
 
 
 def init() -> None:
-    global cmd_hist
-    cmd_hist = []
+    _clear_cmd_hist()
+
+
+# 公開API: 制御履歴の取得・クリア用
+cmd_hist = type(
+    "CmdHist",
+    (),
+    {
+        "__iter__": lambda self: iter(_get_cmd_hist()),
+        "__len__": lambda self: len(_get_cmd_hist()),
+        "__getitem__": lambda self, key: _get_cmd_hist()[key],
+        "append": lambda self, item: _get_cmd_hist().append(item),
+        "clear": lambda self: _clear_cmd_hist(),
+        "copy": lambda self: _get_cmd_hist().copy(),
+    },
+)()
 
 
 def time_str(time_val: float) -> str:
@@ -256,11 +287,10 @@ def sensor_text(sense_data: rasp_shutter.types.SensorData | None) -> str:
 
 # NOTE: テスト用のコード
 def cmd_hist_push(cmd: dict) -> None:  # pragma: no cover
-    global cmd_hist
-
-    cmd_hist.append(cmd)
-    if len(cmd_hist) > 20:
-        cmd_hist.pop(0)
+    hist = _get_cmd_hist()
+    hist.append(cmd)
+    if len(hist) > 20:
+        hist.pop(0)
 
 
 @blueprint.route("/api/shutter_ctrl", methods=["GET", "POST"])
@@ -294,18 +324,16 @@ def api_shutter_ctrl() -> flask.Response:
 @blueprint.route("/api/ctrl/log", methods=["GET"])
 @my_lib.flask_util.support_jsonp
 def api_shutter_ctrl_log() -> flask.Response:
-    global cmd_hist
-
     cmd = flask.request.args.get("cmd", "get")
     if cmd == "clear":
-        cmd_hist = []
+        _clear_cmd_hist()
         return flask.jsonify(
             {
                 "result": "success",
             }
         )
     else:
-        return flask.jsonify({"result": "success", "log": cmd_hist})
+        return flask.jsonify({"result": "success", "log": _get_cmd_hist()})
 
 
 @blueprint.route("/api/shutter_list", methods=["GET"])
