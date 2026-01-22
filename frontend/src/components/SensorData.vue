@@ -27,9 +27,7 @@
                             <span v-else>不明</span>
                         </td>
                         <td class="text-left py-2 whitespace-nowrap">
-                            <span v-if="sensor[name].valid">{{
-                                sensor[name].time.format("M/D HH:mm")
-                            }}</span>
+                            <span v-if="sensor[name].valid">{{ sensor[name].time.format("M/D HH:mm") }}</span>
                             <span v-else>不明</span>
                         </td>
                     </tr>

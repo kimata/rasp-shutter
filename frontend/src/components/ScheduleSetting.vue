@@ -14,11 +14,32 @@
                 type="button"
                 class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2"
                 @click="save()"
-                v-bind:disabled="!isChanged"
+                v-bind:disabled="!isChanged || saving"
                 data-testid="save"
             >
-                <CloudArrowUpIcon class="w-5 h-5" />
-                保存
+                <svg
+                    v-if="saving"
+                    class="animate-spin w-5 h-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                >
+                    <circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                    ></circle>
+                    <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                </svg>
+                <CloudArrowUpIcon v-else class="w-5 h-5" />
+                {{ saving ? "保存中..." : "保存" }}
             </button>
         </div>
     </div>
@@ -40,6 +61,7 @@ export default {
     compatConfig: { MODE: 3 },
     data() {
         return {
+            saving: false,
             current: {
                 open: {
                     is_active: false,
@@ -105,6 +127,7 @@ export default {
                 });
         },
         save: function () {
+            this.saving = true;
             axios
                 .get(this.AppConfig["apiEndpoint"] + "schedule_ctrl", {
                     params: { cmd: "set", data: JSON.stringify(this.current) },
@@ -123,6 +146,9 @@ export default {
                         position: "top-right",
                         message: "保存に失敗しました。",
                     });
+                })
+                .finally(() => {
+                    this.saving = false;
                 });
         },
         isStateDiffer: function (a, b) {
