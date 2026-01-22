@@ -429,7 +429,7 @@ def _server_init(page: Page, host: str, port: str, webserver: Any) -> None:
     # これにより前のテストで設定したスケジュールが影響しない
     reset_schedule(host, port)
 
-    # 制御履歴とwebappログをクリア
-    # これにより前のテストのログが影響しない
+    # 制御履歴をクリア
+    # NOTE: webappログはテスト内でclear_logを呼び出してUIからクリアする
+    # ここでAPIでクリアするとUIのclear_logで「ログがクリアされました」が表示されない
     clear_control_history(host, port)
-    clear_webapp_log(host, port)
