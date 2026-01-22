@@ -404,7 +404,7 @@ def check_schedule(
 
         expect(page.locator(f'//div[contains(@id,"{state}-schedule-entry-lux")]/input')).to_have_value(lux[i])
 
-        wday_checkbox = page.locator(f'//div[contains(@id,"{state}-schedule-entry-wday")]/span/input')
+        wday_checkbox = page.locator(f'//div[contains(@id,"{state}-schedule-entry-wday")]/label/input')
         for j in range(7):
             if enable_wday_index[i * 7 + j]:
                 expect(wday_checkbox.nth(j)).to_be_checked()

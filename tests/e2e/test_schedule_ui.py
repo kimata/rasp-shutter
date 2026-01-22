@@ -46,7 +46,7 @@ class TestScheduleUI:
 
             page.locator(f'//div[contains(@id,"{state}-schedule-entry-lux")]/input').fill(lux[i])
 
-            wday_checkbox = page.locator(f'//div[contains(@id,"{state}-schedule-entry-wday")]/span/input')
+            wday_checkbox = page.locator(f'//div[contains(@id,"{state}-schedule-entry-wday")]/label/input')
             for j in range(7):
                 if enable_wday_index[i * 7 + j]:
                     wday_checkbox.nth(j).check()
@@ -88,7 +88,7 @@ class TestScheduleUI:
             page.locator(f'//div[contains(@id,"{state}-schedule-entry-time")]/input').fill(time_str_after(1))
 
             # NOTE: 曜日は全てチェック
-            wday_checkbox = page.locator(f'//div[contains(@id,"{state}-schedule-entry-wday")]/span/input')
+            wday_checkbox = page.locator(f'//div[contains(@id,"{state}-schedule-entry-wday")]/label/input')
             for j in range(7):
                 wday_checkbox.nth(j).check()
 

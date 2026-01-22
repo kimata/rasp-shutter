@@ -5,7 +5,6 @@
 import datetime
 import logging
 import random
-import time
 
 import my_lib.time
 from playwright.sync_api import Page
@@ -72,7 +71,7 @@ class TestScheduleExecution:
             )
 
             # NOTE: 曜日は全てチェック
-            wday_checkbox = page.locator(f'//div[contains(@id,"{state}-schedule-entry-wday")]/span/input')
+            wday_checkbox = page.locator(f'//div[contains(@id,"{state}-schedule-entry-wday")]/label/input')
             for j in range(7):
                 wday_checkbox.nth(j).check()
 
@@ -87,13 +86,17 @@ class TestScheduleExecution:
 
         # スケジューラがキューを処理するのを待機（ループシーケンスが進むまで）
         logging.info("Waiting for scheduler to process queue...")
-        assert wait_scheduler_loop(host, port, initial_sequence, timeout=10.0), "Scheduler did not process queue"
+        assert wait_scheduler_loop(host, port, initial_sequence, timeout=10.0), (
+            "Scheduler did not process queue"
+        )
 
         # NOTE: スケジュール保存後、モック時間を12:01以降に進めてスケジュールを発火させる
         # advance_mock_time_and_wait を使用して、スケジューラが新しい時刻で run_pending() を
         # 実行するまで待機する
         logging.info("Advancing mock time and waiting for scheduler...")
-        assert advance_mock_time_and_wait(host, port, 20, wait_loops=2), "Failed to advance time and wait for scheduler"
+        assert advance_mock_time_and_wait(host, port, 20, wait_loops=2), (
+            "Failed to advance time and wait for scheduler"
+        )
 
         assert wait_for_log(page, "スケジューラで閉めました", timeout_sec=30.0)
 
