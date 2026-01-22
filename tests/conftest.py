@@ -291,13 +291,12 @@ def app(config):
     import rasp_shutter.config
     from app import create_app
 
-    # ワーカー固有のパスを設定（並列テスト実行時の競合を回避）
-    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
-
     # メトリクスDBパスをワーカー固有に変更（SQLiteロック競合を回避）
-    # NOTE: frozen dataclassなのでdataclasses.replaceで新しいconfigを作成
-    original_metrics_path = config.metrics.data
-    worker_metrics_path = original_metrics_path.parent / f"metrics_{worker_id}.db"
+    # NOTE: my_lib.pytest_util.get_path() は PYTEST_XDIST_WORKER が設定されている場合のみ
+    # サフィックスを付与し、通常実行時はそのままのパスを返す
+    import my_lib.pytest_util
+
+    worker_metrics_path = my_lib.pytest_util.get_path(config.metrics.data)
     worker_metrics_path.parent.mkdir(parents=True, exist_ok=True)
     new_metrics = dataclasses.replace(config.metrics, data=worker_metrics_path)
     config = dataclasses.replace(config, metrics=new_metrics)
@@ -306,24 +305,20 @@ def app(config):
     my_lib.webapp.config.init(rasp_shutter.config.to_my_lib_webapp_config(config))
 
     # ワーカー固有のパスを設定（init()後に上書き）
+    # NOTE: my_lib.pytest_util.get_path() は並列テスト時のみサフィックスを付与
     if my_lib.webapp.config.SCHEDULE_FILE_PATH is not None:
-        original_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
-        worker_schedule_path = original_path.parent / f"schedule_{worker_id}.dat"
-        # 親ディレクトリを作成（存在しない場合）
+        worker_schedule_path = my_lib.pytest_util.get_path(my_lib.webapp.config.SCHEDULE_FILE_PATH)
         worker_schedule_path.parent.mkdir(parents=True, exist_ok=True)
         my_lib.webapp.config.SCHEDULE_FILE_PATH = worker_schedule_path
 
     if my_lib.webapp.config.LOG_DIR_PATH is not None:
-        original_path = my_lib.webapp.config.LOG_DIR_PATH
-        worker_log_path = original_path.parent / f"log_{worker_id}.db"
-        # 親ディレクトリを作成（存在しない場合）
+        worker_log_path = my_lib.pytest_util.get_path(my_lib.webapp.config.LOG_DIR_PATH)
         worker_log_path.parent.mkdir(parents=True, exist_ok=True)
         my_lib.webapp.config.LOG_DIR_PATH = worker_log_path
 
     if my_lib.webapp.config.STAT_DIR_PATH is not None:
-        original_path = my_lib.webapp.config.STAT_DIR_PATH
-        worker_stat_path = original_path.parent / f"rasp-shutter-{worker_id}"
-        worker_stat_path.mkdir(parents=True, exist_ok=True)
+        worker_stat_path = my_lib.pytest_util.get_path(my_lib.webapp.config.STAT_DIR_PATH)
+        worker_stat_path.parent.mkdir(parents=True, exist_ok=True)
         my_lib.webapp.config.STAT_DIR_PATH = worker_stat_path
 
     # init()後にインポートする必要があるモジュール
