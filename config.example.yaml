@@ -1,9 +1,9 @@
 webapp:
-    static_dir_path: dist
+    static_dir_path: frontend/dist
 
     data:
-        schedule_file_path: flask/data/schedule.dat
-        log_file_path: flask/data/log.db
+        schedule_file_path: data/schedule.dat
+        log_file_path: data/log.db
         stat_dir_path: /dev/shm/rasp-shutter
 
 sensor:
@@ -27,7 +27,7 @@ location:
     longitude: 139.6917
 
 metrics:
-    data: flask/data/metrics.db
+    data: data/metrics.db
 
 slack:
     bot_token: xoxb-000000000000-0000000000000-000000000000000000000000

@@ -6,6 +6,6 @@ services:
         tty: true
         stdin_open: true
         volumes:
-            - ./flask/data:/opt/rasp-shutter/flask/data
+            - ./data:/opt/rasp-shutter/data
         ports:
             - "5000:5000"

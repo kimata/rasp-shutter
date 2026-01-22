@@ -98,4 +98,3 @@ Thumbs.db
 # Project specific - data directories
 # =============================================================================
 data/
-flask/data/
