@@ -127,6 +127,16 @@ def clear_control_history(host: str, port: str) -> bool:
         return False
 
 
+def clear_webapp_log(host: str, port: str) -> bool:
+    """テスト用APIを使用してwebappログをクリア"""
+    api_url = APP_URL_TMPL.format(host=host, port=port) + "api/log_clear"
+    try:
+        response = requests.get(api_url, timeout=5)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
+
+
 def reset_test_state(host: str, port: str) -> bool:
     """テスト用APIを使用してテスト状態をリセット"""
     api_url = APP_URL_TMPL.format(host=host, port=port) + "api/test/state/reset"
@@ -146,6 +156,90 @@ def reset_schedule(host: str, port: str) -> bool:
         return response.status_code == 200
     except requests.RequestException:
         return False
+
+
+def get_scheduler_loop_sequence(host: str, port: str) -> int | None:
+    """スケジューラのループシーケンス番号を取得"""
+    api_url = APP_URL_TMPL.format(host=host, port=port) + "api/test/scheduler/loop_sequence"
+    try:
+        response = requests.get(api_url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            return data.get("sequence", 0)
+        return None
+    except requests.RequestException:
+        return None
+
+
+def wait_scheduler_loop(host: str, port: str, sequence: int, timeout: float = 10.0) -> bool:
+    """スケジューラのループが指定シーケンスより先に進むまで待機
+
+    Args:
+        host: サーバーホスト名
+        port: サーバーポート番号
+        sequence: 待機開始時のシーケンス番号
+        timeout: タイムアウト秒数
+
+    Returns:
+        True: シーケンスが進んだ, False: タイムアウト
+
+    """
+    api_url = APP_URL_TMPL.format(host=host, port=port) + f"api/test/scheduler/wait_loop?sequence={sequence}&timeout={timeout}"
+    try:
+        response = requests.post(api_url, timeout=timeout + 5)
+        if response.status_code == 200:
+            data = response.json()
+            logging.debug(
+                "Scheduler loop waited: sequence %d -> %d",
+                sequence,
+                data.get("current_sequence", 0),
+            )
+            return data.get("success", False)
+        return False
+    except requests.RequestException:
+        return False
+
+
+def advance_mock_time_and_wait(host: str, port: str, seconds: int, wait_loops: int = 2) -> bool:
+    """モック時刻を進めてスケジューラループの完了を待機
+
+    時刻を進めた後、スケジューラが新しい時刻で run_pending() を実行するまで待機する。
+    これにより、スケジュールされたジョブが確実に実行される。
+
+    Args:
+        host: サーバーホスト名
+        port: サーバーポート番号
+        seconds: 進める秒数
+        wait_loops: 待機するループ回数
+
+    Returns:
+        True: 成功, False: 失敗
+
+    """
+    # 1. 現在のループシーケンスを取得
+    initial_sequence = get_scheduler_loop_sequence(host, port)
+    if initial_sequence is None:
+        logging.error("Failed to get initial scheduler loop sequence")
+        return False
+    logging.info("Current scheduler loop sequence: %d", initial_sequence)
+
+    # 2. モック時刻を進める
+    if not advance_mock_time(host, port, seconds):
+        return False
+
+    # 3. スケジューラループが進むのを待機
+    # NOTE: wait_loops 回分のループを待つことで、run_pending() が新しい時刻で実行されることを保証
+    target_sequence = initial_sequence + wait_loops
+    if not wait_scheduler_loop(host, port, target_sequence, timeout=15.0):
+        logging.warning(
+            "Scheduler loop did not advance to %d within timeout (current sequence unknown)",
+            target_sequence,
+        )
+        return False
+
+    current_sequence = get_scheduler_loop_sequence(host, port)
+    logging.info("Scheduler loop advanced: %d -> %s", initial_sequence, current_sequence)
+    return True
 
 
 def clear_log(page: Page, host: str, port: str) -> None:
@@ -335,4 +429,7 @@ def _server_init(page: Page, host: str, port: str, webserver: Any) -> None:
     # これにより前のテストで設定したスケジュールが影響しない
     reset_schedule(host, port)
 
+    # 制御履歴とwebappログをクリア
+    # これにより前のテストのログが影響しない
     clear_control_history(host, port)
+    clear_webapp_log(host, port)
