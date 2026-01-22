@@ -163,6 +163,141 @@ pytestを使用したテスト：
 - 日付/時間モック用time-machine
 - 並列実行用のワーカー固有スケジューラインスタンス（pytest-xdist）
 
+### 並列テスト実行
+
+pytest-xdist による並列テスト実行をサポートしている。各ワーカーは独立したプロセスで動作し、Flask アプリはセッションスコープで共有される。
+
+#### ワーカー分離
+
+- 各ワーカーは独自のスケジューラインスタンスを持つ（`my_lib.pytest_util.get_worker_id()` で識別）
+- データファイルはワーカーごとに分離（`schedule_{worker_id}.dat` 等）
+- SQLite データベースもワーカーごとに独立
+
+#### time-machine との連携
+
+`time_machine` ライブラリは `datetime.now()` や `time.time()` をモックするが、`time.perf_counter()` には影響しない。スケジューラスレッドの待機には `time.perf_counter()` を使用する。
+
+#### スケジューラ同期パターン
+
+テストで時間を操作する場合、スケジューラのループ完了を待機する必要がある。`tests/helpers/time_utils.py` の以下の関数を使用する：
+
+```python
+from tests.helpers.time_utils import (
+    setup_midnight_time,      # テスト開始時の初期化
+    move_time_and_wait,       # 時間移動とスケジューラ待機
+    wait_for_schedule_update_seq,  # スケジュール更新後の待機
+)
+
+def test_example(client, time_machine):
+    # 深夜時刻に設定（自動制御が発動しない 3:00 AM）
+    setup_midnight_time(client, time_machine)
+
+    # 時間を移動してスケジューラループ完了を待機
+    move_time_and_wait(time_machine, client, target_time)
+```
+
+#### 自動制御の抑制
+
+自動制御は `HOUR_MORNING_START=5` 以降に実行される。テスト開始時に `setup_midnight_time()` を呼び出すことで、3:00 AM に時刻を設定し、意図しない自動制御を防止する。
+
+#### シーケンス番号による同期
+
+スケジューラはループごとにシーケンス番号をインクリメントする。テストは以下の API でスケジューラの状態を確認できる：
+
+- `GET /api/test/scheduler/loop_sequence` - 現在のシーケンス番号を取得
+- `POST /api/test/scheduler/wait_loop?sequence=N&timeout=T` - シーケンス番号が N を超えるまで待機
+
+#### conftest.py の fixture 構造
+
+並列テスト実行の安定性のため、fixture の依存関係と実行順序が重要：
+
+```python
+# _clear fixture は app fixture に依存（実行順序を保証）
+@pytest.fixture(autouse=True)
+def _clear(app, config):
+    # app fixture でワーカー固有パスが設定された後に実行される
+    ...
+```
+
+**ワーカー固有パスの設定**（`app` fixture 内）:
+
+- `SCHEDULE_FILE_PATH`: `data/schedule_{worker_id}.dat`
+- `LOG_DIR_PATH`: `data/log_{worker_id}.db`
+- `STAT_DIR_PATH`: `/dev/shm/rasp-shutter-{worker_id}`
+
+#### my_lib によるファイル名サフィックス追加
+
+`my_lib.serializer.store()` と `my_lib.serializer.load()` は内部で `my_lib.pytest_util.get_path()` を呼び出し、pytest-xdist 実行時にファイル名にワーカーIDサフィックスを追加する：
+
+```
+schedule_gw0.dat → schedule_gw0.dat.gw0  # serializer 経由でアクセス時
+```
+
+**注意**: バックアップファイル（`.old`）にはサフィックスが追加されないため、conftest.py でワーカー固有パスを設定することで競合を回避する。
+
+#### トラブルシューティング
+
+**テストが断続的に失敗する場合**:
+
+1. **root 所有ファイルの確認**: Docker やsudo でテスト実行後に `data/*.old` が root 所有になる場合がある
+
+   ```bash
+   ls -la data/schedule*.old  # 所有者を確認
+   sudo rm -f data/*.old      # 必要に応じて削除
+   ```
+
+2. **古いテストファイルのクリーンアップ**:
+
+   ```bash
+   rm -f data/schedule_gw*.dat* data/log_gw*.db*
+   ```
+
+3. **`setup_midnight_time()` の呼び出し確認**: 時間操作するテストは必ず冒頭で呼び出す
+
+#### 高並列実行時の注意事項
+
+pytest-xdist で 16 ワーカー以上の高並列実行を行う場合、以下の点に注意が必要。
+
+**SQLite ロック競合**
+
+複数ワーカーが同一の SQLite データベースに書き込むと、ロック競合が発生する。SQLite は同時に 1 つの書き込み操作しか許可しないため、多数のワーカーが同時に書き込もうとすると、長時間のブロッキング（120 秒以上）が発生する可能性がある。
+
+**症状**:
+
+- スケジューラループがタイムアウト（`Scheduler loop timed out`）
+- `database is locked` エラー
+- シーケンス番号が長時間インクリメントされない
+
+**原因特定方法**:
+`time_utils.py` の `move_time_and_wait()` にはタイムアウト時のスレッドダンプ機能がある。タイムアウト発生時、スケジューラスレッドのスタックトレースが出力され、ブロック箇所を特定できる。
+
+```
+File ".../metrics/collector.py", line 129, in record_shutter_operation
+    conn.execute(
+```
+
+上記のようなスタックトレースが出力された場合、SQLite 書き込みでブロックしている。
+
+**対策**:
+`conftest.py` で全てのデータファイルパスをワーカーごとに分離する。
+
+```python
+# conftest.py の app fixture 内
+worker_id = os.environ.get("PYTEST_XDIST_WORKER", "main")
+
+# メトリクスDBパスをワーカー固有に変更
+worker_metrics_path = original_metrics_path.parent / f"metrics_{worker_id}.db"
+new_metrics = dataclasses.replace(config.metrics, data=worker_metrics_path)
+config = dataclasses.replace(config, metrics=new_metrics)
+```
+
+**現在ワーカー分離されているファイル**:
+
+- `SCHEDULE_FILE_PATH`: `data/schedule_{worker_id}.dat`
+- `LOG_DIR_PATH`: `data/log_{worker_id}.db`
+- `STAT_DIR_PATH`: `/dev/shm/rasp-shutter-{worker_id}`
+- `metrics.data`: `data/metrics_{worker_id}.db`
+
 ## コーディング規約
 
 ### Python バージョン
@@ -374,12 +509,12 @@ if os.environ.get("DUMMY_MODE", "false") == "true":
 
 ### ワーカーID取得
 
-pytest-xdist の並列実行で使用するワーカーID取得には `rasp_shutter.util.get_worker_id()` を使用する。
+pytest-xdist の並列実行で使用するワーカーID取得には `my_lib.pytest_util.get_worker_id()` を使用する。
 
 ```python
 # 推奨
-import rasp_shutter.util
-worker_id = rasp_shutter.util.get_worker_id()
+import my_lib.pytest_util
+worker_id = my_lib.pytest_util.get_worker_id()
 
 # 非推奨
 import os
