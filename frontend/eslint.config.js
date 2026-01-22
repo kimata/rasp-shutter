@@ -20,7 +20,7 @@ export default [
                 __dirname: "readonly",
                 process: "readonly",
             },
-            ecmaVersion: 2021, // ES2021をサポート
+            ecmaVersion: "latest",
         },
     },
 ];
