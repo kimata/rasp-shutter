@@ -2,7 +2,9 @@
 
 Raspberry Pi を使った電動シャッター自動制御システム
 
-[![Regression](https://github.com/kimata/rasp-shutter/actions/workflows/regression.yaml/badge.svg)](https://github.com/kimata/rasp-shutter/actions/workflows/regression.yaml)
+[![Test Status](https://github.com/kimata/rasp-shutter/actions/workflows/test.yaml/badge.svg)](https://github.com/kimata/rasp-shutter/actions/workflows/test.yaml)
+[![Test Report](https://img.shields.io/badge/test-report-blue)](https://kimata.github.io/rasp-shutter/pytest.html)
+[![Coverage Status](https://coveralls.io/repos/github/kimata/rasp-shutter/badge.svg?branch=master)](https://coveralls.io/github/kimata/rasp-shutter?branch=master)
 
 ## 📚 目次
 
@@ -99,7 +101,7 @@ Raspberry Pi を使った電動シャッター自動制御システム
 sudo apt install npm docker
 
 # プロジェクトの依存関係
-npm ci
+cd frontend && npm ci
 ```
 
 ### 2. 設定ファイルの準備
@@ -122,8 +124,7 @@ cp config.example.yaml config.yaml
 
 ```bash
 # フロントエンドのビルド
-npm ci
-npm run build
+cd frontend && npm ci && npm run build
 
 # Docker Composeで起動
 docker compose run --build --rm --publish 5000:5000 rasp-shutter
@@ -139,20 +140,20 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 依存関係のインストールと実行
 uv sync
-uv run python flask/src/app.py
+uv run python src/app.py
 ```
 
 ### 開発モード
 
 ```bash
 # フロントエンド開発サーバー
-npm run dev
+cd frontend && npm run dev
 
 # バックエンド（デバッグモード）
-uv run python flask/src/app.py -D
+uv run python src/app.py -D
 
 # ダミーモード（ハードウェアなしでテスト）
-uv run python flask/src/app.py -d
+uv run python src/app.py -d
 ```
 
 ## 🧪 テスト
@@ -251,7 +252,7 @@ sensor:
 
 ```yaml
 metrics:
-    data: flask/data/metrics.db
+    data: data/metrics.db
 ```
 
 #### 位置情報（太陽高度計算用）
@@ -276,13 +277,13 @@ CronJobを使った定期実行にも対応しています。詳細は設定フ�
 
 ### シャッター制御のカスタマイズ
 
-シャッター制御ロジックは `flask/src/rasp_shutter/` 配下で実装されています。異なるハードウェア構成やプロトコルに対応する場合は、これらのモジュールを修正してください。
+シャッター制御ロジックは `src/rasp_shutter/` 配下で実装されています。異なるハードウェア構成やプロトコルに対応する場合は、これらのモジュールを修正してください。
 
 ### フロントエンドのカスタマイズ
 
-- コンポーネント: `src/` 配下
+- コンポーネント: `frontend/src/` 配下
 - スタイル: 各コンポーネントの `.vue` ファイル
-- 設定: `vite.config.ts`
+- 設定: `frontend/vite.config.ts`
 
 ## 📊 CI/CD
 

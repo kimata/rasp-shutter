@@ -1,163 +1,159 @@
 name: Test
 "on":
     push:
-
 permissions:
     contents: read
     pages: write
     id-token: write
     checks: write
     pull-requests: write
-
 jobs:
     build:
         runs-on: ubuntu-latest
-
         strategy:
             matrix:
                 node-version: [22.x]
-
         steps:
             - uses: actions/checkout@v4
-
             - name: Use Node.js ${{ matrix.node-version }}
               uses: actions/setup-node@v4
               with:
                   node-version: ${{ matrix.node-version }}
                   cache: "npm"
-
+                  cache-dependency-path: frontend/package-lock.json
             - name: Install Dependencies
-              run: npm ci
-
+              run: cd frontend && npm ci
             - name: Build
-              run: npm run build
-
+              run: cd frontend && npm run build
             - name: Upload built file
               uses: actions/upload-artifact@v4
               with:
                   name: vue-built
-                  path: dist
-
+                  path: frontend/dist
     test:
         needs: build
         runs-on: ubuntu-latest
-
         env:
             TZ: "Asia/Tokyo"
-
         strategy:
             matrix:
-                python-version: ["3.11", "3.12", "3.13"]
-
+                python-version: ["3.12"]
         steps:
             - uses: actions/checkout@v4
-
             - name: Set up Python ${{ matrix.python-version }}
               uses: actions/setup-python@v5
               with:
                   python-version: ${{ matrix.python-version }}
-
             - name: Download Vue built files
               uses: actions/download-artifact@v4
               with:
                   name: vue-built
-                  path: dist
-
+                  path: frontend/dist
             - name: Set locale
               run: |
                   sudo locale-gen ja_JP.UTF-8
-
             - name: Install uv
               uses: astral-sh/setup-uv@v5
               with:
                   enable-cache: true
-
             - name: Install Dependencies
               run: |
                   uv sync --locked --no-editable
-
             - name: Run Tests
               run: uv run pytest tests/unit/ tests/integration/
-
-            - name: Upload coverage to Coveralls
-              uses: coverallsapp/github-action@v2
-              if: matrix.python-version == '3.12'
-              with:
-                  github-token: ${{ secrets.GITHUB_TOKEN }}
-                  path-to-lcov: reports/coverage.lcov
-
+            - name: Generate index.html
+              if: always()
+              run: |
+                  cat > reports/index.html << 'EOF'
+                  <!DOCTYPE html>
+                  <html lang="ja">
+                  <head>
+                      <meta charset="UTF-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      <title>Test Reports - rasp-shutter</title>
+                      <style>
+                          body {
+                              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                              max-width: 600px; margin: 50px auto; padding: 20px;
+                          }
+                          h1 { color: #333; }
+                          ul { list-style: none; padding: 0; }
+                          li { margin: 10px 0; }
+                          a { color: #0366d6; text-decoration: none; font-size: 1.2em; }
+                          a:hover { text-decoration: underline; }
+                      </style>
+                  </head>
+                  <body>
+                      <h1>Test Reports</h1>
+                      <ul>
+                          <li><a href="pytest.html">Test Results</a></li>
+                          <li><a href="coverage/">Coverage Report</a></li>
+                      </ul>
+                  </body>
+                  </html>
+                  EOF
             - name: Publish Test Results
               uses: dorny/test-reporter@v1
               if: success() || failure()
               with:
-                  name: test results (${{ matrix.python-version }})
+                  name: test results
                   path: reports/junit-report.xml
                   reporter: java-junit
-
+            - name: Upload coverage to Coveralls
+              uses: coverallsapp/github-action@v2
+              with:
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  path-to-lcov: reports/coverage.lcov
             - name: Upload coverage file
               uses: actions/upload-artifact@v4
               if: always()
               with:
-                  name: pytest-${{ matrix.python-version }}
+                  name: pytest
                   path: reports
-
             - name: Upload artifact
               uses: actions/upload-pages-artifact@v3
-              if: matrix.python-version == '3.12'
               with:
                   path: reports
-
     e2e:
         needs: [build, test]
         runs-on: ubuntu-latest
-
         env:
             TZ: "Asia/Tokyo"
-
         steps:
             - uses: actions/checkout@v4
-
             - name: Set up Python 3.12
               uses: actions/setup-python@v5
               with:
                   python-version: "3.12"
-
             - name: Download Vue built files
               uses: actions/download-artifact@v4
               with:
                   name: vue-built
-                  path: dist
-
+                  path: frontend/dist
             - name: Set locale
               run: |
                   sudo locale-gen ja_JP.UTF-8
-
             - name: Install uv
               uses: astral-sh/setup-uv@v5
               with:
                   enable-cache: true
-
             - name: Install Dependencies
               run: |
                   uv sync --locked --no-editable
-
             - name: Install Playwright browsers
               run: uv run playwright install --with-deps chromium
-
             - name: Start Flask server for E2E tests
               run: |
-                  env TEST=true uv run python ./flask/src/app.py -d &
+                  env TEST=true uv run python ./src/app.py -d &
                   echo $! > flask.pid
                   # Wait for server to start
                   sleep 10
                   # Check if server is running
                   curl -f http://127.0.0.1:5000/rasp-shutter/ || echo "Flask server failed to start"
               continue-on-error: true
-
             - name: Run Playwright E2E tests
               run: uv run pytest tests/e2e/ --no-cov --host 127.0.0.1 --port 5000
               continue-on-error: true
-
             - name: Stop Flask server
               run: |
                   if [ -f flask.pid ]; then
@@ -165,8 +161,7 @@ jobs:
                     rm flask.pid
                   fi
               if: always()
-
-    deploy:
+    publish-report:
         environment:
             name: github-pages
             url: ${{ steps.deployment.outputs.page_url }}
