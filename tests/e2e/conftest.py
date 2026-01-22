@@ -137,6 +137,17 @@ def reset_test_state(host: str, port: str) -> bool:
         return False
 
 
+def reset_schedule(host: str, port: str) -> bool:
+    """テスト用APIを使用してスケジュールをリセット"""
+    logging.info("reset schedule")
+    api_url = APP_URL_TMPL.format(host=host, port=port) + "api/test/schedule/reset"
+    try:
+        response = requests.post(api_url, timeout=5)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
+
+
 def clear_log(page: Page, host: str, port: str) -> None:
     """ログをクリア"""
     page.goto(app_url(host, port), wait_until="domcontentloaded", timeout=30000)
@@ -319,5 +330,9 @@ def _server_init(page: Page, host: str, port: str, webserver: Any) -> None:
     # 各テスト前にモック時間をリセットして実時間に戻す
     # これにより前のテストの時間設定が影響しない
     reset_mock_time(host, port)
+
+    # スケジューラのジョブとスケジュールデータをリセット
+    # これにより前のテストで設定したスケジュールが影響しない
+    reset_schedule(host, port)
 
     clear_control_history(host, port)

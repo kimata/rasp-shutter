@@ -381,6 +381,28 @@ def clear_control_log():
     }
 
 
+@blueprint.route("/api/test/schedule/reset", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
+def reset_schedule():
+    """
+    スケジュールをリセット（E2Eテスト用）
+
+    スケジューラのジョブとスケジュールデータをクリアして、
+    テスト間の干渉を防ぐ。
+
+    Returns:
+        JSON: リセット結果
+    """
+    rasp_shutter.control.scheduler.clear_scheduler_jobs()
+
+    logging.info("Schedule reset completed")
+
+    return {
+        "success": True,
+        "message": "Schedule reset completed",
+    }
+
+
 @blueprint.route("/api/test/wait_condition", methods=["POST"])
 @rasp_shutter.util.require_dummy_mode
 def wait_condition():
