@@ -1,6 +1,6 @@
 <template>
-    <div>
-        <h3>{{ label }}</h3>
+    <div class="space-y-5">
+        <h3 class="text-lg font-medium">{{ label }}</h3>
         <div class="flex">
             <div class="switchToggle mt-1">
                 <input
@@ -14,8 +14,8 @@
             </div>
         </div>
 
-        <div>
-            <h3>時刻</h3>
+        <div class="space-y-2">
+            <h3 class="text-sm font-medium text-gray-700">時刻</h3>
             <div class="input-group" v-bind:id="name + '-schedule-entry-time'">
                 <input
                     type="time"
@@ -30,14 +30,14 @@
                 ></div>
             </div>
         </div>
-        <div class="mt-3">
+        <div class="mt-2">
             <small v-if="name == 'open'" class="text-green-600"
                 >午前、高度・日射・照度が共に上回ったら開きます。</small
             >
             <small v-else class="text-green-600">高度・日射・照度のいずれかが下回ったら閉じます。</small>
         </div>
-        <div>
-            <h3>日射閾値</h3>
+        <div class="space-y-2">
+            <h3 class="text-sm font-medium text-gray-700">日射閾値</h3>
             <div class="input-group" v-bind:id="name + '-schedule-entry-solar_rad'">
                 <input
                     type="number"
@@ -55,8 +55,8 @@
             </div>
         </div>
 
-        <div>
-            <h3>照度閾値</h3>
+        <div class="space-y-2">
+            <h3 class="text-sm font-medium text-gray-700">照度閾値</h3>
             <div class="input-group" v-bind:id="name + '-schedule-entry-lux'">
                 <input
                     type="number"
@@ -74,8 +74,8 @@
             </div>
         </div>
 
-        <div>
-            <h3>太陽高度閾値</h3>
+        <div class="space-y-2">
+            <h3 class="text-sm font-medium text-gray-700">太陽高度閾値</h3>
             <div class="input-group" v-bind:id="name + '-schedule-entry-altitude'">
                 <input
                     type="number"
@@ -93,9 +93,9 @@
             </div>
         </div>
 
-        <div>
-            <h3>曜日</h3>
-            <div v-bind:id="name + '-schedule-entry-wday'" class="flex flex-wrap gap-1">
+        <div class="space-y-2">
+            <h3 class="text-sm font-medium text-gray-700">曜日</h3>
+            <div v-bind:id="name + '-schedule-entry-wday'" class="flex flex-wrap gap-2">
                 <label
                     v-for="(wday, i) in ['日', '月', '火', '水', '木', '金', '土']"
                     :key="name + '-wday-' + i"

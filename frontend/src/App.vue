@@ -1,11 +1,13 @@
 <template>
     <div id="app">
-        <div class="max-w-4xl mx-auto px-4">
+        <div class="max-w-4xl mx-auto px-4 py-6">
             <app-header></app-header>
-            <manual-control />
-            <schedule-setting />
-            <sensor-data />
-            <app-log />
+            <div class="space-y-10">
+                <manual-control />
+                <schedule-setting />
+                <sensor-data />
+                <app-log />
+            </div>
         </div>
         <app-footer />
     </div>

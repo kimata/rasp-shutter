@@ -1,5 +1,5 @@
 <template>
-    <div class="p-1 float-right text-right">
+    <div class="p-4 float-right text-right mt-8">
         <small>
             <p class="text-gray-500 m-0">
                 <small>イメージビルド: {{ sysinfo.imageBuildDate }} [{{ sysinfo.imageBuildDateFrom }}]</small>

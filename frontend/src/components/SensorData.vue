@@ -1,35 +1,35 @@
 <template>
-    <div class="mb-4">
-        <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+    <div>
+        <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2 mb-4">
             <SignalIcon class="w-6 h-6 text-green-600" />
             センサー値
         </h2>
-        <div class="mt-4 mb-2">
+        <div class="mt-4">
             <table class="w-full">
                 <thead>
                     <tr class="border-b">
-                        <th class="text-left py-2 w-1/6">センサー</th>
-                        <th colspan="2" class="text-center py-2 w-1/3">値</th>
-                        <th colspan="2" class="text-left py-2 w-1/2">最新更新日時</th>
+                        <th class="text-left py-3 w-1/6">センサー</th>
+                        <th colspan="2" class="text-center py-3 w-1/3">値</th>
+                        <th colspan="2" class="text-left py-3 w-1/2">最新更新日時</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr v-for="name in ['solar_rad', 'lux', 'altitude']" :key="name" class="border-b">
-                        <td class="text-left py-2">{{ this.SENSOR_DEF[name].label }}</td>
-                        <td class="text-right py-2">
+                        <td class="text-left py-3">{{ this.SENSOR_DEF[name].label }}</td>
+                        <td class="text-right py-3">
                             <span v-if="sensor[name].valid">
                                 <b>{{ this.sensorValue(name) }}</b>
                             </span>
                             <span v-else>?</span>
                         </td>
-                        <td class="text-left py-2 pl-2">
+                        <td class="text-left py-3 pl-2">
                             <small v-html="this.SENSOR_DEF[name].unit" />
                         </td>
-                        <td class="text-left py-2">
+                        <td class="text-left py-3">
                             <span v-if="sensor[name].valid">{{ sensor[name].time.fromNow() }}</span>
                             <span v-else>不明</span>
                         </td>
-                        <td class="text-left py-2 whitespace-nowrap">
+                        <td class="text-left py-3 whitespace-nowrap">
                             <span v-if="sensor[name].valid">{{ sensor[name].time.format("M/D HH:mm") }}</span>
                             <span v-else>不明</span>
                         </td>

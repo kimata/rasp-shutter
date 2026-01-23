@@ -1,7 +1,7 @@
 <template>
     <div class="control-entry">
-        <h3>{{ this.name }}</h3>
-        <div class="flex gap-2">
+        <h3 class="mb-3">{{ this.name }}</h3>
+        <div class="flex gap-3">
             <div class="w-1/2">
                 <button
                     class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2"

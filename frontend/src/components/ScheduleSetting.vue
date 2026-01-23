@@ -1,10 +1,10 @@
 <template>
-    <div class="mb-4 mt-4">
-        <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+    <div>
+        <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2 mb-4">
             <ClockIcon class="w-6 h-6 text-green-600" />
             自動
         </h2>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-4">
             <div>
                 <ScheduleEntry label="オープン" name="open" v-model="current.open" />
             </div>
@@ -12,10 +12,10 @@
                 <ScheduleEntry label="クローズ" name="close" v-model="current.close" />
             </div>
         </div>
-        <div class="mt-4 mb-2">
+        <div class="mt-6">
             <button
                 type="button"
-                class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2"
+                class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded flex items-center justify-center gap-2"
                 @click="save()"
                 v-bind:disabled="!isChanged || saving"
                 data-testid="save"

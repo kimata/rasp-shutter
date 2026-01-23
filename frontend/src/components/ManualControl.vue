@@ -1,12 +1,12 @@
 <template>
-    <div class="mb-4 mt-4">
-        <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+    <div>
+        <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2 mb-4">
             <HandRaisedIcon class="w-6 h-6 text-green-600" />
             手動
         </h2>
-        <div>
+        <div class="mt-4">
             <p v-if="shutter_list.length == 0">シャッター一覧を読み込み中...</p>
-            <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div v-for="(name, index) in shutter_list" :key="index">
                     <ManualEntry v-bind:name="name" v-bind:index="index" />
                 </div>

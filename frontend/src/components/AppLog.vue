@@ -1,16 +1,16 @@
 <template>
-    <div class="mb-4">
-        <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+    <div>
+        <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2 mb-4">
             <ClipboardDocumentListIcon class="w-6 h-6 text-green-600" />
             実行ログ
         </h2>
         <div class="log mt-4">
             <p v-if="log.length == 0" class="text-gray-500 text-center py-4">ログがありません。</p>
-            <div v-else class="space-y-3">
+            <div v-else class="space-y-4">
                 <div
                     v-for="(entry, index) in log.slice((page - 1) * pageSize, page * pageSize)"
                     :key="index"
-                    class="bg-gray-50 border border-gray-200 rounded-lg p-3"
+                    class="bg-gray-50 border border-gray-200 rounded-lg p-4"
                 >
                     <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
                         <span class="font-medium text-gray-800">{{ entry.date }}</span>
@@ -61,10 +61,10 @@
                 </nav>
             </div>
         </div>
-        <div class="mt-4 mb-2">
+        <div class="mt-6">
             <button
                 type="button"
-                class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center gap-2"
+                class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded flex items-center justify-center gap-2"
                 @click="clear()"
                 data-testid="clear"
             >
