@@ -256,9 +256,11 @@ def generate_statistics(operation_metrics: list[dict], failure_metrics: list[dic
         ):
             close_times.append(t)
 
-    # センサーデータを操作タイプ別に収集
+    # センサーデータを操作タイプ別に収集（autoとscheduleを統合）
     auto_sensor_data = _collect_sensor_data_by_type(operation_metrics, "auto")
-    auto_sensor_data.update(_collect_sensor_data_by_type(operation_metrics, "schedule"))
+    schedule_sensor_data = _collect_sensor_data_by_type(operation_metrics, "schedule")
+    for key in auto_sensor_data:
+        auto_sensor_data[key].extend(schedule_sensor_data[key])
     manual_sensor_data = _collect_sensor_data_by_type(operation_metrics, "manual")
 
     # カウント系データを集計（1回のループで全統計を計算）
