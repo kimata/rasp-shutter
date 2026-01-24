@@ -16,6 +16,7 @@
 | ------------ | ------------------------------------------------------------------ |
 | README.md    | 機能追加・変更、使用方法の変更、依存関係の変更                     |
 | CLAUDE.md    | アーキテクチャ変更、新規モジュール追加、設定項目変更、開発手順変更 |
+| CHANGELOG.md | リリースタグ作成時（新機能、バグ修正、破壊的変更の記録）           |
 
 ### my-lib（共通ライブラリ）の修正について
 
@@ -241,16 +242,16 @@ schedule_gw0.dat → schedule_gw0.dat.gw0  # serializer 経由でアクセス時
 
 1. **root 所有ファイルの確認**: Docker やsudo でテスト実行後に `data/*.old` が root 所有になる場合がある
 
-   ```bash
-   ls -la data/schedule*.old  # 所有者を確認
-   sudo rm -f data/*.old      # 必要に応じて削除
-   ```
+    ```bash
+    ls -la data/schedule*.old  # 所有者を確認
+    sudo rm -f data/*.old      # 必要に応じて削除
+    ```
 
 2. **古いテストファイルのクリーンアップ**:
 
-   ```bash
-   rm -f data/schedule_gw*.dat* data/log_gw*.db*
-   ```
+    ```bash
+    rm -f data/schedule_gw*.dat* data/log_gw*.db*
+    ```
 
 3. **`setup_midnight_time()` の呼び出し確認**: 時間操作するテストは必ず冒頭で呼び出す
 
@@ -648,29 +649,29 @@ now = datetime.datetime.now(datetime.UTC)
 ### 調査観点
 
 1. **Protocol等を使った型整備**
-   - `| None` の多用箇所で、型の絞り込みで削減可能か
-   - `isinstance()` の多用箇所で、Protocolで統一可能か
-   - 同じインターフェースを持つ複数クラスの共通化
+    - `| None` の多用箇所で、型の絞り込みで削減可能か
+    - `isinstance()` の多用箇所で、Protocolで統一可能か
+    - 同じインターフェースを持つ複数クラスの共通化
 
 2. **dict/TypedDict の dataclass 化**
-   - 辞書キーアクセスが頻繁で typo リスクがある箇所
-   - 不変性が必要な設定データ
-   - ただし、JSONシリアライズが容易なTypedDictが適切な場合もある
+    - 辞書キーアクセスが頻繁で typo リスクがある箇所
+    - 不変性が必要な設定データ
+    - ただし、JSONシリアライズが容易なTypedDictが適切な場合もある
 
 3. **コーディングパターンの統一**
-   - 同じ機能を異なる方法で実装している箇所
-   - エラーハンドリング、ログ出力、環境変数チェック等
+    - 同じ機能を異なる方法で実装している箇所
+    - エラーハンドリング、ログ出力、環境変数チェック等
 
 4. **my_lib 機能の活用**
-   - タイムゾーン処理: `my_lib.time` を使用
-   - ファイルI/O: `my_lib.serializer` を使用
-   - SQLite接続: `my_lib.sqlite_util` を使用
-   - タイムスタンプファイル: `my_lib.footprint` を使用
+    - タイムゾーン処理: `my_lib.time` を使用
+    - ファイルI/O: `my_lib.serializer` を使用
+    - SQLite接続: `my_lib.sqlite_util` を使用
+    - タイムスタンプファイル: `my_lib.footprint` を使用
 
 5. **パス管理**
-   - `pathlib.Path` を使用（文字列パスは避ける）
-   - `my_lib.webapp.config` の base_dir を活用
-   - ハードコーディングされたパスは設定に移動
+    - `pathlib.Path` を使用（文字列パスは避ける）
+    - `my_lib.webapp.config` の base_dir を活用
+    - ハードコーディングされたパスは設定に移動
 
 ### 見送り基準
 
@@ -682,6 +683,26 @@ now = datetime.datetime.now(datetime.UTC)
 - 外部ライブラリの仕様に依存している
 
 ## 開発ワークフロー規約
+
+### リリース（タグ作成）時
+
+リリースタグを作成する際は、以下の手順に従うこと：
+
+1. **CHANGELOG.md を更新する**
+    - 新しいバージョンのセクションを追加
+    - 含まれる変更を以下のカテゴリで記載：
+        - `Added`: 新機能
+        - `Changed`: 既存機能の変更
+        - `Fixed`: バグ修正
+        - `Removed`: 削除された機能
+        - `Security`: セキュリティ関連の修正
+    - [Keep a Changelog](https://keepachangelog.com/) 形式を参考にする
+
+2. **タグを作成する**
+    ```bash
+    git tag -a v1.x.x -m "バージョン説明"
+    git push origin v1.x.x
+    ```
 
 ### コミット時の注意
 
