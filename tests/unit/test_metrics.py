@@ -30,7 +30,6 @@ class TestMetricsCollector:
     def test_record_operation(self, temp_metrics_path):
         """操作記録のテスト"""
         import rasp_shutter.metrics.collector
-
         from tests.fixtures.sensor_factory import SensorDataFactory
 
         collector = rasp_shutter.metrics.collector.MetricsCollector(temp_metrics_path)
@@ -173,6 +172,167 @@ class TestMetricsStatistics:
         period = rasp_shutter.metrics.webapi.page.calculate_data_period(operation_metrics)
 
         assert period["total_days"] >= 1
+
+
+class TestCollectSensorDataByType:
+    """_collect_sensor_data_by_type関数のテスト"""
+
+    def test_collect_auto_type_only(self):
+        """autoタイプのみのデータ収集"""
+        import rasp_shutter.metrics.webapi.page
+
+        operation_metrics = [
+            {"operation_type": "auto", "action": "open", "lux": 100, "solar_rad": 50, "altitude": 10},
+            {"operation_type": "auto", "action": "close", "lux": 200, "solar_rad": 60, "altitude": 20},
+        ]
+
+        result = rasp_shutter.metrics.webapi.page._collect_sensor_data_by_type(operation_metrics, "auto")
+
+        assert result["open_lux"] == [100]
+        assert result["close_lux"] == [200]
+        assert result["open_solar_rad"] == [50]
+        assert result["close_solar_rad"] == [60]
+        assert result["open_altitude"] == [10]
+        assert result["close_altitude"] == [20]
+
+    def test_collect_schedule_type_only(self):
+        """scheduleタイプのみのデータ収集"""
+        import rasp_shutter.metrics.webapi.page
+
+        operation_metrics = [
+            {"operation_type": "schedule", "action": "open", "lux": 300, "solar_rad": 70, "altitude": 30},
+        ]
+
+        result = rasp_shutter.metrics.webapi.page._collect_sensor_data_by_type(operation_metrics, "schedule")
+
+        assert result["open_lux"] == [300]
+        assert result["close_lux"] == []
+
+    def test_collect_ignores_other_types(self):
+        """指定タイプ以外は無視される"""
+        import rasp_shutter.metrics.webapi.page
+
+        operation_metrics = [
+            {"operation_type": "auto", "action": "open", "lux": 100},
+            {"operation_type": "manual", "action": "open", "lux": 200},
+        ]
+
+        result = rasp_shutter.metrics.webapi.page._collect_sensor_data_by_type(operation_metrics, "auto")
+
+        assert result["open_lux"] == [100]
+        assert len(result["open_lux"]) == 1
+
+    def test_collect_with_none_values(self):
+        """None値は除外される"""
+        import rasp_shutter.metrics.webapi.page
+
+        operation_metrics = [
+            {"operation_type": "auto", "action": "open", "lux": None, "solar_rad": 50},
+        ]
+
+        result = rasp_shutter.metrics.webapi.page._collect_sensor_data_by_type(operation_metrics, "auto")
+
+        assert result["open_lux"] == []
+        assert result["open_solar_rad"] == [50]
+
+
+class TestAutoScheduleIntegration:
+    """auto/scheduleタイプの統合テスト（修正されたバグの回帰テスト）"""
+
+    def test_auto_only_data_not_overwritten(self):
+        """autoタイプのみのデータがschedule統合で上書きされないこと"""
+        import rasp_shutter.metrics.webapi.page
+
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        operation_metrics = [
+            {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "date": today,
+                "operation_type": "auto",
+                "action": "open",
+                "lux": 1000,
+                "solar_rad": 100,
+                "altitude": 30,
+            },
+            {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "date": today,
+                "operation_type": "auto",
+                "action": "close",
+                "lux": 500,
+                "solar_rad": 50,
+                "altitude": 15,
+            },
+        ]
+
+        stats = rasp_shutter.metrics.webapi.page.generate_statistics(operation_metrics, [])
+
+        # autoのデータがschedule統合後も保持されていること
+        assert stats["auto_sensor_data"]["open_lux"] == [1000]
+        assert stats["auto_sensor_data"]["close_lux"] == [500]
+        assert stats["auto_sensor_data"]["open_solar_rad"] == [100]
+        assert stats["auto_sensor_data"]["close_solar_rad"] == [50]
+        assert stats["auto_sensor_data"]["open_altitude"] == [30]
+        assert stats["auto_sensor_data"]["close_altitude"] == [15]
+
+    def test_auto_and_schedule_merged(self):
+        """autoとscheduleのデータが正しく統合されること"""
+        import rasp_shutter.metrics.webapi.page
+
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        operation_metrics = [
+            {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "date": today,
+                "operation_type": "auto",
+                "action": "open",
+                "lux": 1000,
+            },
+            {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "date": today,
+                "operation_type": "schedule",
+                "action": "open",
+                "lux": 2000,
+            },
+            {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "date": today,
+                "operation_type": "auto",
+                "action": "close",
+                "lux": 500,
+            },
+        ]
+
+        stats = rasp_shutter.metrics.webapi.page.generate_statistics(operation_metrics, [])
+
+        # autoとscheduleのopen_luxが統合されている
+        assert 1000 in stats["auto_sensor_data"]["open_lux"]
+        assert 2000 in stats["auto_sensor_data"]["open_lux"]
+        assert len(stats["auto_sensor_data"]["open_lux"]) == 2
+
+        # close_luxはautoのみ
+        assert stats["auto_sensor_data"]["close_lux"] == [500]
+
+    def test_schedule_only_no_auto(self):
+        """scheduleタイプのみでautoがない場合"""
+        import rasp_shutter.metrics.webapi.page
+
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        operation_metrics = [
+            {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "date": today,
+                "operation_type": "schedule",
+                "action": "close",
+                "lux": 300,
+            },
+        ]
+
+        stats = rasp_shutter.metrics.webapi.page.generate_statistics(operation_metrics, [])
+
+        assert stats["auto_sensor_data"]["close_lux"] == [300]
+        assert stats["auto_sensor_data"]["open_lux"] == []
 
 
 class TestResetCollector:
