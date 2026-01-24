@@ -787,6 +787,17 @@ def generate_sensor_analysis_section() -> str:
             </span>
         </h2>
 
+        <!-- データなし表示 -->
+        <div id="manual-no-data" class="hidden bg-gray-50 rounded-lg p-8 text-center">
+            <i class="fas fa-inbox text-4xl text-gray-400 mb-4"></i>
+            <p class="text-gray-600">手動操作のデータがまだありません。</p>
+            <p class="text-sm text-gray-500 mt-2">
+                手動でシャッターを操作すると、ここにセンサーデータが表示されます。
+            </p>
+        </div>
+
+        <!-- グラフ表示エリア -->
+        <div id="manual-charts">
         <!-- 照度データ -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div class="bg-white rounded-lg shadow">
@@ -888,6 +899,7 @@ def generate_sensor_analysis_section() -> str:
                 </div>
             </div>
         </div>
+        </div><!-- manual-charts -->
     </div>
     """
 
@@ -1631,6 +1643,31 @@ def generate_chart_javascript() -> str:
         }
 
         function generateManualSensorCharts() {
+            // 手動操作データの有無をチェック
+            const manualData = chartData.manual_sensor_data;
+            const hasManualData = manualData && (
+                (manualData.open_lux && manualData.open_lux.length > 0) ||
+                (manualData.close_lux && manualData.close_lux.length > 0) ||
+                (manualData.open_solar_rad && manualData.open_solar_rad.length > 0) ||
+                (manualData.close_solar_rad && manualData.close_solar_rad.length > 0) ||
+                (manualData.open_altitude && manualData.open_altitude.length > 0) ||
+                (manualData.close_altitude && manualData.close_altitude.length > 0)
+            );
+
+            const noDataDiv = document.getElementById('manual-no-data');
+            const chartsDiv = document.getElementById('manual-charts');
+
+            if (!hasManualData) {
+                // データがない場合はメッセージを表示し、グラフを非表示
+                if (noDataDiv) noDataDiv.classList.remove('hidden');
+                if (chartsDiv) chartsDiv.classList.add('hidden');
+                return;
+            } else {
+                // データがある場合はグラフを表示し、メッセージを非表示
+                if (noDataDiv) noDataDiv.classList.add('hidden');
+                if (chartsDiv) chartsDiv.classList.remove('hidden');
+            }
+
             // ヒストグラム生成のヘルパー関数
             function createHistogram(data, bins) {
                 const hist = Array(bins.length - 1).fill(0);
