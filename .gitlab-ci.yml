@@ -86,7 +86,7 @@ build-image:
     # after_script:
     #     - docker buildx rm ${BUILDER} || true
 
-test-walk-through:
+test-pytest:
     stage: test
 
     needs: []
@@ -347,7 +347,7 @@ test-healthz-docker:
 pages:
     stage: test
     needs:
-        - test-walk-through
+        - test-pytest
 
     script:
         - mkdir -p public/
@@ -366,7 +366,7 @@ tag-latest:
     needs:
         - generate-tag
         - build-image
-        - job: test-walk-through
+        - job: test-pytest
           artifacts: false
         - job: test-playwright
           artifacts: false
@@ -392,7 +392,7 @@ deploy-webapp:
     needs:
         - generate-tag
         - build-image
-        - job: test-walk-through
+        - job: test-pytest
           artifacts: false
         - job: test-playwright
           artifacts: false
