@@ -110,6 +110,8 @@ import {
     ArrowPathIcon,
     BellAlertIcon,
     InformationCircleIcon,
+    SunIcon,
+    MoonIcon,
 } from "@heroicons/vue/24/outline";
 
 import dayjs from "dayjs";
@@ -126,6 +128,8 @@ import AppConfig from "../mixins/AppConfig.js";
 const LOG_TYPES = {
     OPEN_SUCCESS: "open_success",
     CLOSE_SUCCESS: "close_success",
+    SENSOR_OPEN: "sensor_open",
+    SENSOR_CLOSE: "sensor_close",
     ERROR: "error",
     POSTPONE: "postpone",
     SCHEDULE: "schedule",
@@ -146,6 +150,13 @@ function detectLogType(message) {
     // システム（再起動等）
     if (message.includes("🏃") || message.includes("再起動")) {
         return LOG_TYPES.SYSTEM;
+    }
+    // センサー制御（照度による開閉）
+    if (message.includes("🌅")) {
+        return LOG_TYPES.SENSOR_OPEN;
+    }
+    if (message.includes("🌇")) {
+        return LOG_TYPES.SENSOR_CLOSE;
     }
     // 見合わせ・延期
     if (
@@ -182,6 +193,8 @@ export default {
         ArrowPathIcon,
         BellAlertIcon,
         InformationCircleIcon,
+        SunIcon,
+        MoonIcon,
     },
     data() {
         return {
@@ -219,6 +232,8 @@ export default {
             const iconMap = {
                 [LOG_TYPES.OPEN_SUCCESS]: "ArrowUpIcon",
                 [LOG_TYPES.CLOSE_SUCCESS]: "ArrowDownIcon",
+                [LOG_TYPES.SENSOR_OPEN]: "SunIcon",
+                [LOG_TYPES.SENSOR_CLOSE]: "MoonIcon",
                 [LOG_TYPES.ERROR]: "ExclamationCircleIcon",
                 [LOG_TYPES.POSTPONE]: "ClockIcon",
                 [LOG_TYPES.SCHEDULE]: "CalendarDaysIcon",
@@ -232,6 +247,8 @@ export default {
             const classMap = {
                 [LOG_TYPES.OPEN_SUCCESS]: "bg-emerald-100",
                 [LOG_TYPES.CLOSE_SUCCESS]: "bg-blue-100",
+                [LOG_TYPES.SENSOR_OPEN]: "bg-orange-100",
+                [LOG_TYPES.SENSOR_CLOSE]: "bg-slate-100",
                 [LOG_TYPES.ERROR]: "bg-red-100",
                 [LOG_TYPES.POSTPONE]: "bg-amber-100",
                 [LOG_TYPES.SCHEDULE]: "bg-indigo-100",
@@ -245,6 +262,8 @@ export default {
             const classMap = {
                 [LOG_TYPES.OPEN_SUCCESS]: "text-emerald-600",
                 [LOG_TYPES.CLOSE_SUCCESS]: "text-blue-600",
+                [LOG_TYPES.SENSOR_OPEN]: "text-orange-600",
+                [LOG_TYPES.SENSOR_CLOSE]: "text-slate-600",
                 [LOG_TYPES.ERROR]: "text-red-600",
                 [LOG_TYPES.POSTPONE]: "text-amber-600",
                 [LOG_TYPES.SCHEDULE]: "text-indigo-600",
@@ -258,6 +277,8 @@ export default {
             const labelMap = {
                 [LOG_TYPES.OPEN_SUCCESS]: "開",
                 [LOG_TYPES.CLOSE_SUCCESS]: "閉",
+                [LOG_TYPES.SENSOR_OPEN]: "照度",
+                [LOG_TYPES.SENSOR_CLOSE]: "照度",
                 [LOG_TYPES.ERROR]: "エラー",
                 [LOG_TYPES.POSTPONE]: "見合わせ",
                 [LOG_TYPES.SCHEDULE]: "スケジュール",
@@ -269,7 +290,7 @@ export default {
         formatMessage(message) {
             // 絵文字を除去してフォーマット
             return message
-                .replace(/[😵📝📅🏃🔔]/gu, "")
+                .replace(/[😵📝📅🏃🔔🌅🌇]/gu, "")
                 .trim()
                 .replace(/\^2/g, "<sup>2</sup>")
                 .replace(/\n/g, "<br/>")

@@ -345,7 +345,7 @@ def shutter_auto_open(config: rasp_shutter.config.AppConfig) -> None:
     sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
     if check_brightness(sense_data, "open") == BRIGHTNESS_STATE.BRIGHT:
         sensor_text = rasp_shutter.control.webapi.control.sensor_text(sense_data)
-        my_lib.webapp.log.info(f"📝 暗くて延期されていましたが、明るくなってきたので開けます。{sensor_text}")
+        my_lib.webapp.log.info(f"🌅 暗くて延期されていましたが、明るくなってきたので開けます。{sensor_text}")
 
         exec_shutter_control(
             config,
@@ -418,7 +418,7 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
     if check_brightness(sense_data, "close") == BRIGHTNESS_STATE.DARK:
         sensor_text = rasp_shutter.control.webapi.control.sensor_text(sense_data)
         my_lib.webapp.log.info(
-            f"📝 予定より早いですが、暗くなってきたので閉めます。{sensor_text}",
+            f"🌇 予定より早いですが、暗くなってきたので閉めます。{sensor_text}",
         )
 
         exec_shutter_control(
