@@ -6,21 +6,42 @@
         </h2>
         <div class="log mt-4">
             <p v-if="log.length == 0" class="text-gray-500 text-center py-4">ログがありません。</p>
-            <div v-else class="space-y-4">
+            <div v-else class="space-y-3">
                 <div
                     v-for="(entry, index) in log.slice((page - 1) * pageSize, page * pageSize)"
                     :key="index"
-                    class="bg-gray-50 border border-gray-200 rounded-lg p-4"
+                    class="flex gap-4 p-4 rounded-xl border-2 transition-all hover:shadow-md"
+                    :class="getEntryClass(entry)"
                 >
-                    <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                        <span class="font-medium text-gray-800">{{ entry.date }}</span>
-                        <span class="text-gray-400">|</span>
-                        <span class="text-gray-500">{{ entry.fromNow }}</span>
-                    </div>
+                    <!-- アイコン部分 -->
                     <div
-                        class="log-message text-gray-700"
-                        v-html="entry.message.replace(/\^2/g, '<sup>2</sup>').replace(/\n/g, '<br/>')"
-                    ></div>
+                        class="flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center"
+                        :class="getIconBgClass(entry)"
+                    >
+                        <component
+                            :is="getIcon(entry)"
+                            class="w-7 h-7"
+                            :class="getIconClass(entry)"
+                        />
+                    </div>
+
+                    <!-- コンテンツ部分 -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                :class="getBadgeClass(entry)"
+                            >
+                                {{ getLabel(entry) }}
+                            </span>
+                            <span class="text-sm text-gray-500">{{ entry.fromNow }}</span>
+                        </div>
+                        <div
+                            class="log-message text-gray-700 text-sm leading-relaxed"
+                            v-html="formatMessage(entry.message)"
+                        ></div>
+                        <div class="text-xs text-gray-400 mt-1">{{ entry.date }}</div>
+                    </div>
                 </div>
 
                 <!-- Pagination -->
@@ -77,7 +98,18 @@
 
 <script>
 import axios from "axios";
-import { XCircleIcon, ClipboardDocumentListIcon } from "@heroicons/vue/24/outline";
+import {
+    XCircleIcon,
+    ClipboardDocumentListIcon,
+    ArrowUpIcon,
+    ArrowDownIcon,
+    ExclamationCircleIcon,
+    ClockIcon,
+    CalendarDaysIcon,
+    ArrowPathIcon,
+    BellAlertIcon,
+    InformationCircleIcon,
+} from "@heroicons/vue/24/outline";
 
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -89,12 +121,66 @@ dayjs.extend(localizedFormat);
 
 import AppConfig from "../mixins/AppConfig.js";
 
+// ログ種別の定義
+const LOG_TYPES = {
+    OPEN_SUCCESS: "open_success",
+    CLOSE_SUCCESS: "close_success",
+    ERROR: "error",
+    POSTPONE: "postpone",
+    SCHEDULE: "schedule",
+    SYSTEM: "system",
+    INFO: "info",
+};
+
+// ログ種別を判定する関数
+function detectLogType(message) {
+    // エラー・失敗系
+    if (message.includes("😵") || message.includes("失敗")) {
+        return LOG_TYPES.ERROR;
+    }
+    // スケジュール更新
+    if (message.includes("📅") || message.includes("スケジュールを更新")) {
+        return LOG_TYPES.SCHEDULE;
+    }
+    // システム（再起動等）
+    if (message.includes("🏃") || message.includes("再起動")) {
+        return LOG_TYPES.SYSTEM;
+    }
+    // 見合わせ・延期
+    if (
+        message.includes("🔔") ||
+        message.includes("📝") ||
+        message.includes("見合わせ") ||
+        message.includes("延期")
+    ) {
+        return LOG_TYPES.POSTPONE;
+    }
+    // シャッター開け成功
+    if (message.includes("開けました")) {
+        return LOG_TYPES.OPEN_SUCCESS;
+    }
+    // シャッター閉め成功
+    if (message.includes("閉めました")) {
+        return LOG_TYPES.CLOSE_SUCCESS;
+    }
+    // その他
+    return LOG_TYPES.INFO;
+}
+
 export default {
     name: "app-log",
     mixins: [AppConfig],
     components: {
         XCircleIcon,
         ClipboardDocumentListIcon,
+        ArrowUpIcon,
+        ArrowDownIcon,
+        ExclamationCircleIcon,
+        ClockIcon,
+        CalendarDaysIcon,
+        ArrowPathIcon,
+        BellAlertIcon,
+        InformationCircleIcon,
     },
     data() {
         return {
@@ -124,6 +210,95 @@ export default {
         this.updateLog();
     },
     methods: {
+        getLogType(entry) {
+            return detectLogType(entry.message);
+        },
+        getIcon(entry) {
+            const type = this.getLogType(entry);
+            const iconMap = {
+                [LOG_TYPES.OPEN_SUCCESS]: "ArrowUpIcon",
+                [LOG_TYPES.CLOSE_SUCCESS]: "ArrowDownIcon",
+                [LOG_TYPES.ERROR]: "ExclamationCircleIcon",
+                [LOG_TYPES.POSTPONE]: "ClockIcon",
+                [LOG_TYPES.SCHEDULE]: "CalendarDaysIcon",
+                [LOG_TYPES.SYSTEM]: "ArrowPathIcon",
+                [LOG_TYPES.INFO]: "InformationCircleIcon",
+            };
+            return iconMap[type] || "InformationCircleIcon";
+        },
+        getEntryClass(entry) {
+            const type = this.getLogType(entry);
+            const classMap = {
+                [LOG_TYPES.OPEN_SUCCESS]: "bg-emerald-50 border-emerald-200",
+                [LOG_TYPES.CLOSE_SUCCESS]: "bg-blue-50 border-blue-200",
+                [LOG_TYPES.ERROR]: "bg-red-50 border-red-200",
+                [LOG_TYPES.POSTPONE]: "bg-amber-50 border-amber-200",
+                [LOG_TYPES.SCHEDULE]: "bg-indigo-50 border-indigo-200",
+                [LOG_TYPES.SYSTEM]: "bg-purple-50 border-purple-200",
+                [LOG_TYPES.INFO]: "bg-gray-50 border-gray-200",
+            };
+            return classMap[type] || "bg-gray-50 border-gray-200";
+        },
+        getIconBgClass(entry) {
+            const type = this.getLogType(entry);
+            const classMap = {
+                [LOG_TYPES.OPEN_SUCCESS]: "bg-emerald-100",
+                [LOG_TYPES.CLOSE_SUCCESS]: "bg-blue-100",
+                [LOG_TYPES.ERROR]: "bg-red-100",
+                [LOG_TYPES.POSTPONE]: "bg-amber-100",
+                [LOG_TYPES.SCHEDULE]: "bg-indigo-100",
+                [LOG_TYPES.SYSTEM]: "bg-purple-100",
+                [LOG_TYPES.INFO]: "bg-gray-100",
+            };
+            return classMap[type] || "bg-gray-100";
+        },
+        getIconClass(entry) {
+            const type = this.getLogType(entry);
+            const classMap = {
+                [LOG_TYPES.OPEN_SUCCESS]: "text-emerald-600",
+                [LOG_TYPES.CLOSE_SUCCESS]: "text-blue-600",
+                [LOG_TYPES.ERROR]: "text-red-600",
+                [LOG_TYPES.POSTPONE]: "text-amber-600",
+                [LOG_TYPES.SCHEDULE]: "text-indigo-600",
+                [LOG_TYPES.SYSTEM]: "text-purple-600",
+                [LOG_TYPES.INFO]: "text-gray-600",
+            };
+            return classMap[type] || "text-gray-600";
+        },
+        getBadgeClass(entry) {
+            const type = this.getLogType(entry);
+            const classMap = {
+                [LOG_TYPES.OPEN_SUCCESS]: "bg-emerald-100 text-emerald-800",
+                [LOG_TYPES.CLOSE_SUCCESS]: "bg-blue-100 text-blue-800",
+                [LOG_TYPES.ERROR]: "bg-red-100 text-red-800",
+                [LOG_TYPES.POSTPONE]: "bg-amber-100 text-amber-800",
+                [LOG_TYPES.SCHEDULE]: "bg-indigo-100 text-indigo-800",
+                [LOG_TYPES.SYSTEM]: "bg-purple-100 text-purple-800",
+                [LOG_TYPES.INFO]: "bg-gray-100 text-gray-800",
+            };
+            return classMap[type] || "bg-gray-100 text-gray-800";
+        },
+        getLabel(entry) {
+            const type = this.getLogType(entry);
+            const labelMap = {
+                [LOG_TYPES.OPEN_SUCCESS]: "開",
+                [LOG_TYPES.CLOSE_SUCCESS]: "閉",
+                [LOG_TYPES.ERROR]: "エラー",
+                [LOG_TYPES.POSTPONE]: "見合わせ",
+                [LOG_TYPES.SCHEDULE]: "スケジュール",
+                [LOG_TYPES.SYSTEM]: "システム",
+                [LOG_TYPES.INFO]: "情報",
+            };
+            return labelMap[type] || "情報";
+        },
+        formatMessage(message) {
+            // 絵文字を除去してフォーマット
+            return message
+                .replace(/[😵📝📅🏃🔔]/gu, "")
+                .trim()
+                .replace(/\^2/g, "<sup>2</sup>")
+                .replace(/\n/g, "<br/>");
+        },
         updateLog: function () {
             axios
                 .get(this.AppConfig["apiEndpoint"] + "log_view")
