@@ -10,8 +10,7 @@
                 <div
                     v-for="(entry, index) in log.slice((page - 1) * pageSize, page * pageSize)"
                     :key="index"
-                    class="flex gap-4 p-4 rounded-xl border-2 transition-all hover:shadow-md"
-                    :class="getEntryClass(entry)"
+                    class="flex gap-4 p-4 rounded-xl bg-white border border-gray-200 transition-all hover:shadow-md"
                 >
                     <!-- アイコン部分 -->
                     <div
@@ -225,19 +224,6 @@ export default {
                 [LOG_TYPES.INFO]: "InformationCircleIcon",
             };
             return iconMap[type] || "InformationCircleIcon";
-        },
-        getEntryClass(entry) {
-            const type = this.getLogType(entry);
-            const classMap = {
-                [LOG_TYPES.OPEN_SUCCESS]: "bg-emerald-50 border-emerald-200",
-                [LOG_TYPES.CLOSE_SUCCESS]: "bg-blue-50 border-blue-200",
-                [LOG_TYPES.ERROR]: "bg-red-50 border-red-200",
-                [LOG_TYPES.POSTPONE]: "bg-amber-50 border-amber-200",
-                [LOG_TYPES.SCHEDULE]: "bg-indigo-50 border-indigo-200",
-                [LOG_TYPES.SYSTEM]: "bg-purple-50 border-purple-200",
-                [LOG_TYPES.INFO]: "bg-gray-50 border-gray-200",
-            };
-            return classMap[type] || "bg-gray-50 border-gray-200";
         },
         getIconBgClass(entry) {
             const type = this.getLogType(entry);
