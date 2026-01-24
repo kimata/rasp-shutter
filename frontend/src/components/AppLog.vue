@@ -13,26 +13,28 @@
                     class="flex gap-4 p-4 rounded-xl bg-white border border-gray-200 transition-all hover:shadow-md"
                 >
                     <!-- アイコン部分 -->
-                    <div
-                        class="flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center"
-                        :class="getIconBgClass(entry)"
-                    >
-                        <component
-                            :is="getIcon(entry)"
-                            class="w-7 h-7"
+                    <div class="flex-shrink-0 flex flex-col items-center w-16">
+                        <div
+                            class="w-12 h-12 rounded-full flex items-center justify-center"
+                            :class="getIconBgClass(entry)"
+                        >
+                            <component
+                                :is="getIcon(entry)"
+                                class="w-6 h-6"
+                                :class="getIconClass(entry)"
+                            />
+                        </div>
+                        <span
+                            class="mt-1 text-xs font-medium"
                             :class="getIconClass(entry)"
-                        />
+                        >
+                            {{ getLabel(entry) }}
+                        </span>
                     </div>
 
                     <!-- コンテンツ部分 -->
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                                :class="getBadgeClass(entry)"
-                            >
-                                {{ getLabel(entry) }}
-                            </span>
                             <span class="text-sm text-gray-500">{{ entry.fromNow }}</span>
                         </div>
                         <div
@@ -251,19 +253,6 @@ export default {
             };
             return classMap[type] || "text-gray-600";
         },
-        getBadgeClass(entry) {
-            const type = this.getLogType(entry);
-            const classMap = {
-                [LOG_TYPES.OPEN_SUCCESS]: "bg-emerald-100 text-emerald-800",
-                [LOG_TYPES.CLOSE_SUCCESS]: "bg-blue-100 text-blue-800",
-                [LOG_TYPES.ERROR]: "bg-red-100 text-red-800",
-                [LOG_TYPES.POSTPONE]: "bg-amber-100 text-amber-800",
-                [LOG_TYPES.SCHEDULE]: "bg-indigo-100 text-indigo-800",
-                [LOG_TYPES.SYSTEM]: "bg-purple-100 text-purple-800",
-                [LOG_TYPES.INFO]: "bg-gray-100 text-gray-800",
-            };
-            return classMap[type] || "bg-gray-100 text-gray-800";
-        },
         getLabel(entry) {
             const type = this.getLogType(entry);
             const labelMap = {
@@ -283,7 +272,8 @@ export default {
                 .replace(/[😵📝📅🏃🔔]/gu, "")
                 .trim()
                 .replace(/\^2/g, "<sup>2</sup>")
-                .replace(/\n/g, "<br/>");
+                .replace(/\n/g, "<br/>")
+                .replace(/\(by ([^)]+)\)/g, '<span class="whitespace-nowrap">(by $1)</span>');
         },
         updateLog: function () {
             axios
