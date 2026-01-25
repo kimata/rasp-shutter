@@ -7,12 +7,14 @@ import threading
 import typing
 
 import flask
+import flask_cors
 import my_lib.flask_util
 import my_lib.footprint
 import my_lib.pytest_util
 import my_lib.webapp.config
 import my_lib.webapp.log
 import requests
+from flask_pydantic import validate
 
 import rasp_shutter.config
 import rasp_shutter.control.config
@@ -20,6 +22,7 @@ import rasp_shutter.control.webapi.sensor
 import rasp_shutter.metrics.collector
 import rasp_shutter.types
 import rasp_shutter.util
+from rasp_shutter.schemas import CtrlLogRequest, ShutterCtrlRequest
 
 
 class SHUTTER_STATE(enum.IntEnum):
@@ -305,23 +308,21 @@ def cmd_hist_push(cmd: dict) -> None:  # pragma: no cover
 
 
 @blueprint.route("/api/shutter_ctrl", methods=["GET", "POST"])
-@my_lib.flask_util.support_jsonp
-def api_shutter_ctrl() -> flask.Response:
-    cmd = flask.request.args.get("cmd", 0, type=int)
-    index = flask.request.args.get("index", -1, type=int)
-    state = flask.request.args.get("state", "close", type=str)
+@flask_cors.cross_origin()
+@validate(query=ShutterCtrlRequest)
+def api_shutter_ctrl(query: ShutterCtrlRequest) -> flask.Response:
     config: rasp_shutter.config.AppConfig = flask.current_app.config["CONFIG"]
 
     # NOTE: シャッターが指定されていない場合は、全てを制御対象にする
-    index_list = list(range(len(config.shutter))) if index == -1 else [index]
+    index_list = list(range(len(config.shutter))) if query.index == -1 else [query.index]
 
     sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
 
-    if cmd == 1:
+    if query.cmd == 1:
         result = set_shutter_state(
             config,
             index_list,
-            state,
+            query.state,
             CONTROL_MODE.MANUAL,
             sense_data,
             my_lib.flask_util.auth_user(flask.request),
@@ -333,10 +334,10 @@ def api_shutter_ctrl() -> flask.Response:
 
 # NOTE: テスト用
 @blueprint.route("/api/ctrl/log", methods=["GET"])
-@my_lib.flask_util.support_jsonp
-def api_shutter_ctrl_log() -> flask.Response:
-    cmd = flask.request.args.get("cmd", "get")
-    if cmd == "clear":
+@flask_cors.cross_origin()
+@validate(query=CtrlLogRequest)
+def api_shutter_ctrl_log(query: CtrlLogRequest) -> flask.Response:
+    if query.cmd == "clear":
         _clear_cmd_hist()
         return flask.jsonify(
             {
@@ -348,7 +349,7 @@ def api_shutter_ctrl_log() -> flask.Response:
 
 
 @blueprint.route("/api/shutter_list", methods=["GET"])
-@my_lib.flask_util.support_jsonp
+@flask_cors.cross_origin()
 def api_shutter_list() -> flask.Response:
     config: rasp_shutter.config.AppConfig = flask.current_app.config["CONFIG"]
 

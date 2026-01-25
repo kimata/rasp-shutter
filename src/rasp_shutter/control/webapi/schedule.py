@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 import json
 import multiprocessing
 import threading
@@ -13,14 +11,16 @@ import my_lib.pytest_util
 import my_lib.webapp.config
 import my_lib.webapp.event
 import my_lib.webapp.log
+from flask_pydantic import validate
 
 import rasp_shutter.control.scheduler
 import rasp_shutter.types
+from rasp_shutter.schemas import ScheduleCtrlRequest
 
 blueprint = flask.Blueprint("rasp-shutter-schedule", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
 
 _schedule_lock: dict[str, threading.RLock] = {}
-_schedule_queue: dict[str, multiprocessing.Queue[dict[str, bool]]] = {}
+_schedule_queue: dict[str, "multiprocessing.Queue[dict[str, bool]]"] = {}
 _worker_thread: dict[str, threading.Thread] = {}
 
 WDAY_STR = ["日", "月", "火", "水", "木", "金", "土"]
@@ -103,13 +103,11 @@ def schedule_str(schedule_data: dict) -> str:
 
 
 @blueprint.route("/api/schedule_ctrl", methods=["GET", "POST"])
-@my_lib.flask_util.support_jsonp
 @flask_cors.cross_origin()
-def api_schedule_ctrl():
-    cmd = flask.request.args.get("cmd", None)
-    data = flask.request.args.get("data", None)
-    if cmd == "set":
-        schedule_data = json.loads(data)
+@validate(query=ScheduleCtrlRequest)
+def api_schedule_ctrl(query: ScheduleCtrlRequest) -> flask.Response:
+    if query.cmd == "set" and query.data is not None:
+        schedule_data = json.loads(query.data)
 
         if not rasp_shutter.control.scheduler.schedule_validate(schedule_data):
             my_lib.webapp.log.error("😵 スケジュールの指定が不正です。")
@@ -121,7 +119,7 @@ def api_schedule_ctrl():
         assert schedule_queue is not None  # noqa: S101
 
         with schedule_lock:
-            schedule_data = json.loads(data)
+            schedule_data = json.loads(query.data)
 
             endpoint = urllib.parse.urljoin(
                 flask.request.url_root,

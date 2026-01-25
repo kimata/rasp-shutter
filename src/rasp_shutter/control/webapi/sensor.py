@@ -4,7 +4,6 @@ import datetime
 
 import flask
 import flask_cors
-import my_lib.flask_util
 import my_lib.sensor_data
 import my_lib.time
 import my_lib.webapp.config
@@ -56,7 +55,6 @@ def get_sensor_data(config: rasp_shutter.config.AppConfig) -> rasp_shutter.types
 
 
 @blueprint.route("/api/sensor", methods=["GET"])
-@my_lib.flask_util.support_jsonp
 @flask_cors.cross_origin()
 def api_sensor_data() -> flask.Response:
     config: rasp_shutter.config.AppConfig = flask.current_app.config["CONFIG"]
