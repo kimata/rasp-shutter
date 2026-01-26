@@ -684,6 +684,13 @@ now = datetime.datetime.now(datetime.UTC)
 
 ## 開発ワークフロー規約
 
+### リポジトリ構成
+
+- **プライマリリポジトリ**: GitLab (`gitlab.green-rabbit.net`)
+- **ミラーリポジトリ**: GitHub (`github.com/kimata/rasp-shutter`)
+
+GitLab にプッシュすると、自動的に GitHub にミラーリングされます。GitHub への直接プッシュは不要です。
+
 ### リリース（タグ作成）時
 
 リリースタグを作成する際は、以下の手順に従うこと：
