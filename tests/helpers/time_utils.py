@@ -314,6 +314,13 @@ def wait_for_schedule_update_seq(client: "FlaskClient", timeout: float = 60.0) -
     スケジュールライブラリは現在時刻以降の次回実行時刻を計算するため、
     スケジュール更新後、予定時刻に移動する前に待機する必要がある。
 
+    NOTE: 2回のループ完了を待機する理由:
+    schedule_api.update() が queue.put() を呼んだ時点で、スケジューラスレッドの
+    ループが既に queue.empty() チェックを通過している場合がある。その場合、
+    1回目のループ完了はキュー処理を含まず、2回目のループで初めてキューが
+    処理される。1回しか待たないと、キュー処理前に時間移動が行われ、
+    set_schedule() が意図しない時刻で実行される原因となる。
+
     Args:
         client: Flaskテストクライアント
         timeout: タイムアウト秒数（デフォルト60秒、高並列環境対応）
@@ -324,10 +331,14 @@ def wait_for_schedule_update_seq(client: "FlaskClient", timeout: float = 60.0) -
     Raises:
         AssertionError: タイムアウトした場合
     """
-    sequence = get_scheduler_sequence(client)
-    result = wait_for_scheduler_loop(client, sequence, timeout)
-    assert result, f"Schedule update wait timed out after {timeout}s (sequence={sequence})"
-    return result
+    half_timeout = timeout / 2
+    for i in range(2):
+        sequence = get_scheduler_sequence(client)
+        result = wait_for_scheduler_loop(client, sequence, half_timeout)
+        if not result:
+            msg = f"Schedule update wait loop {i + 1}/2 timed out after {half_timeout}s (sequence={sequence})"
+            raise AssertionError(msg)
+    return True
 
 
 def wait_for_schedule_update(wait_sec: float = 2.0) -> None:

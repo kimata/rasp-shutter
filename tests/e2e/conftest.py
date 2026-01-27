@@ -295,7 +295,12 @@ def check_log(
     initial_log_count: int | None = None,
 ) -> None:
     """
-    最初のログメッセージ（最新ログ）が期待する内容かを確認する
+    ログメッセージに期待する内容が含まれているかを確認する
+
+    NOTE: ログの表示順序はAPIの返却順序（id DESC = 最新順）だが、
+    非同期ログ書き込み（キュー→ワーカースレッド→SQLite）のタイミングにより、
+    操作直後のポーリングでは期待するログが最新（先頭）に表示されない場合がある。
+    そのため、先頭のみでなく全ログエントリから期待メッセージを検索する。
 
     Args:
         page: Playwrightページオブジェクト
@@ -320,14 +325,29 @@ def check_log(
         # さらに短時間待機してDOMの更新を確実にする
         time.sleep(0.5)
 
-    # 最初のログ（最新ログ）が期待するメッセージを含むかチェック
-    expect(log_locator.first).to_contain_text(message, timeout=timeout_sec * 1000)
+    # 全ログエントリから期待するメッセージを検索
+    # NOTE: wait_for_log() と同様のポーリング方式で、非同期ログ書き込みの
+    # タイミング差に対応する
+    start_time = time.time()
+    while time.time() - start_time < timeout_sec:
+        for i in range(log_locator.count()):
+            if message in log_locator.nth(i).inner_text():
+                # メッセージが見つかった場合、エラーログがないかもチェック
+                log_list = page.locator('//div[contains(@class,"log-message")]')
+                for j in range(log_list.count()):
+                    expect(log_list.nth(j)).not_to_contain_text("失敗")
+                    expect(log_list.nth(j)).not_to_contain_text("エラー")
+                return
+        time.sleep(0.5)
 
-    # NOTE: ログクリアする場合、ログの内容が変化しているので、ここで再取得する
-    log_list = page.locator('//div[contains(@class,"log-message")]')
-    for i in range(log_list.count()):
-        expect(log_list.nth(i)).not_to_contain_text("失敗")
-        expect(log_list.nth(i)).not_to_contain_text("エラー")
+    # タイムアウト: 現在のログ一覧を取得してエラーメッセージに含める
+    all_logs = [log_locator.nth(i).inner_text() for i in range(log_locator.count())]
+
+    msg = (
+        f"ログに '{message}' が見つかりませんでした。(タイムアウト: {timeout_sec}秒)\n"
+        f"現在のログ一覧 ({len(all_logs)}件): {all_logs}"
+    )
+    raise AssertionError(msg)
 
 
 def click_and_check_log(
