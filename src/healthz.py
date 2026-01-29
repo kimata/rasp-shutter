@@ -18,22 +18,6 @@ import sys
 import my_lib.healthz
 
 
-def check_liveness(target_list, port=None):
-    for target in target_list:
-        healthz_target = my_lib.healthz.HealthzTarget(
-            name=target["name"],
-            liveness_file=target["liveness_file"],
-            interval=target["interval"],
-        )
-        if not my_lib.healthz.check_liveness(healthz_target):
-            return False
-
-    if port is not None:
-        return my_lib.healthz.check_http_port(port)
-    else:
-        return True
-
-
 if __name__ == "__main__":
     import docopt
     import my_lib.config
@@ -52,15 +36,20 @@ if __name__ == "__main__":
     config = my_lib.config.load(config_file)
 
     target_list = [
-        {
-            "name": name,
-            "liveness_file": pathlib.Path(config["liveness"]["file"][name]),
-            "interval": 10,
-        }
+        my_lib.healthz.HealthzTarget(
+            name=name,
+            liveness_file=pathlib.Path(config["liveness"]["file"][name]),
+            interval=10,
+        )
         for name in ["scheduler"]
     ]
 
-    if check_liveness(target_list, port):
+    failed_targets = my_lib.healthz.check_liveness_all_with_ports(
+        target_list,
+        http_port=port,
+    )
+
+    if not failed_targets:
         logging.info("OK.")
         sys.exit(0)
     else:
