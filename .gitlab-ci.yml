@@ -39,7 +39,7 @@ build-vue:
     before_script: []
 
     script:
-        - cd frontend && npm ci --cache .npm --prefer-offline && npm run build
+        - cd frontend && npm ci --cache .npm --prefer-offline --no-audit --no-fund && npm run build
     artifacts:
         paths:
             - frontend/dist/
