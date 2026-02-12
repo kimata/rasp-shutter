@@ -20,7 +20,7 @@ import rasp_shutter.config
 import rasp_shutter.control.config
 import rasp_shutter.control.webapi.control
 import rasp_shutter.control.webapi.sensor
-import rasp_shutter.types
+import rasp_shutter.type_defs
 import rasp_shutter.util
 
 
@@ -42,7 +42,7 @@ should_terminate = threading.Event()
 
 # Worker-specific instances for pytest-xdist parallel execution
 _scheduler_instances: dict[str, schedule.Scheduler] = {}
-_schedule_data_instances: dict[str, rasp_shutter.types.ScheduleData | None] = {}
+_schedule_data_instances: dict[str, rasp_shutter.type_defs.ScheduleData | None] = {}
 _schedule_lock_instances: dict[str, threading.Lock] = {}
 _auto_control_events: dict[str, threading.Event] = {}
 
@@ -187,7 +187,7 @@ def wait_for_loop_after(sequence: int, timeout: float = 10.0) -> bool:
     return get_loop_sequence() > sequence
 
 
-def get_schedule_data() -> rasp_shutter.types.ScheduleData | None:
+def get_schedule_data() -> rasp_shutter.type_defs.ScheduleData | None:
     """Get worker-specific schedule data for pytest-xdist parallel execution"""
     worker_id = my_lib.pytest_util.get_worker_id()
 
@@ -197,7 +197,7 @@ def get_schedule_data() -> rasp_shutter.types.ScheduleData | None:
     return _schedule_data_instances[worker_id]
 
 
-def set_schedule_data(data: rasp_shutter.types.ScheduleData | dict[str, Any] | None) -> None:
+def set_schedule_data(data: rasp_shutter.type_defs.ScheduleData | dict[str, Any] | None) -> None:
     """Set worker-specific schedule data for pytest-xdist parallel execution"""
     worker_id = my_lib.pytest_util.get_worker_id()
     _schedule_data_instances[worker_id] = data  # type: ignore[assignment]
@@ -218,8 +218,8 @@ def term():
 
 
 def brightness_text(
-    sense_data: rasp_shutter.types.SensorData,
-    cur_schedule_data: rasp_shutter.types.ScheduleEntry | dict[str, Any],
+    sense_data: rasp_shutter.type_defs.SensorData,
+    cur_schedule_data: rasp_shutter.type_defs.ScheduleEntry | dict[str, Any],
 ) -> str:
     # TypedDictへの動的アクセスを避けるため、dictに展開
     schedule_dict: dict[str, Any] = {**cur_schedule_data}
@@ -241,7 +241,7 @@ def brightness_text(
     return ", ".join(text)
 
 
-def check_brightness(sense_data: rasp_shutter.types.SensorData, action: str) -> BRIGHTNESS_STATE:
+def check_brightness(sense_data: rasp_shutter.type_defs.SensorData, action: str) -> BRIGHTNESS_STATE:
     if not sense_data.lux.valid or not sense_data.solar_rad.valid:
         return BRIGHTNESS_STATE.UNKNOWN
 
@@ -285,7 +285,7 @@ def exec_shutter_control_impl(
     config: rasp_shutter.config.AppConfig,
     state: str,
     mode: rasp_shutter.control.webapi.control.CONTROL_MODE,
-    sense_data: rasp_shutter.types.SensorData,
+    sense_data: rasp_shutter.type_defs.SensorData,
     user: str,
 ) -> bool:
     try:
@@ -304,7 +304,7 @@ def exec_shutter_control(
     config: rasp_shutter.config.AppConfig,
     state: str,
     mode: rasp_shutter.control.webapi.control.CONTROL_MODE,
-    sense_data: rasp_shutter.types.SensorData,
+    sense_data: rasp_shutter.type_defs.SensorData,
     user: str,
 ) -> bool:
     logging.debug("Execute shutter control")
@@ -478,7 +478,7 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
             error_sensor.append("照度センサ")
 
         error_sensor_text = "と".join(error_sensor)
-        state_text = rasp_shutter.types.state_to_action_text(state)
+        state_text = rasp_shutter.type_defs.state_to_action_text(state)
         my_lib.webapp.log.error(f"😵 {error_sensor_text}の値が不明なので{state_text}るのを見合わせました。")
         _signal_auto_control_completed()
         return
@@ -737,7 +737,7 @@ if __name__ == "__main__":
         should_terminate.set()
 
     config = my_lib.config.load()
-    queue = multiprocessing.Queue()
+    queue: multiprocessing.Queue[dict] = multiprocessing.Queue()
 
     init()
 

@@ -49,7 +49,8 @@ def wait_for_event(event_name: str):
     Returns:
         JSON: 待機結果
     """
-    timeout = flask.request.args.get("timeout", 30, type=float)
+    # FlaskのTypeConversionDictの型定義が不完全なため抑制
+    timeout = flask.request.args.get("timeout", 30, type=float)  # type: ignore[arg-type]
 
     event = _get_event(event_name)
     event.clear()  # 待機前にクリア

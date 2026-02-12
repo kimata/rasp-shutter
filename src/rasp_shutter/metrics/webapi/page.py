@@ -135,15 +135,17 @@ def calculate_data_period(operation_metrics: list[dict]) -> dict:
     if not operation_metrics:
         return {"total_days": 0, "start_date": None, "end_date": None, "display_text": "データなし"}
 
-    # 日付のみを抽出
-    dates = [op.get("date") for op in operation_metrics if op.get("date")]
+    # 日付のみを抽出（str型のみをフィルタリング）
+    dates: list[str] = [
+        str(date) for op in operation_metrics if (date := op.get("date")) and isinstance(date, str)
+    ]
 
     if not dates:
         return {"total_days": 0, "start_date": None, "end_date": None, "display_text": "データなし"}
 
     # 最古と最新の日付を取得
-    start_date = min(dates)
-    end_date = max(dates)
+    start_date: str = min(dates)
+    end_date: str = max(dates)
 
     # 日数を計算
     start_dt = datetime.datetime.fromisoformat(start_date)
@@ -178,7 +180,7 @@ def _extract_time_data(day_data: dict, key: str) -> float | None:
 
 def _collect_sensor_data_by_type(operation_metrics: list[dict], operation_type: str) -> dict:
     """操作タイプ別にセンサーデータを収集"""
-    sensor_data = {
+    sensor_data: dict[str, list[float]] = {
         "open_lux": [],
         "close_lux": [],
         "open_solar_rad": [],
@@ -388,7 +390,7 @@ def generate_metrics_html(stats: dict, operation_metrics: list[dict], data_perio
 
 def _extract_daily_last_operations(operation_metrics: list[dict]) -> dict:
     """日付ごとの最後の操作時刻とセンサーデータを取得"""
-    daily_last_operations = {}
+    daily_last_operations: dict[str, dict] = {}
 
     for op_data in operation_metrics:
         date = op_data.get("date")
@@ -907,6 +909,10 @@ def generate_sensor_analysis_section() -> str:
 def generate_chart_javascript() -> str:
     """チャート生成用JavaScriptを生成"""
     return """
+        // 凡例を正方形に設定
+        Chart.defaults.plugins.legend.labels.boxWidth = 12;
+        Chart.defaults.plugins.legend.labels.boxHeight = 12;
+
         function initializePermalinks() {
             // ページ読み込み時にハッシュがある場合はスクロール
             if (window.location.hash) {
@@ -1233,16 +1239,16 @@ def generate_chart_javascript() -> str:
                             {
                                 label: '☀️ 開操作時日射',
                                 data: chartData.time_series.open_solar_rad,
-                                borderColor: 'rgba(255, 159, 64, 1)',
-                                backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                                borderColor: 'rgba(255, 206, 84, 1)',
+                                backgroundColor: 'rgba(255, 206, 84, 0.1)',
                                 tension: 0.1,
                                 spanGaps: true
                             },
                             {
                                 label: '🌙 閉操作時日射',
                                 data: chartData.time_series.close_solar_rad,
-                                borderColor: 'rgba(75, 192, 192, 1)',
-                                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                borderColor: 'rgba(153, 102, 255, 1)',
+                                backgroundColor: 'rgba(153, 102, 255, 0.1)',
                                 tension: 0.1,
                                 spanGaps: true
                             }
@@ -1285,16 +1291,16 @@ def generate_chart_javascript() -> str:
                             {
                                 label: '☀️ 開操作時太陽高度',
                                 data: chartData.time_series.open_altitude,
-                                borderColor: 'rgba(255, 99, 132, 1)',
-                                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                borderColor: 'rgba(255, 206, 84, 1)',
+                                backgroundColor: 'rgba(255, 206, 84, 0.1)',
                                 tension: 0.1,
                                 spanGaps: true
                             },
                             {
                                 label: '🌙 閉操作時太陽高度',
                                 data: chartData.time_series.close_altitude,
-                                borderColor: 'rgba(54, 162, 235, 1)',
-                                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                                borderColor: 'rgba(153, 102, 255, 1)',
+                                backgroundColor: 'rgba(153, 102, 255, 0.1)',
                                 tension: 0.1,
                                 spanGaps: true
                             }
@@ -1332,7 +1338,9 @@ def generate_chart_javascript() -> str:
                 const hist = Array(bins.length - 1).fill(0);
                 data.forEach(value => {
                     for (let i = 0; i < bins.length - 1; i++) {
-                        if (value >= bins[i] && value < bins[i + 1]) {
+                        // 最後のビンは最大値も含める（<= を使用）
+                        const isLastBin = (i === bins.length - 2);
+                        if (value >= bins[i] && (isLastBin ? value <= bins[i + 1] : value < bins[i + 1])) {
                             hist[i]++;
                             break;
                         }
@@ -1341,23 +1349,45 @@ def generate_chart_javascript() -> str:
                 return hist;
             }
 
+            // ヒストグラムパーセントを計算するヘルパー関数
+            function calcHistPercent(data) {
+                if (!data || data.length === 0) return { bins: [], histPercent: [], maxPercent: 0 };
+                const minVal = Math.min(...data);
+                const maxVal = Math.max(...data);
+                const bins = Array.from({length: 21}, (_, i) => minVal + (maxVal - minVal) * i / 20);
+                const hist = createHistogram(data, bins);
+                const total = data.length;
+                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
+                const maxPercent = Math.max(...histPercent);
+                return { bins, histPercent, maxPercent };
+            }
+
+            // 各カテゴリの開/閉の最大頻度を事前計算
+            const openLuxData = calcHistPercent(chartData.auto_sensor_data.open_lux);
+            const closeLuxData = calcHistPercent(chartData.auto_sensor_data.close_lux);
+            const luxMax = Math.max(openLuxData.maxPercent, closeLuxData.maxPercent, 10);
+            const luxMaxY = Math.ceil(luxMax / 10) * 10;
+
+            const openSolarRadData = calcHistPercent(chartData.auto_sensor_data.open_solar_rad);
+            const closeSolarRadData = calcHistPercent(chartData.auto_sensor_data.close_solar_rad);
+            const solarRadMax = Math.max(openSolarRadData.maxPercent, closeSolarRadData.maxPercent, 10);
+            const solarRadMaxY = Math.ceil(solarRadMax / 10) * 10;
+
+            const openAltitudeData = calcHistPercent(chartData.auto_sensor_data.open_altitude);
+            const closeAltitudeData = calcHistPercent(chartData.auto_sensor_data.close_altitude);
+            const altitudeMax = Math.max(openAltitudeData.maxPercent, closeAltitudeData.maxPercent, 10);
+            const altitudeMaxY = Math.ceil(altitudeMax / 10) * 10;
+
             // 自動開操作時照度チャート
             const autoOpenLuxCtx = document.getElementById('autoOpenLuxChart');
-            if (autoOpenLuxCtx && chartData.auto_sensor_data.open_lux.length > 0) {
-                const minLux = Math.min(...chartData.auto_sensor_data.open_lux);
-                const maxLux = Math.max(...chartData.auto_sensor_data.open_lux);
-                const bins = Array.from({length: 21}, (_, i) => minLux + (maxLux - minLux) * i / 20);
-                const hist = createHistogram(chartData.auto_sensor_data.open_lux, bins);
-                const total = chartData.auto_sensor_data.open_lux.length;
-                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
-
+            if (autoOpenLuxCtx && openLuxData.bins.length > 0) {
                 new Chart(autoOpenLuxCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
+                        labels: openLuxData.bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
                         datasets: [{
                             label: '🤖☀️ 自動開操作時照度頻度',
-                            data: histPercent,
+                            data: openLuxData.histPercent,
                             backgroundColor: 'rgba(255, 206, 84, 0.7)',
                             borderColor: 'rgba(255, 206, 84, 1)',
                             borderWidth: 1
@@ -1369,7 +1399,7 @@ def generate_chart_javascript() -> str:
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                max: 100,
+                                max: luxMaxY,
                                 title: {
                                     display: true,
                                     text: '頻度（%）'
@@ -1393,21 +1423,14 @@ def generate_chart_javascript() -> str:
 
             // 自動閉操作時照度チャート
             const autoCloseLuxCtx = document.getElementById('autoCloseLuxChart');
-            if (autoCloseLuxCtx && chartData.auto_sensor_data.close_lux.length > 0) {
-                const minLux = Math.min(...chartData.auto_sensor_data.close_lux);
-                const maxLux = Math.max(...chartData.auto_sensor_data.close_lux);
-                const bins = Array.from({length: 21}, (_, i) => minLux + (maxLux - minLux) * i / 20);
-                const hist = createHistogram(chartData.auto_sensor_data.close_lux, bins);
-                const total = chartData.auto_sensor_data.close_lux.length;
-                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
-
+            if (autoCloseLuxCtx && closeLuxData.bins.length > 0) {
                 new Chart(autoCloseLuxCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
+                        labels: closeLuxData.bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
                         datasets: [{
                             label: '🤖🌙 自動閉操作時照度頻度',
-                            data: histPercent,
+                            data: closeLuxData.histPercent,
                             backgroundColor: 'rgba(153, 102, 255, 0.7)',
                             borderColor: 'rgba(153, 102, 255, 1)',
                             borderWidth: 1
@@ -1419,7 +1442,7 @@ def generate_chart_javascript() -> str:
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                max: 100,
+                                max: luxMaxY,
                                 title: {
                                     display: true,
                                     text: '頻度（%）'
@@ -1443,23 +1466,16 @@ def generate_chart_javascript() -> str:
 
             // 自動開操作時日射チャート
             const autoOpenSolarRadCtx = document.getElementById('autoOpenSolarRadChart');
-            if (autoOpenSolarRadCtx && chartData.auto_sensor_data.open_solar_rad.length > 0) {
-                const minRad = Math.min(...chartData.auto_sensor_data.open_solar_rad);
-                const maxRad = Math.max(...chartData.auto_sensor_data.open_solar_rad);
-                const bins = Array.from({length: 21}, (_, i) => minRad + (maxRad - minRad) * i / 20);
-                const hist = createHistogram(chartData.auto_sensor_data.open_solar_rad, bins);
-                const total = chartData.auto_sensor_data.open_solar_rad.length;
-                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
-
+            if (autoOpenSolarRadCtx && openSolarRadData.bins.length > 0) {
                 new Chart(autoOpenSolarRadCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
+                        labels: openSolarRadData.bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
                         datasets: [{
                             label: '🤖☀️ 自動開操作時日射頻度',
-                            data: histPercent,
-                            backgroundColor: 'rgba(255, 159, 64, 0.7)',
-                            borderColor: 'rgba(255, 159, 64, 1)',
+                            data: openSolarRadData.histPercent,
+                            backgroundColor: 'rgba(255, 206, 84, 0.7)',
+                            borderColor: 'rgba(255, 206, 84, 1)',
                             borderWidth: 1
                         }]
                     },
@@ -1469,7 +1485,7 @@ def generate_chart_javascript() -> str:
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                max: 100,
+                                max: solarRadMaxY,
                                 title: {
                                     display: true,
                                     text: '頻度（%）'
@@ -1493,23 +1509,16 @@ def generate_chart_javascript() -> str:
 
             // 自動閉操作時日射チャート
             const autoCloseSolarRadCtx = document.getElementById('autoCloseSolarRadChart');
-            if (autoCloseSolarRadCtx && chartData.auto_sensor_data.close_solar_rad.length > 0) {
-                const minRad = Math.min(...chartData.auto_sensor_data.close_solar_rad);
-                const maxRad = Math.max(...chartData.auto_sensor_data.close_solar_rad);
-                const bins = Array.from({length: 21}, (_, i) => minRad + (maxRad - minRad) * i / 20);
-                const hist = createHistogram(chartData.auto_sensor_data.close_solar_rad, bins);
-                const total = chartData.auto_sensor_data.close_solar_rad.length;
-                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
-
+            if (autoCloseSolarRadCtx && closeSolarRadData.bins.length > 0) {
                 new Chart(autoCloseSolarRadCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
+                        labels: closeSolarRadData.bins.slice(0, -1).map(b => Math.round(b).toLocaleString()),
                         datasets: [{
                             label: '🤖🌙 自動閉操作時日射頻度',
-                            data: histPercent,
-                            backgroundColor: 'rgba(75, 192, 192, 0.7)',
-                            borderColor: 'rgba(75, 192, 192, 1)',
+                            data: closeSolarRadData.histPercent,
+                            backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
                             borderWidth: 1
                         }]
                     },
@@ -1519,7 +1528,7 @@ def generate_chart_javascript() -> str:
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                max: 100,
+                                max: solarRadMaxY,
                                 title: {
                                     display: true,
                                     text: '頻度（%）'
@@ -1543,23 +1552,16 @@ def generate_chart_javascript() -> str:
 
             // 自動開操作時太陽高度チャート
             const autoOpenAltitudeCtx = document.getElementById('autoOpenAltitudeChart');
-            if (autoOpenAltitudeCtx && chartData.auto_sensor_data.open_altitude.length > 0) {
-                const minAlt = Math.min(...chartData.auto_sensor_data.open_altitude);
-                const maxAlt = Math.max(...chartData.auto_sensor_data.open_altitude);
-                const bins = Array.from({length: 21}, (_, i) => minAlt + (maxAlt - minAlt) * i / 20);
-                const hist = createHistogram(chartData.auto_sensor_data.open_altitude, bins);
-                const total = chartData.auto_sensor_data.open_altitude.length;
-                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
-
+            if (autoOpenAltitudeCtx && openAltitudeData.bins.length > 0) {
                 new Chart(autoOpenAltitudeCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b * 10) / 10),
+                        labels: openAltitudeData.bins.slice(0, -1).map(b => Math.round(b * 10) / 10),
                         datasets: [{
                             label: '🤖☀️ 自動開操作時太陽高度頻度',
-                            data: histPercent,
-                            backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                            borderColor: 'rgba(255, 99, 132, 1)',
+                            data: openAltitudeData.histPercent,
+                            backgroundColor: 'rgba(255, 206, 84, 0.7)',
+                            borderColor: 'rgba(255, 206, 84, 1)',
                             borderWidth: 1
                         }]
                     },
@@ -1569,7 +1571,7 @@ def generate_chart_javascript() -> str:
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                max: 100,
+                                max: altitudeMaxY,
                                 title: {
                                     display: true,
                                     text: '頻度（%）'
@@ -1593,23 +1595,16 @@ def generate_chart_javascript() -> str:
 
             // 自動閉操作時太陽高度チャート
             const autoCloseAltitudeCtx = document.getElementById('autoCloseAltitudeChart');
-            if (autoCloseAltitudeCtx && chartData.auto_sensor_data.close_altitude.length > 0) {
-                const minAlt = Math.min(...chartData.auto_sensor_data.close_altitude);
-                const maxAlt = Math.max(...chartData.auto_sensor_data.close_altitude);
-                const bins = Array.from({length: 21}, (_, i) => minAlt + (maxAlt - minAlt) * i / 20);
-                const hist = createHistogram(chartData.auto_sensor_data.close_altitude, bins);
-                const total = chartData.auto_sensor_data.close_altitude.length;
-                const histPercent = hist.map(count => total > 0 ? (count / total) * 100 : 0);
-
+            if (autoCloseAltitudeCtx && closeAltitudeData.bins.length > 0) {
                 new Chart(autoCloseAltitudeCtx, {
                     type: 'bar',
                     data: {
-                        labels: bins.slice(0, -1).map(b => Math.round(b * 10) / 10),
+                        labels: closeAltitudeData.bins.slice(0, -1).map(b => Math.round(b * 10) / 10),
                         datasets: [{
                             label: '🤖🌙 自動閉操作時太陽高度頻度',
-                            data: histPercent,
-                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
+                            data: closeAltitudeData.histPercent,
+                            backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
                             borderWidth: 1
                         }]
                     },
@@ -1619,7 +1614,7 @@ def generate_chart_javascript() -> str:
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                max: 100,
+                                max: altitudeMaxY,
                                 title: {
                                     display: true,
                                     text: '頻度（%）'
@@ -1673,7 +1668,9 @@ def generate_chart_javascript() -> str:
                 const hist = Array(bins.length - 1).fill(0);
                 data.forEach(value => {
                     for (let i = 0; i < bins.length - 1; i++) {
-                        if (value >= bins[i] && value < bins[i + 1]) {
+                        // 最後のビンは最大値も含める（<= を使用）
+                        const isLastBin = (i === bins.length - 2);
+                        if (value >= bins[i] && (isLastBin ? value <= bins[i + 1] : value < bins[i + 1])) {
                             hist[i]++;
                             break;
                         }
@@ -1805,8 +1802,8 @@ def generate_chart_javascript() -> str:
                         datasets: [{
                             label: '👆☀️ 手動開操作時日射頻度',
                             data: histPercent,
-                            backgroundColor: 'rgba(255, 159, 64, 0.7)',
-                            borderColor: 'rgba(255, 159, 64, 1)',
+                            backgroundColor: 'rgba(255, 206, 84, 0.7)',
+                            borderColor: 'rgba(255, 206, 84, 1)',
                             borderWidth: 1
                         }]
                     },
@@ -1857,8 +1854,8 @@ def generate_chart_javascript() -> str:
                         datasets: [{
                             label: '👆🌙 手動閉操作時日射頻度',
                             data: histPercent,
-                            backgroundColor: 'rgba(75, 192, 192, 0.7)',
-                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
                             borderWidth: 1
                         }]
                     },
@@ -1909,8 +1906,8 @@ def generate_chart_javascript() -> str:
                         datasets: [{
                             label: '👆☀️ 手動開操作時太陽高度頻度',
                             data: histPercent,
-                            backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 206, 84, 0.7)',
+                            borderColor: 'rgba(255, 206, 84, 1)',
                             borderWidth: 1
                         }]
                     },
@@ -1961,8 +1958,8 @@ def generate_chart_javascript() -> str:
                         datasets: [{
                             label: '👆🌙 手動閉操作時太陽高度頻度',
                             data: histPercent,
-                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
                             borderWidth: 1
                         }]
                     },

@@ -7,6 +7,7 @@
 これは日本の電動シャッター自動化アプリケーション（`rasp-shutter`）で、スケジュールや照度センサーに基づいて電動シャッターを自動制御します。システムはVue.jsフロントエンドとFlaskバックエンドで構成され、ESP32デバイスとREST APIで通信します。
 
 ## 重要な注意事項
+
 ### 共通運用ルール
 
 - 変更前に意図と影響範囲を説明し、ユーザー確認を取る
@@ -17,7 +18,6 @@
 - Union 型が 3 箇所以上で出現する場合は `TypeAlias` を定義
 - `except Exception` は避け、具体的な例外型を指定する
 - ミラー運用がある場合は primary リポジトリにのみ push する
-
 
 ### コード変更時のドキュメント更新
 
@@ -367,13 +367,13 @@ use_value(value)  # type: ignore
 
 ### 型定義
 
-センサーデータやAPIレスポンスには `rasp_shutter.types` で定義された TypedDict を使用する。
+センサーデータやAPIレスポンスには `rasp_shutter.type_defs` で定義された TypedDict を使用する。
 
 ```python
 # 推奨
-import rasp_shutter.types
+import rasp_shutter.type_defs
 
-def get_sensor_data(config: AppConfig) -> rasp_shutter.types.SensorData:
+def get_sensor_data(config: AppConfig) -> rasp_shutter.type_defs.SensorData:
     ...
 
 # 非推奨
@@ -495,8 +495,8 @@ if not isinstance(data["active"], bool):
 
 ```python
 # 推奨: 共通関数を使用
-import rasp_shutter.types
-state_text = rasp_shutter.types.state_to_action_text(state)
+import rasp_shutter.type_defs
+state_text = rasp_shutter.type_defs.state_to_action_text(state)
 
 # 非推奨: 同じロジックを複数箇所に記述
 state_text = "開け" if state == "open" else "閉め"

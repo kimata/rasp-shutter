@@ -15,7 +15,7 @@ import json
 
 import pytest
 
-import rasp_shutter.types
+import rasp_shutter.type_defs
 
 
 class TestSensorValueSchema:
@@ -27,7 +27,7 @@ class TestSensorValueSchema:
 
     def test_sensor_value_has_valid_field(self) -> None:
         """SensorValue が 'valid' フィールドを持つこと"""
-        sensor_value = rasp_shutter.types.SensorValue.create_valid(
+        sensor_value = rasp_shutter.type_defs.SensorValue.create_valid(
             value=100.0,
             time=datetime.datetime.now(),
         )
@@ -38,7 +38,7 @@ class TestSensorValueSchema:
 
     def test_sensor_value_has_value_field(self) -> None:
         """SensorValue が 'value' フィールドを持つこと"""
-        sensor_value = rasp_shutter.types.SensorValue.create_valid(
+        sensor_value = rasp_shutter.type_defs.SensorValue.create_valid(
             value=100.0,
             time=datetime.datetime.now(),
         )
@@ -49,7 +49,7 @@ class TestSensorValueSchema:
 
     def test_sensor_value_has_time_field(self) -> None:
         """SensorValue が 'time' フィールドを持つこと"""
-        sensor_value = rasp_shutter.types.SensorValue.create_valid(
+        sensor_value = rasp_shutter.type_defs.SensorValue.create_valid(
             value=100.0,
             time=datetime.datetime.now(),
         )
@@ -60,7 +60,7 @@ class TestSensorValueSchema:
 
     def test_sensor_value_full_structure(self) -> None:
         """SensorValue の完全なフィールド構造を確認"""
-        sensor_value = rasp_shutter.types.SensorValue.create_valid(
+        sensor_value = rasp_shutter.type_defs.SensorValue.create_valid(
             value=100.0,
             time=datetime.datetime.now(),
         )
@@ -73,7 +73,7 @@ class TestSensorValueSchema:
 
     def test_invalid_sensor_value_structure(self) -> None:
         """無効な SensorValue の構造を確認"""
-        sensor_value = rasp_shutter.types.SensorValue.create_invalid()
+        sensor_value = rasp_shutter.type_defs.SensorValue.create_invalid()
         result = dataclasses.asdict(sensor_value)
 
         assert result["valid"] is False
@@ -90,10 +90,10 @@ class TestSensorDataSchema:
 
     def test_sensor_data_has_lux_field(self) -> None:
         """SensorData が 'lux' フィールドを持つこと"""
-        sensor_data = rasp_shutter.types.SensorData(
-            lux=rasp_shutter.types.SensorValue.create_invalid(),
-            solar_rad=rasp_shutter.types.SensorValue.create_invalid(),
-            altitude=rasp_shutter.types.SensorValue.create_invalid(),
+        sensor_data = rasp_shutter.type_defs.SensorData(
+            lux=rasp_shutter.type_defs.SensorValue.create_invalid(),
+            solar_rad=rasp_shutter.type_defs.SensorValue.create_invalid(),
+            altitude=rasp_shutter.type_defs.SensorValue.create_invalid(),
         )
         result = dataclasses.asdict(sensor_data)
 
@@ -101,10 +101,10 @@ class TestSensorDataSchema:
 
     def test_sensor_data_has_solar_rad_field(self) -> None:
         """SensorData が 'solar_rad' フィールドを持つこと"""
-        sensor_data = rasp_shutter.types.SensorData(
-            lux=rasp_shutter.types.SensorValue.create_invalid(),
-            solar_rad=rasp_shutter.types.SensorValue.create_invalid(),
-            altitude=rasp_shutter.types.SensorValue.create_invalid(),
+        sensor_data = rasp_shutter.type_defs.SensorData(
+            lux=rasp_shutter.type_defs.SensorValue.create_invalid(),
+            solar_rad=rasp_shutter.type_defs.SensorValue.create_invalid(),
+            altitude=rasp_shutter.type_defs.SensorValue.create_invalid(),
         )
         result = dataclasses.asdict(sensor_data)
 
@@ -112,10 +112,10 @@ class TestSensorDataSchema:
 
     def test_sensor_data_has_altitude_field(self) -> None:
         """SensorData が 'altitude' フィールドを持つこと"""
-        sensor_data = rasp_shutter.types.SensorData(
-            lux=rasp_shutter.types.SensorValue.create_invalid(),
-            solar_rad=rasp_shutter.types.SensorValue.create_invalid(),
-            altitude=rasp_shutter.types.SensorValue.create_invalid(),
+        sensor_data = rasp_shutter.type_defs.SensorData(
+            lux=rasp_shutter.type_defs.SensorValue.create_invalid(),
+            solar_rad=rasp_shutter.type_defs.SensorValue.create_invalid(),
+            altitude=rasp_shutter.type_defs.SensorValue.create_invalid(),
         )
         result = dataclasses.asdict(sensor_data)
 
@@ -123,10 +123,10 @@ class TestSensorDataSchema:
 
     def test_sensor_data_full_structure(self) -> None:
         """SensorData の完全なフィールド構造を確認"""
-        sensor_data = rasp_shutter.types.SensorData(
-            lux=rasp_shutter.types.SensorValue.create_invalid(),
-            solar_rad=rasp_shutter.types.SensorValue.create_invalid(),
-            altitude=rasp_shutter.types.SensorValue.create_invalid(),
+        sensor_data = rasp_shutter.type_defs.SensorData(
+            lux=rasp_shutter.type_defs.SensorValue.create_invalid(),
+            solar_rad=rasp_shutter.type_defs.SensorValue.create_invalid(),
+            altitude=rasp_shutter.type_defs.SensorValue.create_invalid(),
         )
         result = dataclasses.asdict(sensor_data)
 
@@ -137,10 +137,14 @@ class TestSensorDataSchema:
 
     def test_sensor_data_nested_structure(self) -> None:
         """SensorData のネストされた SensorValue 構造を確認"""
-        sensor_data = rasp_shutter.types.SensorData(
-            lux=rasp_shutter.types.SensorValue.create_valid(value=1000.0, time=datetime.datetime.now()),
-            solar_rad=rasp_shutter.types.SensorValue.create_valid(value=500.0, time=datetime.datetime.now()),
-            altitude=rasp_shutter.types.SensorValue.create_valid(value=45.0, time=datetime.datetime.now()),
+        sensor_data = rasp_shutter.type_defs.SensorData(
+            lux=rasp_shutter.type_defs.SensorValue.create_valid(value=1000.0, time=datetime.datetime.now()),
+            solar_rad=rasp_shutter.type_defs.SensorValue.create_valid(
+                value=500.0, time=datetime.datetime.now()
+            ),
+            altitude=rasp_shutter.type_defs.SensorValue.create_valid(
+                value=45.0, time=datetime.datetime.now()
+            ),
         )
         result = dataclasses.asdict(sensor_data)
 
@@ -160,7 +164,7 @@ class TestShutterStateEntrySchema:
 
     def test_shutter_state_entry_has_name_field(self) -> None:
         """ShutterStateEntry が 'name' フィールドを持つこと"""
-        entry = rasp_shutter.types.ShutterStateEntry(name="テストシャッター", state=0)
+        entry = rasp_shutter.type_defs.ShutterStateEntry(name="テストシャッター", state=0)
         result = dataclasses.asdict(entry)
 
         assert "name" in result, "ShutterStateEntry には 'name' フィールドが必要です"
@@ -168,7 +172,7 @@ class TestShutterStateEntrySchema:
 
     def test_shutter_state_entry_has_state_field(self) -> None:
         """ShutterStateEntry が 'state' フィールドを持つこと"""
-        entry = rasp_shutter.types.ShutterStateEntry(name="テストシャッター", state=0)
+        entry = rasp_shutter.type_defs.ShutterStateEntry(name="テストシャッター", state=0)
         result = dataclasses.asdict(entry)
 
         assert "state" in result, "ShutterStateEntry には 'state' フィールドが必要です"
@@ -176,7 +180,7 @@ class TestShutterStateEntrySchema:
 
     def test_shutter_state_entry_full_structure(self) -> None:
         """ShutterStateEntry の完全なフィールド構造を確認"""
-        entry = rasp_shutter.types.ShutterStateEntry(name="テストシャッター", state=1)
+        entry = rasp_shutter.type_defs.ShutterStateEntry(name="テストシャッター", state=1)
         result = dataclasses.asdict(entry)
 
         expected_fields = {"name", "state"}
@@ -187,7 +191,7 @@ class TestShutterStateEntrySchema:
     @pytest.mark.parametrize("state_value", [0, 1, 2])
     def test_shutter_state_valid_values(self, state_value: int) -> None:
         """ShutterStateEntry の state が有効な値 (0, 1, 2) を受け入れること"""
-        entry = rasp_shutter.types.ShutterStateEntry(name="テスト", state=state_value)
+        entry = rasp_shutter.type_defs.ShutterStateEntry(name="テスト", state=state_value)
         result = dataclasses.asdict(entry)
 
         assert result["state"] == state_value
@@ -202,7 +206,7 @@ class TestShutterStateResponseSchema:
 
     def test_shutter_state_response_has_state_field(self) -> None:
         """ShutterStateResponse が 'state' フィールドを持つこと"""
-        response = rasp_shutter.types.ShutterStateResponse()
+        response = rasp_shutter.type_defs.ShutterStateResponse()
         result = dataclasses.asdict(response)
 
         assert "state" in result, "ShutterStateResponse には 'state' フィールドが必要です"
@@ -210,7 +214,7 @@ class TestShutterStateResponseSchema:
 
     def test_shutter_state_response_has_result_field(self) -> None:
         """ShutterStateResponse が 'result' フィールドを持つこと"""
-        response = rasp_shutter.types.ShutterStateResponse()
+        response = rasp_shutter.type_defs.ShutterStateResponse()
         result = dataclasses.asdict(response)
 
         assert "result" in result, "ShutterStateResponse には 'result' フィールドが必要です"
@@ -218,7 +222,7 @@ class TestShutterStateResponseSchema:
 
     def test_shutter_state_response_full_structure(self) -> None:
         """ShutterStateResponse の完全なフィールド構造を確認"""
-        response = rasp_shutter.types.ShutterStateResponse()
+        response = rasp_shutter.type_defs.ShutterStateResponse()
         result = dataclasses.asdict(response)
 
         expected_fields = {"state", "result"}
@@ -229,10 +233,10 @@ class TestShutterStateResponseSchema:
     def test_shutter_state_response_with_entries(self) -> None:
         """ShutterStateResponse に ShutterStateEntry を含む場合の構造を確認"""
         entries = [
-            rasp_shutter.types.ShutterStateEntry(name="シャッター1", state=0),
-            rasp_shutter.types.ShutterStateEntry(name="シャッター2", state=1),
+            rasp_shutter.type_defs.ShutterStateEntry(name="シャッター1", state=0),
+            rasp_shutter.type_defs.ShutterStateEntry(name="シャッター2", state=1),
         ]
-        response = rasp_shutter.types.ShutterStateResponse(state=entries, result="success")
+        response = rasp_shutter.type_defs.ShutterStateResponse(state=entries, result="success")
         result = dataclasses.asdict(response)
 
         assert len(result["state"]) == 2
@@ -251,7 +255,7 @@ class TestScheduleEntrySchema:
 
     def test_schedule_entry_has_required_fields(self) -> None:
         """ScheduleEntry が必要なすべてのフィールドを持つこと"""
-        entry: rasp_shutter.types.ScheduleEntry = {
+        entry: rasp_shutter.type_defs.ScheduleEntry = {
             "is_active": True,
             "time": "08:00",
             "wday": [False, True, True, True, True, True, False],
@@ -265,7 +269,7 @@ class TestScheduleEntrySchema:
 
     def test_schedule_entry_field_types(self) -> None:
         """ScheduleEntry の各フィールドの型を確認"""
-        entry: rasp_shutter.types.ScheduleEntry = {
+        entry: rasp_shutter.type_defs.ScheduleEntry = {
             "is_active": True,
             "time": "08:00",
             "wday": [False, True, True, True, True, True, False],
@@ -283,7 +287,7 @@ class TestScheduleEntrySchema:
 
     def test_schedule_entry_wday_length(self) -> None:
         """ScheduleEntry の wday が 7 要素であること（日〜土）"""
-        entry: rasp_shutter.types.ScheduleEntry = {
+        entry: rasp_shutter.type_defs.ScheduleEntry = {
             "is_active": True,
             "time": "08:00",
             "wday": [False, True, True, True, True, True, False],
@@ -305,7 +309,7 @@ class TestScheduleDataSchema:
 
     def test_schedule_data_has_open_field(self) -> None:
         """ScheduleData が 'open' フィールドを持つこと"""
-        data: rasp_shutter.types.ScheduleData = {
+        data: rasp_shutter.type_defs.ScheduleData = {
             "open": {
                 "is_active": True,
                 "time": "08:00",
@@ -328,7 +332,7 @@ class TestScheduleDataSchema:
 
     def test_schedule_data_has_close_field(self) -> None:
         """ScheduleData が 'close' フィールドを持つこと"""
-        data: rasp_shutter.types.ScheduleData = {
+        data: rasp_shutter.type_defs.ScheduleData = {
             "open": {
                 "is_active": True,
                 "time": "08:00",
@@ -351,7 +355,7 @@ class TestScheduleDataSchema:
 
     def test_schedule_data_full_structure(self) -> None:
         """ScheduleData の完全なフィールド構造を確認"""
-        data: rasp_shutter.types.ScheduleData = {
+        data: rasp_shutter.type_defs.ScheduleData = {
             "open": {
                 "is_active": True,
                 "time": "08:00",
@@ -382,7 +386,7 @@ class TestDataclassSerializability:
 
     def test_sensor_value_is_serializable(self) -> None:
         """SensorValue が JSON シリアライズ可能であること"""
-        sensor_value = rasp_shutter.types.SensorValue.create_valid(
+        sensor_value = rasp_shutter.type_defs.SensorValue.create_valid(
             value=100.0,
             time=datetime.datetime.now(),
         )
@@ -398,10 +402,10 @@ class TestDataclassSerializability:
 
     def test_sensor_data_is_serializable(self) -> None:
         """SensorData が JSON シリアライズ可能であること"""
-        sensor_data = rasp_shutter.types.SensorData(
-            lux=rasp_shutter.types.SensorValue.create_valid(value=1000.0, time=datetime.datetime.now()),
-            solar_rad=rasp_shutter.types.SensorValue.create_invalid(),
-            altitude=rasp_shutter.types.SensorValue.create_invalid(),
+        sensor_data = rasp_shutter.type_defs.SensorData(
+            lux=rasp_shutter.type_defs.SensorValue.create_valid(value=1000.0, time=datetime.datetime.now()),
+            solar_rad=rasp_shutter.type_defs.SensorValue.create_invalid(),
+            altitude=rasp_shutter.type_defs.SensorValue.create_invalid(),
         )
         result = dataclasses.asdict(sensor_data)
 
@@ -414,7 +418,7 @@ class TestDataclassSerializability:
 
     def test_shutter_state_entry_is_serializable(self) -> None:
         """ShutterStateEntry が JSON シリアライズ可能であること"""
-        entry = rasp_shutter.types.ShutterStateEntry(name="テストシャッター", state=1)
+        entry = rasp_shutter.type_defs.ShutterStateEntry(name="テストシャッター", state=1)
         result = dataclasses.asdict(entry)
 
         json_str = json.dumps(result, ensure_ascii=False)
@@ -427,10 +431,10 @@ class TestDataclassSerializability:
     def test_shutter_state_response_is_serializable(self) -> None:
         """ShutterStateResponse が JSON シリアライズ可能であること"""
         entries = [
-            rasp_shutter.types.ShutterStateEntry(name="シャッター1", state=0),
-            rasp_shutter.types.ShutterStateEntry(name="シャッター2", state=1),
+            rasp_shutter.type_defs.ShutterStateEntry(name="シャッター1", state=0),
+            rasp_shutter.type_defs.ShutterStateEntry(name="シャッター2", state=1),
         ]
-        response = rasp_shutter.types.ShutterStateResponse(state=entries, result="success")
+        response = rasp_shutter.type_defs.ShutterStateResponse(state=entries, result="success")
         result = dataclasses.asdict(response)
 
         json_str = json.dumps(result, ensure_ascii=False)
@@ -442,7 +446,7 @@ class TestDataclassSerializability:
 
     def test_schedule_entry_is_serializable(self) -> None:
         """ScheduleEntry (TypedDict) が JSON シリアライズ可能であること"""
-        entry: rasp_shutter.types.ScheduleEntry = {
+        entry: rasp_shutter.type_defs.ScheduleEntry = {
             "is_active": True,
             "time": "08:00",
             "wday": [False, True, True, True, True, True, False],
@@ -460,7 +464,7 @@ class TestDataclassSerializability:
 
     def test_schedule_data_is_serializable(self) -> None:
         """ScheduleData (TypedDict) が JSON シリアライズ可能であること"""
-        data: rasp_shutter.types.ScheduleData = {
+        data: rasp_shutter.type_defs.ScheduleData = {
             "open": {
                 "is_active": True,
                 "time": "08:00",
@@ -496,7 +500,7 @@ class TestNegativeFieldNameChecks:
 
     def test_sensor_value_no_unexpected_fields(self) -> None:
         """SensorValue に想定外のフィールドがないこと"""
-        sensor_value = rasp_shutter.types.SensorValue.create_valid(
+        sensor_value = rasp_shutter.type_defs.SensorValue.create_valid(
             value=100.0,
             time=datetime.datetime.now(),
         )
@@ -508,10 +512,10 @@ class TestNegativeFieldNameChecks:
 
     def test_sensor_data_no_unexpected_fields(self) -> None:
         """SensorData に想定外のフィールドがないこと"""
-        sensor_data = rasp_shutter.types.SensorData(
-            lux=rasp_shutter.types.SensorValue.create_invalid(),
-            solar_rad=rasp_shutter.types.SensorValue.create_invalid(),
-            altitude=rasp_shutter.types.SensorValue.create_invalid(),
+        sensor_data = rasp_shutter.type_defs.SensorData(
+            lux=rasp_shutter.type_defs.SensorValue.create_invalid(),
+            solar_rad=rasp_shutter.type_defs.SensorValue.create_invalid(),
+            altitude=rasp_shutter.type_defs.SensorValue.create_invalid(),
         )
         result = dataclasses.asdict(sensor_data)
 
@@ -521,7 +525,7 @@ class TestNegativeFieldNameChecks:
 
     def test_shutter_state_entry_no_unexpected_fields(self) -> None:
         """ShutterStateEntry に想定外のフィールドがないこと"""
-        entry = rasp_shutter.types.ShutterStateEntry(name="テスト", state=0)
+        entry = rasp_shutter.type_defs.ShutterStateEntry(name="テスト", state=0)
         result = dataclasses.asdict(entry)
 
         allowed_fields = {"name", "state"}
@@ -530,7 +534,7 @@ class TestNegativeFieldNameChecks:
 
     def test_shutter_state_response_no_unexpected_fields(self) -> None:
         """ShutterStateResponse に想定外のフィールドがないこと"""
-        response = rasp_shutter.types.ShutterStateResponse()
+        response = rasp_shutter.type_defs.ShutterStateResponse()
         result = dataclasses.asdict(response)
 
         allowed_fields = {"state", "result"}
@@ -546,10 +550,10 @@ class TestStateToActionText:
 
     def test_open_state_to_action_text(self) -> None:
         """'open' が '開け' に変換されること"""
-        result = rasp_shutter.types.state_to_action_text("open")
+        result = rasp_shutter.type_defs.state_to_action_text("open")
         assert result == "開け"
 
     def test_close_state_to_action_text(self) -> None:
         """'close' が '閉め' に変換されること"""
-        result = rasp_shutter.types.state_to_action_text("close")
+        result = rasp_shutter.type_defs.state_to_action_text("close")
         assert result == "閉め"

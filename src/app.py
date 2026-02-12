@@ -125,8 +125,8 @@ def create_app(config: rasp_shutter.config.AppConfig, dummy_mode: bool = False) 
     app.config["CONFIG"] = config
     app.config["DUMMY_MODE"] = dummy_mode
 
-    # Flask 2.2+のJSON互換性設定。tyはJSONProviderのcompat属性を認識しないため抑制
-    app.json.compat = True  # type: ignore[union-attr]
+    # Flask 2.2+のJSON互換性設定。mypy/tyはJSONProviderのcompat属性を認識しないため抑制
+    app.json.compat = True  # type: ignore[attr-defined,union-attr]
 
     app.register_blueprint(
         rasp_shutter.control.webapi.control.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX

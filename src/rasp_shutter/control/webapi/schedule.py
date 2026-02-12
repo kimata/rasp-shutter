@@ -14,7 +14,7 @@ import my_lib.webapp.log
 from flask_pydantic import validate
 
 import rasp_shutter.control.scheduler
-import rasp_shutter.types
+import rasp_shutter.type_defs
 from rasp_shutter.schemas import ScheduleCtrlRequest
 
 blueprint = flask.Blueprint("rasp-shutter-schedule", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
@@ -78,7 +78,7 @@ def wday_str_list(wday_list: list[bool]) -> list[str]:
     return [wday_str[i] for i, is_active in enumerate(wday_list) if is_active]
 
 
-def schedule_entry_str(name: str, entry: rasp_shutter.types.ScheduleEntry) -> str:
+def schedule_entry_str(name: str, entry: rasp_shutter.type_defs.ScheduleEntry) -> str:
     name_upper = name.upper()
     time = entry["time"]
     solar_rad = entry["solar_rad"]

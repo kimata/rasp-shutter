@@ -19,7 +19,7 @@ import threading
 import my_lib.sqlite_util
 import my_lib.time
 
-import rasp_shutter.types
+import rasp_shutter.type_defs
 
 
 class MetricsCollector:
@@ -90,7 +90,7 @@ class MetricsCollector:
         self,
         action: str,
         mode: str,
-        sensor_data: rasp_shutter.types.SensorData | None = None,
+        sensor_data: rasp_shutter.type_defs.SensorData | None = None,
         timestamp: datetime.datetime | None = None,
     ):
         """
@@ -312,7 +312,7 @@ def record_shutter_operation(
     action: str,
     mode: str,
     metrics_data_path,
-    sensor_data: rasp_shutter.types.SensorData | None = None,
+    sensor_data: rasp_shutter.type_defs.SensorData | None = None,
     timestamp: datetime.datetime | None = None,
 ):
     """シャッター操作を記録（便利関数）"""

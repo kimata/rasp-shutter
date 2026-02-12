@@ -17,7 +17,6 @@ import sys
 
 import my_lib.healthz
 
-
 if __name__ == "__main__":
     import docopt
     import my_lib.config
@@ -44,7 +43,8 @@ if __name__ == "__main__":
         for name in ["scheduler"]
     ]
 
-    failed_targets = my_lib.healthz.check_liveness_all_with_ports(
+    # my_libの型スタブが最新でないため、メソッド名をmypyが認識しない
+    failed_targets = my_lib.healthz.check_liveness_all_with_ports(  # type: ignore[attr-defined]
         target_list,
         http_port=port,
     )

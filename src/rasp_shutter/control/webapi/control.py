@@ -20,7 +20,7 @@ import rasp_shutter.config
 import rasp_shutter.control.config
 import rasp_shutter.control.webapi.sensor
 import rasp_shutter.metrics.collector
-import rasp_shutter.types
+import rasp_shutter.type_defs
 import rasp_shutter.util
 from rasp_shutter.schemas import CtrlLogRequest, ShutterCtrlRequest
 
@@ -163,8 +163,8 @@ def clean_stat_exec(config: rasp_shutter.config.AppConfig) -> None:
     my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
 
 
-def get_shutter_state(config: rasp_shutter.config.AppConfig) -> rasp_shutter.types.ShutterStateResponse:
-    state_list: list[rasp_shutter.types.ShutterStateEntry] = []
+def get_shutter_state(config: rasp_shutter.config.AppConfig) -> rasp_shutter.type_defs.ShutterStateResponse:
+    state_list: list[rasp_shutter.type_defs.ShutterStateEntry] = []
     for index, shutter in enumerate(config.shutter):
         exec_stat_open = exec_stat_file("open", index)
         exec_stat_close = exec_stat_file("close", index)
@@ -183,9 +183,9 @@ def get_shutter_state(config: rasp_shutter.config.AppConfig) -> rasp_shutter.typ
             else:
                 state = SHUTTER_STATE.UNKNOWN
 
-        state_list.append(rasp_shutter.types.ShutterStateEntry(name=shutter.name, state=state))
+        state_list.append(rasp_shutter.type_defs.ShutterStateEntry(name=shutter.name, state=state))
 
-    return rasp_shutter.types.ShutterStateResponse(state=state_list, result="success")
+    return rasp_shutter.type_defs.ShutterStateResponse(state=state_list, result="success")
 
 
 def set_shutter_state_impl(
@@ -193,7 +193,7 @@ def set_shutter_state_impl(
     index: int,
     state: str,
     mode: CONTROL_MODE,
-    sense_data: rasp_shutter.types.SensorData | None,
+    sense_data: rasp_shutter.type_defs.SensorData | None,
     user: str,
 ) -> None:
     # NOTE: 閉じている場合に再度閉じるボタンをおしたり、逆に開いている場合に再度
@@ -206,7 +206,7 @@ def set_shutter_state_impl(
     shutter_name = config.shutter[index].name
 
     # NOTE: 制御間隔が短く、実際には制御できなかった場合、ログを残す。
-    state_text = rasp_shutter.types.state_to_action_text(state)
+    state_text = rasp_shutter.type_defs.state_to_action_text(state)
     time_diff_str = time_str(diff_sec)
     by_text = f"(by {user})" if user != "" else ""
 
@@ -261,9 +261,9 @@ def set_shutter_state(
     index_list: list[int],
     state: str,
     mode: CONTROL_MODE,
-    sense_data: rasp_shutter.types.SensorData | None,
+    sense_data: rasp_shutter.type_defs.SensorData | None,
     user: str = "",
-) -> rasp_shutter.types.ShutterStateResponse:
+) -> rasp_shutter.type_defs.ShutterStateResponse:
     logging.debug(
         "set_shutter_state index=[%s], state=%s, mode=%s", ",".join(str(n) for n in index_list), state, mode
     )
@@ -289,7 +289,7 @@ def set_shutter_state(
     return get_shutter_state(config)
 
 
-def sensor_text(sense_data: rasp_shutter.types.SensorData | None) -> str:
+def sensor_text(sense_data: rasp_shutter.type_defs.SensorData | None) -> str:
     if sense_data is None:
         return ""
     else:
