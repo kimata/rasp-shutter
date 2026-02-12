@@ -26,7 +26,7 @@ jobs:
             - name: Build
               run: cd frontend && npm run build
             - name: Upload built file
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
               with:
                   name: vue-built
                   path: frontend/dist
@@ -45,7 +45,7 @@ jobs:
               with:
                   python-version: ${{ matrix.python-version }}
             - name: Download Vue built files
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
               with:
                   name: vue-built
                   path: frontend/dist
@@ -105,7 +105,7 @@ jobs:
                   github-token: ${{ secrets.GITHUB_TOKEN }}
                   path-to-lcov: reports/coverage.lcov
             - name: Upload coverage file
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
               if: always()
               with:
                   name: pytest
@@ -126,7 +126,7 @@ jobs:
               with:
                   python-version: "3.12"
             - name: Download Vue built files
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
               with:
                   name: vue-built
                   path: frontend/dist
