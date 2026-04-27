@@ -30,7 +30,7 @@ if __name__ == "__main__":
     port = args["-p"]
     debug_mode = args["-D"]
 
-    my_lib.logger.init("hems.rasp-water", level=logging.DEBUG if debug_mode else logging.INFO)
+    my_lib.logger.init("hems.rasp-shutter", level=logging.DEBUG if debug_mode else logging.INFO)
 
     config = my_lib.config.load(config_file)
 
