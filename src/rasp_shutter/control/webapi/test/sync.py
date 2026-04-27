@@ -12,14 +12,13 @@ import flask
 import my_lib.footprint
 import my_lib.notify.slack
 import my_lib.time
-import my_lib.webapp.config
 
 import rasp_shutter.control.config
 import rasp_shutter.control.scheduler
 import rasp_shutter.control.webapi.control
 import rasp_shutter.util
 
-blueprint = flask.Blueprint("rasp-shutter-test-sync", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
+blueprint = flask.Blueprint("rasp-shutter-test-sync", __name__)
 
 # イベント管理用の辞書
 _events: dict[str, threading.Event] = {}
@@ -49,8 +48,7 @@ def wait_for_event(event_name: str):
     Returns:
         JSON: 待機結果
     """
-    # FlaskのTypeConversionDictの型定義が不完全なため抑制
-    timeout = flask.request.args.get("timeout", 30, type=float)  # type: ignore[arg-type]
+    timeout = float(flask.request.args.get("timeout", "30"))
 
     event = _get_event(event_name)
     event.clear()  # 待機前にクリア

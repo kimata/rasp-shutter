@@ -8,17 +8,21 @@ rasp-shutter 制御用設定定数
 import os
 import pathlib
 
-import my_lib.webapp.config
+import rasp_shutter.config
 
 
 def _get_stat_dir() -> pathlib.Path:
-    """STAT_DIR_PATHを動的に取得（Noneの場合はデフォルトパスを返す）
+    """stat_dir_pathを動的に取得（未設定の場合はデフォルトパスを返す）
 
     NOTE: モジュール読み込み時ではなく、呼び出し時に評価する。
     これにより、pytest-xdist並列実行時にワーカー固有のパスを使用できる。
     """
-    if my_lib.webapp.config.STAT_DIR_PATH is not None:
-        return my_lib.webapp.config.STAT_DIR_PATH
+    try:
+        environment = rasp_shutter.config.get_environment()
+    except RuntimeError:
+        return pathlib.Path("data")
+    if environment.stat_dir_path is not None:
+        return environment.stat_dir_path
     return pathlib.Path("data")
 
 
@@ -29,7 +33,7 @@ class _DynamicPath(os.PathLike[str]):
     """動的に評価されるPathプロパティ
 
     モジュールレベル定数として使用しながら、アクセス時に
-    my_lib.webapp.config.STAT_DIR_PATH を参照する。
+    rasp_shutter.config.get_environment().stat_dir_path を参照する。
 
     os.PathLike[str] を継承しているため、pathlib.Path() で変換可能。
     """

@@ -11,7 +11,6 @@ import flask_cors
 import my_lib.flask_util
 import my_lib.footprint
 import my_lib.pytest_util
-import my_lib.webapp.config
 import my_lib.webapp.log
 import requests
 from flask_pydantic import validate
@@ -60,7 +59,7 @@ MODE_INTERVAL_CONFIG: dict[CONTROL_MODE, ModeIntervalConfig] = {
 }
 
 
-blueprint = flask.Blueprint("rasp-shutter-control", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
+blueprint = flask.Blueprint("rasp-shutter-control", __name__)
 
 control_lock = threading.Lock()
 

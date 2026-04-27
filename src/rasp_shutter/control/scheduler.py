@@ -12,7 +12,6 @@ import my_lib.footprint
 import my_lib.pytest_util
 import my_lib.serializer
 import my_lib.time
-import my_lib.webapp.config
 import my_lib.webapp.log
 import schedule
 
@@ -560,8 +559,8 @@ def schedule_validate(schedule_data: dict) -> bool:
 
 
 def schedule_store(schedule_data: dict) -> None:
-    schedule_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
-    assert schedule_path is not None, "SCHEDULE_FILE_PATH not configured"  # noqa: S101
+    schedule_path = rasp_shutter.config.get_environment().schedule_file_path
+    assert schedule_path is not None, "schedule_file_path not configured"  # noqa: S101
 
     try:
         with get_schedule_lock():
@@ -600,8 +599,8 @@ def gen_schedule_default():
 
 def schedule_load() -> dict:
     schedule_default = gen_schedule_default()
-    schedule_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
-    assert schedule_path is not None, "SCHEDULE_FILE_PATH not configured"  # noqa: S101
+    schedule_path = rasp_shutter.config.get_environment().schedule_file_path
+    assert schedule_path is not None, "schedule_file_path not configured"  # noqa: S101
 
     try:
         with get_schedule_lock():

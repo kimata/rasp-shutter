@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 import my_lib.notify.slack
 import my_lib.pretty
-import my_lib.webapp.config
 
+import rasp_shutter.config
 from tests.helpers.time_utils import wait_until
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ class LogChecker:
 
     def __init__(self, client: "FlaskClient"):
         self.client = client
-        self.url_prefix = my_lib.webapp.config.URL_PREFIX
+        self.url_prefix = rasp_shutter.config.URL_PREFIX
 
     def get_logs(self) -> list:
         """ログを取得
@@ -123,7 +123,7 @@ class CtrlLogChecker:
 
     def __init__(self, client: "FlaskClient"):
         self.client = client
-        self.url_prefix = my_lib.webapp.config.URL_PREFIX
+        self.url_prefix = rasp_shutter.config.URL_PREFIX
 
     def get_logs(self) -> list:
         """制御ログを取得

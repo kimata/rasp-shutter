@@ -5,12 +5,11 @@ import logging
 
 import flask
 import my_lib.time
-import my_lib.webapp.config
 import time_machine
 
 import rasp_shutter.util
 
-blueprint = flask.Blueprint("rasp-shutter-test-time", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
+blueprint = flask.Blueprint("rasp-shutter-test-time", __name__)
 
 
 # テスト用の時刻モック状態を保持

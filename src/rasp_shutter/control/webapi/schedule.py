@@ -8,7 +8,6 @@ import flask
 import flask_cors
 import my_lib.flask_util
 import my_lib.pytest_util
-import my_lib.webapp.config
 import my_lib.webapp.event
 import my_lib.webapp.log
 from flask_pydantic import validate
@@ -17,7 +16,7 @@ import rasp_shutter.control.scheduler
 import rasp_shutter.type_defs
 from rasp_shutter.schemas import ScheduleCtrlRequest
 
-blueprint = flask.Blueprint("rasp-shutter-schedule", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
+blueprint = flask.Blueprint("rasp-shutter-schedule", __name__)
 
 _schedule_lock: dict[str, threading.RLock] = {}
 _schedule_queue: dict[str, "multiprocessing.Queue[dict[str, bool]]"] = {}

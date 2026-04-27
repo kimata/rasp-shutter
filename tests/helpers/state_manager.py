@@ -4,16 +4,18 @@
 テストの状態管理とクリーンアップを提供します。
 """
 
+import dataclasses
 from typing import TYPE_CHECKING
 
 import my_lib.footprint
 import my_lib.notify.slack
 import my_lib.pytest_util
-import my_lib.webapp.config
 import my_lib.webapp.log
 
+import rasp_shutter.config
+
 if TYPE_CHECKING:
-    import rasp_shutter.config
+    pass
 
 
 class StateManager:
@@ -57,10 +59,13 @@ class StateManager:
     def clear_schedule_file(self) -> None:
         """スケジュールファイルをクリア"""
         worker_id = my_lib.pytest_util.get_worker_id()
-        original_schedule_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
+        environment = rasp_shutter.config.get_environment()
+        original_schedule_path = environment.schedule_file_path
         if original_schedule_path is not None:
             worker_schedule_path = original_schedule_path.parent / f"schedule_{worker_id}.dat"
-            my_lib.webapp.config.SCHEDULE_FILE_PATH = worker_schedule_path
+            rasp_shutter.config.set_environment(
+                dataclasses.replace(environment, schedule_file_path=worker_schedule_path)
+            )
             worker_schedule_path.unlink(missing_ok=True)
 
     def reset_metrics_collector(self) -> None:
@@ -77,7 +82,7 @@ def get_worker_schedule_path():
         スケジュールファイルのパス
     """
     worker_id = my_lib.pytest_util.get_worker_id()
-    original_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
+    original_path = rasp_shutter.config.get_environment().schedule_file_path
     if original_path is not None:
         return original_path.parent / f"schedule_{worker_id}.dat"
     return None

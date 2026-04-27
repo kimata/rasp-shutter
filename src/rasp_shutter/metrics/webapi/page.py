@@ -13,12 +13,12 @@ import json
 import logging
 
 import flask
-import my_lib.webapp.config
 from PIL import Image, ImageDraw
 
+import rasp_shutter.config
 import rasp_shutter.metrics.collector
 
-blueprint = flask.Blueprint("metrics", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
+blueprint = flask.Blueprint("metrics", __name__)
 
 
 @blueprint.route("/api/metrics", methods=["GET"])
@@ -315,7 +315,7 @@ def generate_metrics_html(stats: dict, operation_metrics: list[dict], data_perio
     chart_data_json = json.dumps(chart_data)
 
     # URL_PREFIXを取得してfaviconパスを構築
-    favicon_path = f"{my_lib.webapp.config.URL_PREFIX}/favicon.ico"
+    favicon_path = f"{rasp_shutter.config.URL_PREFIX}/favicon.ico"
 
     return f"""
 <!DOCTYPE html>

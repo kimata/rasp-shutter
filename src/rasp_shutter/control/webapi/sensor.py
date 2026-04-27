@@ -6,13 +6,12 @@ import flask
 import flask_cors
 import my_lib.sensor_data
 import my_lib.time
-import my_lib.webapp.config
 import pysolar.solar
 
 import rasp_shutter.config
 import rasp_shutter.type_defs
 
-blueprint = flask.Blueprint("rasp-shutter-sensor", __name__, url_prefix=my_lib.webapp.config.URL_PREFIX)
+blueprint = flask.Blueprint("rasp-shutter-sensor", __name__)
 
 
 def get_solar_altitude(config: rasp_shutter.config.AppConfig) -> rasp_shutter.type_defs.SensorValue:
@@ -37,6 +36,7 @@ def get_sensor_data(config: rasp_shutter.config.AppConfig) -> rasp_shutter.type_
             field,
             start="-1h",
             last=True,
+            timeout_sec=3.0,
         )
         if data.valid:
             sensor_values[field] = rasp_shutter.type_defs.SensorValue.create_valid(

@@ -235,12 +235,13 @@ def _clear(app, config):  # app is dependency only, not used directly
     """
     import my_lib.footprint
     import my_lib.notify.slack
-    import my_lib.webapp.config
 
-    # NOTE: my_lib.webapp.config.init() は app fixture で既に呼ばれている
+    import rasp_shutter.config
+
+    # NOTE: rasp_shutter.config.set_environment() は app fixture で既に呼ばれている
     # ワーカー固有のパスも app fixture で設定済みなので、ここでは呼ばない
     # rasp_shutter.control.config は動的にパスを評価するため、ここでのインポートは不要
-    # init()後にインポートする必要があるモジュール
+    # set_environment()後にインポートする必要があるモジュール
     import rasp_shutter.control.config
     import rasp_shutter.control.scheduler
     import rasp_shutter.metrics.collector
@@ -254,8 +255,9 @@ def _clear(app, config):  # app is dependency only, not used directly
 
     # Clear schedule file to ensure clean state for each test
     # NOTE: ワーカー固有のパスは app fixture で設定済み
-    if my_lib.webapp.config.SCHEDULE_FILE_PATH is not None:
-        my_lib.webapp.config.SCHEDULE_FILE_PATH.unlink(missing_ok=True)
+    schedule_path = rasp_shutter.config.get_environment().schedule_file_path
+    if schedule_path is not None:
+        schedule_path.unlink(missing_ok=True)
 
     my_lib.notify.slack._interval_clear()
     my_lib.notify.slack._hist_clear()
@@ -285,48 +287,39 @@ def app(config):
     """Flaskアプリを作成"""
     import dataclasses
 
-    import my_lib.webapp.config
+    import my_lib.pytest_util
     import my_lib.webapp.log
 
     import rasp_shutter.config
     from app import create_app
 
-    # メトリクスDBパスをワーカー固有に変更（SQLiteロック競合を回避）
+    # データファイルパスをワーカー固有に変更（並列実行時の競合を回避）
     # NOTE: my_lib.pytest_util.get_path() は PYTEST_XDIST_WORKER が設定されている場合のみ
     # サフィックスを付与し、通常実行時はそのままのパスを返す
-    import my_lib.pytest_util
-
     worker_metrics_path = my_lib.pytest_util.get_path(config.metrics.data)
     worker_metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    worker_schedule_path = my_lib.pytest_util.get_path(config.webapp.data.schedule_file_path)
+    worker_schedule_path.parent.mkdir(parents=True, exist_ok=True)
+    worker_log_path = my_lib.pytest_util.get_path(config.webapp.data.log_file_path)
+    worker_log_path.parent.mkdir(parents=True, exist_ok=True)
+    worker_stat_path = my_lib.pytest_util.get_path(config.webapp.data.stat_dir_path)
+    worker_stat_path.parent.mkdir(parents=True, exist_ok=True)
+
+    new_data = dataclasses.replace(
+        config.webapp.data,
+        schedule_file_path=worker_schedule_path,
+        log_file_path=worker_log_path,
+        stat_dir_path=worker_stat_path,
+    )
+    new_webapp = dataclasses.replace(config.webapp, data=new_data)
     new_metrics = dataclasses.replace(config.metrics, data=worker_metrics_path)
-    config = dataclasses.replace(config, metrics=new_metrics)
+    config = dataclasses.replace(config, webapp=new_webapp, metrics=new_metrics)
 
-    # NOTE: rasp_shutter.control.webapi.scheduleはmy_lib.webapp.config.init()の後にインポート
-    my_lib.webapp.config.init(rasp_shutter.config.to_my_lib_webapp_config(config))
-
-    # ワーカー固有のパスを設定（init()後に上書き）
-    # NOTE: my_lib.pytest_util.get_path() は並列テスト時のみサフィックスを付与
-    if my_lib.webapp.config.SCHEDULE_FILE_PATH is not None:
-        worker_schedule_path = my_lib.pytest_util.get_path(my_lib.webapp.config.SCHEDULE_FILE_PATH)
-        worker_schedule_path.parent.mkdir(parents=True, exist_ok=True)
-        my_lib.webapp.config.SCHEDULE_FILE_PATH = worker_schedule_path
-
-    if my_lib.webapp.config.LOG_DIR_PATH is not None:
-        worker_log_path = my_lib.pytest_util.get_path(my_lib.webapp.config.LOG_DIR_PATH)
-        worker_log_path.parent.mkdir(parents=True, exist_ok=True)
-        my_lib.webapp.config.LOG_DIR_PATH = worker_log_path
-
-    if my_lib.webapp.config.STAT_DIR_PATH is not None:
-        worker_stat_path = my_lib.pytest_util.get_path(my_lib.webapp.config.STAT_DIR_PATH)
-        worker_stat_path.parent.mkdir(parents=True, exist_ok=True)
-        my_lib.webapp.config.STAT_DIR_PATH = worker_stat_path
-
-    # init()後にインポートする必要があるモジュール
+    # create_app() 後にインポートする必要があるモジュール
     import rasp_shutter.control.webapi.schedule
 
     with unittest.mock.patch.dict("os.environ", {"WERKZEUG_RUN_MAIN": "true"}):
-        if my_lib.webapp.config.SCHEDULE_FILE_PATH is not None:
-            my_lib.webapp.config.SCHEDULE_FILE_PATH.unlink(missing_ok=True)
+        worker_schedule_path.unlink(missing_ok=True)
 
         app = create_app(config, dummy_mode=True)
 
@@ -341,21 +334,21 @@ def app(config):
 @pytest.fixture
 def client(app):
     """テストクライアントを作成"""
-    import my_lib.webapp.config
+    import rasp_shutter.config
 
     test_client = app.test_client()
 
     time.sleep(0.1)
 
     # Clear logs
-    response = test_client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_clear")
+    response = test_client.get(f"{rasp_shutter.config.URL_PREFIX}/api/log_clear")
     assert response.status_code == 200
 
     # Wait for clear to complete
     # NOTE: time.perf_counter() を使用（time_machine の影響を受けない）
     start_time = time.perf_counter()
     while time.perf_counter() - start_time < 5.0:
-        response = test_client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_view")
+        response = test_client.get(f"{rasp_shutter.config.URL_PREFIX}/api/log_view")
         if response.status_code == 200:
             log_list = response.json["data"]
             if len(log_list) >= 1 and "クリアされました" in log_list[0]["message"]:
@@ -364,7 +357,7 @@ def client(app):
 
     # Clear ctrl log
     response = test_client.get(
-        f"{my_lib.webapp.config.URL_PREFIX}/api/ctrl/log",
+        f"{rasp_shutter.config.URL_PREFIX}/api/ctrl/log",
         query_string={"cmd": "clear"},
     )
     assert response.status_code == 200

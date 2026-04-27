@@ -11,7 +11,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, TypeVar
 
 import my_lib.time
-import my_lib.webapp.config
+
+import rasp_shutter.config
 
 if TYPE_CHECKING:
     from flask.testing import FlaskClient
@@ -160,7 +161,7 @@ def get_scheduler_sequence(client: "FlaskClient") -> int:
     Returns:
         現在のシーケンス番号
     """
-    response = client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/test/scheduler/loop_sequence")
+    response = client.get(f"{rasp_shutter.config.URL_PREFIX}/api/test/scheduler/loop_sequence")
     assert response.status_code == 200  # noqa: S101
     data = response.get_json()
     assert data is not None  # noqa: S101
@@ -200,7 +201,7 @@ def wait_for_scheduler_loop(
 
 
 def move_time_and_wait(
-    time_machine,  # type: ignore[no-untyped-def]
+    time_machine,
     client: "FlaskClient",
     target_time: datetime.datetime,
     timeout: float = 180.0,
@@ -367,7 +368,7 @@ def get_midnight_time() -> datetime.datetime:
 
 def setup_midnight_time(
     client: "FlaskClient",
-    time_machine,  # type: ignore[no-untyped-def]
+    time_machine,
     clear_ctrl_log: bool = True,
     timeout: float = 30.0,
 ) -> None:
@@ -393,7 +394,7 @@ def setup_midnight_time(
     wait_for_scheduler_loop(client, sequence, timeout=timeout)
 
     # ログをクリア
-    client.get(f"{my_lib.webapp.config.URL_PREFIX}/api/log_clear")
+    client.get(f"{rasp_shutter.config.URL_PREFIX}/api/log_clear")
     if clear_ctrl_log:
         CtrlLogAPI(client).clear()
 

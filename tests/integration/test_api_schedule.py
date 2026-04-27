@@ -4,8 +4,7 @@
 
 import pathlib
 
-import my_lib.webapp.config
-
+import rasp_shutter.config
 from tests.fixtures.schedule_factory import ScheduleFactory
 from tests.helpers.api_utils import ScheduleAPI
 from tests.helpers.assertions import LogChecker, SlackChecker
@@ -40,7 +39,7 @@ class TestScheduleRead:
 
     def test_schedule_ctrl_read_fail_corrupt_file(self, client):
         """破損したスケジュールファイルの読み取り"""
-        schedule_path = my_lib.webapp.config.SCHEDULE_FILE_PATH
+        schedule_path = rasp_shutter.config.get_environment().schedule_file_path
         if schedule_path is not None:
             with pathlib.Path(schedule_path).open(mode="wb") as f:
                 f.write(b"TEST")

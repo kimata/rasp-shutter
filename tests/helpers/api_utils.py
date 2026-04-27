@@ -8,7 +8,7 @@
 import json
 from typing import TYPE_CHECKING, Any
 
-import my_lib.webapp.config
+import rasp_shutter.config
 
 if TYPE_CHECKING:
     from flask.testing import FlaskClient
@@ -26,7 +26,7 @@ class ShutterAPI:
 
     def __init__(self, client: "FlaskClient"):
         self.client = client
-        self.url_prefix = my_lib.webapp.config.URL_PREFIX
+        self.url_prefix = rasp_shutter.config.URL_PREFIX
 
     def open(self, index: int | None = None) -> dict[str, Any]:
         """シャッターを開く
@@ -99,7 +99,7 @@ class ScheduleAPI:
 
     def __init__(self, client: "FlaskClient"):
         self.client = client
-        self.url_prefix = my_lib.webapp.config.URL_PREFIX
+        self.url_prefix = rasp_shutter.config.URL_PREFIX
 
     def get(self) -> dict[str, Any]:
         """スケジュールを取得
@@ -133,7 +133,7 @@ class LogAPI:
 
     def __init__(self, client: "FlaskClient"):
         self.client = client
-        self.url_prefix = my_lib.webapp.config.URL_PREFIX
+        self.url_prefix = rasp_shutter.config.URL_PREFIX
 
     def view(self) -> list:
         """ログを取得
@@ -170,7 +170,7 @@ class CtrlLogAPI:
 
     def __init__(self, client: "FlaskClient"):
         self.client = client
-        self.url_prefix = my_lib.webapp.config.URL_PREFIX
+        self.url_prefix = rasp_shutter.config.URL_PREFIX
 
     def get(self) -> list:
         """制御ログを取得
@@ -213,7 +213,7 @@ class SensorAPI:
 
     def __init__(self, client: "FlaskClient"):
         self.client = client
-        self.url_prefix = my_lib.webapp.config.URL_PREFIX
+        self.url_prefix = rasp_shutter.config.URL_PREFIX
 
     def get(self) -> dict[str, Any]:
         """センサーデータを取得
@@ -231,7 +231,7 @@ class MetricsAPI:
 
     def __init__(self, client: "FlaskClient"):
         self.client = client
-        self.url_prefix = my_lib.webapp.config.URL_PREFIX
+        self.url_prefix = rasp_shutter.config.URL_PREFIX
 
     def get_page(self) -> tuple[int, str]:
         """メトリクスページを取得
@@ -248,7 +248,7 @@ class SystemAPI:
 
     def __init__(self, client: "FlaskClient"):
         self.client = client
-        self.url_prefix = my_lib.webapp.config.URL_PREFIX
+        self.url_prefix = rasp_shutter.config.URL_PREFIX
 
     def sysinfo(self) -> dict[str, Any]:
         """システム情報を取得

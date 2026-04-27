@@ -59,20 +59,22 @@ class TestConfigLoad:
             assert hasattr(error_config, "channel")
 
 
-class TestToMyLibWebappConfig:
-    """my_lib.webapp設定への変換テスト"""
+class TestBuildEnvironment:
+    """WebappEnvironment 生成のテスト"""
 
-    def test_convert_to_webapp_config(self):
-        """webapp設定への変換"""
+    def test_build_environment(self):
+        """WebappEnvironment が AppConfig から正しく生成される"""
         import rasp_shutter.config
 
         config = rasp_shutter.config.load("config.example.yaml", pathlib.Path("config.schema"))
-        webapp_config = rasp_shutter.config.to_my_lib_webapp_config(config)
+        environment = rasp_shutter.config.build_environment(config)
 
-        assert webapp_config is not None
-        assert hasattr(webapp_config, "static_dir_path")
-        assert hasattr(webapp_config, "data")
-        assert hasattr(webapp_config.data, "schedule_file_path")
+        assert environment is not None
+        assert environment.url_prefix == rasp_shutter.config.URL_PREFIX
+        assert environment.static_dir_path == config.webapp.static_dir_path
+        assert environment.schedule_file_path == config.webapp.data.schedule_file_path
+        assert environment.log_file_path == config.webapp.data.log_file_path
+        assert environment.stat_dir_path == config.webapp.data.stat_dir_path
 
 
 class TestConfigValidation:

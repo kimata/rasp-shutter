@@ -31,6 +31,7 @@ SlackChannelConfig = my_lib.notify.slack.SlackChannelConfig
 SlackConfigType = SlackErrorOnlyConfig | SlackEmptyConfig
 
 __all__ = [
+    "URL_PREFIX",
     "AppConfig",
     "InfluxDBConfig",
     "LivenessConfig",
@@ -48,9 +49,31 @@ __all__ = [
     "SlackErrorOnlyConfig",
     "WebappConfig",
     "WebappDataConfig",
+    "build_environment",
+    "get_environment",
     "load",
     "parse_config",
+    "set_environment",
 ]
+
+
+URL_PREFIX = "/rasp-shutter"
+
+
+_environment: my_lib.webapp.config.WebappEnvironment | None = None
+
+
+def set_environment(environment: my_lib.webapp.config.WebappEnvironment) -> None:
+    """WebappEnvironment をプロセスグローバルに登録する"""
+    global _environment
+    _environment = environment
+
+
+def get_environment() -> my_lib.webapp.config.WebappEnvironment:
+    """登録済みの WebappEnvironment を返す"""
+    if _environment is None:
+        raise RuntimeError("WebappEnvironment is not initialized. Call set_environment() first.")
+    return _environment
 
 
 # === Webapp ===
@@ -268,9 +291,9 @@ def parse_config(data: dict[str, Any]) -> AppConfig:
     )
 
 
-def to_my_lib_webapp_config(config: AppConfig) -> my_lib.webapp.config.WebappConfig:
-    """AppConfig から my_lib.webapp.config.WebappConfig を生成"""
-    return my_lib.webapp.config.WebappConfig(
+def build_environment(config: AppConfig) -> my_lib.webapp.config.WebappEnvironment:
+    """AppConfig から my_lib.webapp.config.WebappEnvironment を生成"""
+    webapp_config = my_lib.webapp.config.WebappConfig(
         static_dir_path=config.webapp.static_dir_path,
         data=my_lib.webapp.config.WebappDataConfig(
             schedule_file_path=config.webapp.data.schedule_file_path,
@@ -278,6 +301,7 @@ def to_my_lib_webapp_config(config: AppConfig) -> my_lib.webapp.config.WebappCon
             stat_dir_path=config.webapp.data.stat_dir_path,
         ),
     )
+    return my_lib.webapp.config.build_environment(webapp_config, url_prefix=URL_PREFIX)
 
 
 def load(config_path: str, schema_path: pathlib.Path) -> AppConfig:

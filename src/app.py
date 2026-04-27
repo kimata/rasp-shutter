@@ -94,8 +94,8 @@ def create_app(config: rasp_shutter.config.AppConfig, dummy_mode: bool = False) 
     import rasp_shutter.metrics.webapi.page
 
     # NOTE: テストのため、環境変数 DUMMY_MODE をセットしてからロードしたいのでこの位置
-    my_lib.webapp.config.URL_PREFIX = "/rasp-shutter"
-    my_lib.webapp.config.init(rasp_shutter.config.to_my_lib_webapp_config(config))
+    environment = rasp_shutter.config.build_environment(config)
+    rasp_shutter.config.set_environment(environment)
 
     app = flask.Flask("rasp-shutter")
 
@@ -110,7 +110,9 @@ def create_app(config: rasp_shutter.config.AppConfig, dummy_mode: bool = False) 
 
         rasp_shutter.control.webapi.control.init()
         rasp_shutter.control.webapi.schedule.init(config)
-        my_lib.webapp.log.init(config.slack)
+        if environment.log_file_path is None:
+            raise RuntimeError("webapp.data.log_file_path is required")
+        my_lib.webapp.log.init(config.slack, environment.log_file_path)
 
         def notify_terminate() -> None:  # pragma: no cover
             my_lib.webapp.log.info("🏃 アプリを再起動します。")
@@ -128,35 +130,27 @@ def create_app(config: rasp_shutter.config.AppConfig, dummy_mode: bool = False) 
     # Flask 2.2+のJSON互換性設定。mypy/tyはJSONProviderのcompat属性を認識しないため抑制
     app.json.compat = True  # type: ignore[attr-defined,union-attr]
 
-    app.register_blueprint(
-        rasp_shutter.control.webapi.control.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
-    )
-    app.register_blueprint(
-        rasp_shutter.control.webapi.schedule.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
-    )
-    app.register_blueprint(
-        rasp_shutter.control.webapi.sensor.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
-    )
-    app.register_blueprint(
-        rasp_shutter.metrics.webapi.page.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
-    )
+    url_prefix = rasp_shutter.config.URL_PREFIX
 
-    app.register_blueprint(my_lib.webapp.base.blueprint_default)
-    app.register_blueprint(my_lib.webapp.base.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
-    app.register_blueprint(my_lib.webapp.event.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
-    app.register_blueprint(my_lib.webapp.log.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
-    app.register_blueprint(my_lib.webapp.util.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX)
+    app.register_blueprint(rasp_shutter.control.webapi.control.blueprint, url_prefix=url_prefix)
+    app.register_blueprint(rasp_shutter.control.webapi.schedule.blueprint, url_prefix=url_prefix)
+    app.register_blueprint(rasp_shutter.control.webapi.sensor.blueprint, url_prefix=url_prefix)
+    app.register_blueprint(rasp_shutter.metrics.webapi.page.blueprint, url_prefix=url_prefix)
+
+    app.register_blueprint(my_lib.webapp.base.create_root_redirect_blueprint(url_prefix=url_prefix))
+    app.register_blueprint(
+        my_lib.webapp.base.create_static_blueprint(environment=environment), url_prefix=url_prefix
+    )
+    app.register_blueprint(my_lib.webapp.event.blueprint, url_prefix=url_prefix)
+    app.register_blueprint(my_lib.webapp.log.blueprint, url_prefix=url_prefix)
+    app.register_blueprint(my_lib.webapp.util.blueprint, url_prefix=url_prefix)
 
     if os.environ.get("TEST") == "true":
         import rasp_shutter.control.webapi.test.sync
         import rasp_shutter.control.webapi.test.time
 
-        app.register_blueprint(
-            rasp_shutter.control.webapi.test.time.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
-        )
-        app.register_blueprint(
-            rasp_shutter.control.webapi.test.sync.blueprint, url_prefix=my_lib.webapp.config.URL_PREFIX
-        )
+        app.register_blueprint(rasp_shutter.control.webapi.test.time.blueprint, url_prefix=url_prefix)
+        app.register_blueprint(rasp_shutter.control.webapi.test.sync.blueprint, url_prefix=url_prefix)
 
     my_lib.webapp.config.show_handler_list(app)
 
