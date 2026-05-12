@@ -246,13 +246,13 @@ export default {
             const type = this.getLogType(entry);
             const classMap = {
                 [LOG_TYPES.OPEN_SUCCESS]: "bg-emerald-100",
-                [LOG_TYPES.CLOSE_SUCCESS]: "bg-blue-100",
-                [LOG_TYPES.SENSOR_OPEN]: "bg-orange-100",
-                [LOG_TYPES.SENSOR_CLOSE]: "bg-slate-100",
+                [LOG_TYPES.CLOSE_SUCCESS]: "bg-teal-100",
+                [LOG_TYPES.SENSOR_OPEN]: "bg-lime-100",
+                [LOG_TYPES.SENSOR_CLOSE]: "bg-green-100",
                 [LOG_TYPES.ERROR]: "bg-red-100",
                 [LOG_TYPES.POSTPONE]: "bg-amber-100",
-                [LOG_TYPES.SCHEDULE]: "bg-indigo-100",
-                [LOG_TYPES.SYSTEM]: "bg-purple-100",
+                [LOG_TYPES.SCHEDULE]: "bg-gray-100",
+                [LOG_TYPES.SYSTEM]: "bg-gray-100",
                 [LOG_TYPES.INFO]: "bg-gray-100",
             };
             return classMap[type] || "bg-gray-100";
@@ -261,13 +261,13 @@ export default {
             const type = this.getLogType(entry);
             const classMap = {
                 [LOG_TYPES.OPEN_SUCCESS]: "text-emerald-600",
-                [LOG_TYPES.CLOSE_SUCCESS]: "text-blue-600",
-                [LOG_TYPES.SENSOR_OPEN]: "text-orange-600",
-                [LOG_TYPES.SENSOR_CLOSE]: "text-slate-600",
+                [LOG_TYPES.CLOSE_SUCCESS]: "text-teal-700",
+                [LOG_TYPES.SENSOR_OPEN]: "text-lime-600",
+                [LOG_TYPES.SENSOR_CLOSE]: "text-green-800",
                 [LOG_TYPES.ERROR]: "text-red-600",
                 [LOG_TYPES.POSTPONE]: "text-amber-600",
-                [LOG_TYPES.SCHEDULE]: "text-indigo-600",
-                [LOG_TYPES.SYSTEM]: "text-purple-600",
+                [LOG_TYPES.SCHEDULE]: "text-gray-600",
+                [LOG_TYPES.SYSTEM]: "text-gray-500",
                 [LOG_TYPES.INFO]: "text-gray-600",
             };
             return classMap[type] || "text-gray-600";
