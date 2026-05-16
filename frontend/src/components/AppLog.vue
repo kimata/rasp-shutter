@@ -26,7 +26,7 @@
                         </div>
                         <span
                             class="mt-1 text-xs font-medium"
-                            :class="getIconClass(entry)"
+                            :class="getLabelClass(entry)"
                         >
                             {{ getLabel(entry) }}
                         </span>
@@ -245,30 +245,33 @@ export default {
         getIconBgClass(entry) {
             const type = this.getLogType(entry);
             const classMap = {
-                [LOG_TYPES.OPEN_SUCCESS]: "bg-emerald-100",
-                [LOG_TYPES.CLOSE_SUCCESS]: "bg-teal-100",
-                [LOG_TYPES.SENSOR_OPEN]: "bg-lime-100",
-                [LOG_TYPES.SENSOR_CLOSE]: "bg-green-100",
-                [LOG_TYPES.ERROR]: "bg-red-100",
-                [LOG_TYPES.POSTPONE]: "bg-amber-100",
-                [LOG_TYPES.SCHEDULE]: "bg-gray-100",
-                [LOG_TYPES.SYSTEM]: "bg-gray-100",
-                [LOG_TYPES.INFO]: "bg-gray-100",
+                [LOG_TYPES.OPEN_SUCCESS]: "bg-green-600",
+                [LOG_TYPES.CLOSE_SUCCESS]: "bg-green-700",
+                [LOG_TYPES.SENSOR_OPEN]: "bg-green-500",
+                [LOG_TYPES.SENSOR_CLOSE]: "bg-green-800",
+                [LOG_TYPES.ERROR]: "bg-red-600",
+                [LOG_TYPES.POSTPONE]: "bg-amber-500",
+                [LOG_TYPES.SCHEDULE]: "bg-gray-500",
+                [LOG_TYPES.SYSTEM]: "bg-gray-400",
+                [LOG_TYPES.INFO]: "bg-gray-400",
             };
-            return classMap[type] || "bg-gray-100";
+            return classMap[type] || "bg-gray-400";
         },
-        getIconClass(entry) {
+        getIconClass() {
+            return "text-white";
+        },
+        getLabelClass(entry) {
             const type = this.getLogType(entry);
             const classMap = {
-                [LOG_TYPES.OPEN_SUCCESS]: "text-emerald-600",
-                [LOG_TYPES.CLOSE_SUCCESS]: "text-teal-700",
-                [LOG_TYPES.SENSOR_OPEN]: "text-lime-600",
-                [LOG_TYPES.SENSOR_CLOSE]: "text-green-800",
-                [LOG_TYPES.ERROR]: "text-red-600",
-                [LOG_TYPES.POSTPONE]: "text-amber-600",
+                [LOG_TYPES.OPEN_SUCCESS]: "text-green-700",
+                [LOG_TYPES.CLOSE_SUCCESS]: "text-green-800",
+                [LOG_TYPES.SENSOR_OPEN]: "text-green-600",
+                [LOG_TYPES.SENSOR_CLOSE]: "text-green-900",
+                [LOG_TYPES.ERROR]: "text-red-700",
+                [LOG_TYPES.POSTPONE]: "text-amber-700",
                 [LOG_TYPES.SCHEDULE]: "text-gray-600",
                 [LOG_TYPES.SYSTEM]: "text-gray-500",
-                [LOG_TYPES.INFO]: "text-gray-600",
+                [LOG_TYPES.INFO]: "text-gray-500",
             };
             return classMap[type] || "text-gray-600";
         },
