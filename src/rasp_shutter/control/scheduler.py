@@ -474,24 +474,31 @@ def _sample_context_for_hour(hour: int) -> str:
 
 
 def maybe_record_sensor_sample(config: rasp_shutter.config.AppConfig) -> None:
-    """SENSOR_SAMPLE_INTERVAL_SEC 経過していればセンサーをサンプリング記録する"""
+    """SENSOR_SAMPLE_INTERVAL_SEC 経過していればセンサーサンプルを別スレッドで記録する
+
+    InfluxDB I/O でブロックしてスケジューラループを止めないよう、fire-and-forget で実行する。
+    """
     worker_id = my_lib.pytest_util.get_worker_id()
     now = my_lib.time.now()
     last = _last_sensor_sample_time.get(worker_id)
     if last is not None and (now - last).total_seconds() < SENSOR_SAMPLE_INTERVAL_SEC:
         return
-
-    try:
-        sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
-        rasp_shutter.metrics.collector.record_sensor_sample(
-            config.metrics.data,
-            sense_data,
-            context=_sample_context_for_hour(now.hour),
-            timestamp=now,
-        )
-    except Exception:  # pragma: no cover
-        logging.warning("Failed to record sensor sample", exc_info=True)
+    # 重複起動防止のため、スレッド起動前に時刻を更新する
     _last_sensor_sample_time[worker_id] = now
+
+    def _do_sample() -> None:
+        try:
+            sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
+            rasp_shutter.metrics.collector.record_sensor_sample(
+                config.metrics.data,
+                sense_data,
+                context=_sample_context_for_hour(now.hour),
+                timestamp=now,
+            )
+        except Exception:  # pragma: no cover
+            logging.warning("Failed to record sensor sample", exc_info=True)
+
+    threading.Thread(target=_do_sample, name="sensor-sample", daemon=True).start()
 
 
 def reset_sensor_sample_state() -> None:
