@@ -252,6 +252,7 @@ def _clear(app, config):  # app is dependency only, not used directly
     # NOTE: スケジューラのジョブはセッションスコープで共有されるため、
     # 各テスト前にクリアして前のテストのスケジュールが影響しないようにする
     rasp_shutter.control.scheduler.clear_scheduler_jobs()
+    rasp_shutter.control.scheduler.reset_sensor_sample_state()
 
     # Clear schedule file to ensure clean state for each test
     # NOTE: ワーカー固有のパスは app fixture で設定済み

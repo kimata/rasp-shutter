@@ -19,6 +19,7 @@ import rasp_shutter.config
 import rasp_shutter.control.config
 import rasp_shutter.control.webapi.control
 import rasp_shutter.control.webapi.sensor
+import rasp_shutter.metrics.collector
 import rasp_shutter.type_defs
 import rasp_shutter.util
 
@@ -49,6 +50,10 @@ _auto_control_events: dict[str, threading.Event] = {}
 _loop_sequence: dict[str, int] = {}
 _loop_condition: dict[str, threading.Condition] = {}
 _loop_condition_lock = threading.Lock()
+
+# センサーサンプリング間隔（秒）と前回サンプル時刻（ワーカー別）
+SENSOR_SAMPLE_INTERVAL_SEC = 60.0
+_last_sensor_sample_time: dict[str, datetime.datetime] = {}
 
 
 def get_scheduler() -> schedule.Scheduler:
@@ -361,6 +366,16 @@ def shutter_auto_open(config: rasp_shutter.config.AppConfig) -> None:
             sense_data.solar_rad.value if sense_data.solar_rad.valid else -1,
             sense_data.lux.value if sense_data.lux.valid else -1,
         )
+        sensor_unknown = not sense_data.lux.valid or not sense_data.solar_rad.valid
+        reason = "sensor_invalid" if sensor_unknown else "too_dark"
+        rasp_shutter.metrics.collector.record_postpone(
+            config.metrics.data,
+            intended_action="open",
+            trigger="auto",
+            reason=reason,
+            sensor_data=sense_data,
+            threshold=dict(schedule_data["open"]),
+        )
 
 
 def conv_schedule_time_to_datetime(schedule_time: str) -> datetime.datetime:
@@ -448,6 +463,43 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
         )
 
 
+def _sample_context_for_hour(hour: int) -> str:
+    """現在時刻から sensor_samples の context 文字列を決定"""
+    cfg = rasp_shutter.control.config
+    if cfg.HOUR_MORNING_START < hour < cfg.HOUR_AUTO_OPEN_END:
+        return "auto_open_window"
+    if cfg.HOUR_MORNING_START < hour < cfg.HOUR_AUTO_CLOSE_END:
+        return "auto_close_window"
+    return "off_hours"
+
+
+def maybe_record_sensor_sample(config: rasp_shutter.config.AppConfig) -> None:
+    """SENSOR_SAMPLE_INTERVAL_SEC 経過していればセンサーをサンプリング記録する"""
+    worker_id = my_lib.pytest_util.get_worker_id()
+    now = my_lib.time.now()
+    last = _last_sensor_sample_time.get(worker_id)
+    if last is not None and (now - last).total_seconds() < SENSOR_SAMPLE_INTERVAL_SEC:
+        return
+
+    try:
+        sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
+        rasp_shutter.metrics.collector.record_sensor_sample(
+            config.metrics.data,
+            sense_data,
+            context=_sample_context_for_hour(now.hour),
+            timestamp=now,
+        )
+    except Exception:  # pragma: no cover
+        logging.warning("Failed to record sensor sample", exc_info=True)
+    _last_sensor_sample_time[worker_id] = now
+
+
+def reset_sensor_sample_state() -> None:
+    """センサーサンプル時刻をリセット（テスト用）"""
+    worker_id = my_lib.pytest_util.get_worker_id()
+    _last_sensor_sample_time.pop(worker_id, None)
+
+
 def shutter_auto_control(config: rasp_shutter.config.AppConfig) -> None:
     hour = my_lib.time.now().hour
     cfg = rasp_shutter.control.config
@@ -468,6 +520,13 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
 
     sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
 
+    schedule_data = get_schedule_data()
+    schedule_dict: dict[str, Any] | None = {**schedule_data} if schedule_data is not None else None
+    scheduled_time = (
+        conv_schedule_time_to_datetime(schedule_dict[state]["time"]) if schedule_dict is not None else None
+    )
+    threshold = {**schedule_dict[state]} if schedule_dict is not None else None
+
     if check_brightness(sense_data, state) == BRIGHTNESS_STATE.UNKNOWN:
         error_sensor = []
 
@@ -479,6 +538,15 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
         error_sensor_text = "と".join(error_sensor)
         state_text = rasp_shutter.type_defs.state_to_action_text(state)
         my_lib.webapp.log.error(f"😵 {error_sensor_text}の値が不明なので{state_text}るのを見合わせました。")
+        rasp_shutter.metrics.collector.record_postpone(
+            config.metrics.data,
+            intended_action=state,
+            trigger="schedule",
+            reason="sensor_invalid",
+            sensor_data=sense_data,
+            threshold=threshold,
+            scheduled_time=scheduled_time,
+        )
         _signal_auto_control_completed()
         return
 
@@ -497,6 +565,15 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
             # NOTE: 暗いので開けれなかったことを通知
             logging.info("Set Pending OPEN")
             my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+            rasp_shutter.metrics.collector.record_postpone(
+                config.metrics.data,
+                intended_action="open",
+                trigger="schedule",
+                reason="too_dark",
+                sensor_data=sense_data,
+                threshold=threshold,
+                scheduled_time=scheduled_time,
+            )
         else:
             # NOTE: ここにきたときのみ、スケジュールに従って開ける
             exec_shutter_control(
@@ -687,6 +764,8 @@ def schedule_worker(config: rasp_shutter.config.AppConfig, queue) -> None:
             run_pending_start = time.perf_counter()
             scheduler.run_pending()
             run_pending_elapsed = time.perf_counter() - run_pending_start
+
+            maybe_record_sensor_sample(config)
 
             time.sleep(sleep_sec)
 

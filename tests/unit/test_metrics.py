@@ -100,6 +100,100 @@ class TestMetricsCollector:
 
         assert len(metrics) == 1
 
+    def test_record_postpone(self, temp_metrics_path):
+        """見合わせイベント記録のテスト"""
+        import rasp_shutter.metrics.collector
+        from tests.fixtures.sensor_factory import SensorDataFactory
+
+        collector = rasp_shutter.metrics.collector.MetricsCollector(temp_metrics_path)
+        sensor_data = SensorDataFactory.custom(solar_rad=100, lux=500, altitude=10)
+
+        recorded = collector.record_postpone(
+            intended_action="open",
+            trigger="schedule",
+            reason="too_dark",
+            sensor_data=sensor_data,
+            threshold={"lux": 1000, "solar_rad": 200, "altitude": 5},
+        )
+        assert recorded is True
+
+        events = collector.get_recent_postpone_events(1)
+        assert len(events) == 1
+        assert events[0]["intended_action"] == "open"
+        assert events[0]["reason"] == "too_dark"
+        assert events[0]["lux"] == 500.0
+        assert events[0]["threshold_lux"] == 1000.0
+        assert events[0]["resolved_at"] is None
+
+    def test_postpone_cooldown_suppresses_duplicates(self, temp_metrics_path):
+        """同条件のpostponeがクールダウン内なら抑制される"""
+        import rasp_shutter.metrics.collector
+
+        collector = rasp_shutter.metrics.collector.MetricsCollector(temp_metrics_path)
+
+        first = collector.record_postpone(
+            intended_action="open",
+            trigger="schedule",
+            reason="too_dark",
+        )
+        second = collector.record_postpone(
+            intended_action="open",
+            trigger="schedule",
+            reason="too_dark",
+        )
+        assert first is True
+        assert second is False
+
+        # クールダウンを短く設定すれば記録される
+        third = collector.record_postpone(
+            intended_action="open",
+            trigger="schedule",
+            reason="too_dark",
+            cooldown_sec=0.0,
+        )
+        assert third is True
+
+    def test_postpone_resolved_by_operation(self, temp_metrics_path):
+        """同日同方向のoperation記録でpostponeがresolveされる"""
+        import rasp_shutter.metrics.collector
+
+        collector = rasp_shutter.metrics.collector.MetricsCollector(temp_metrics_path)
+        collector.record_postpone(intended_action="open", trigger="schedule", reason="too_dark")
+        events_before = collector.get_recent_postpone_events(1)
+        assert events_before[0]["resolved_at"] is None
+
+        collector.record_shutter_operation(action="open", mode="auto")
+
+        events_after = collector.get_recent_postpone_events(1)
+        assert events_after[0]["resolved_at"] is not None
+        assert events_after[0]["resolved_operation_id"] is not None
+
+    def test_postpone_not_resolved_for_other_action(self, temp_metrics_path):
+        """違う方向のoperationではresolveされない"""
+        import rasp_shutter.metrics.collector
+
+        collector = rasp_shutter.metrics.collector.MetricsCollector(temp_metrics_path)
+        collector.record_postpone(intended_action="open", trigger="schedule", reason="too_dark")
+        collector.record_shutter_operation(action="close", mode="auto")
+
+        events = collector.get_recent_postpone_events(1)
+        assert events[0]["resolved_at"] is None
+
+    def test_record_sensor_sample(self, temp_metrics_path):
+        """センサーサンプル記録のテスト"""
+        import rasp_shutter.metrics.collector
+        from tests.fixtures.sensor_factory import SensorDataFactory
+
+        collector = rasp_shutter.metrics.collector.MetricsCollector(temp_metrics_path)
+        sensor_data = SensorDataFactory.custom(solar_rad=150, lux=800, altitude=15)
+
+        collector.record_sensor_sample(sensor_data, context="auto_open_window")
+
+        samples = collector.get_recent_sensor_samples(1)
+        assert len(samples) == 1
+        assert samples[0]["lux"] == 800.0
+        assert samples[0]["context"] == "auto_open_window"
+
 
 class TestMetricsStatistics:
     """メトリクス統計のテスト"""

@@ -16,6 +16,7 @@ import flask
 from PIL import Image, ImageDraw
 
 import rasp_shutter.config
+import rasp_shutter.control.scheduler
 import rasp_shutter.metrics.collector
 
 blueprint = flask.Blueprint("metrics", __name__)
@@ -43,15 +44,33 @@ def metrics_view():
         # 全期間のデータを取得
         operation_metrics = collector.get_all_operation_metrics()
         failure_metrics = collector.get_all_failure_metrics()
+        postpone_events = collector.get_recent_postpone_events(30)
+        sensor_samples = collector.get_recent_sensor_samples(7)
 
         # 統計データを生成
         stats = generate_statistics(operation_metrics, failure_metrics)
+        postpone_stats = generate_postpone_statistics(postpone_events)
 
         # データ期間を計算
         data_period = calculate_data_period(operation_metrics)
 
+        # 現時点の閾値（schedule.dat から）を取得（取得失敗時は None）
+        try:
+            current_schedule = rasp_shutter.control.scheduler.schedule_load()
+        except Exception:
+            logging.warning("Failed to load current schedule for threshold reference", exc_info=True)
+            current_schedule = None
+
         # HTMLを生成
-        html_content = generate_metrics_html(stats, operation_metrics, data_period)
+        html_content = generate_metrics_html(
+            stats,
+            operation_metrics,
+            data_period,
+            postpone_events,
+            postpone_stats,
+            sensor_samples,
+            current_schedule,
+        )
 
         return flask.Response(html_content, mimetype="text/html")
 
@@ -301,8 +320,174 @@ def generate_statistics(operation_metrics: list[dict], failure_metrics: list[dic
     }
 
 
-def generate_metrics_html(stats: dict, operation_metrics: list[dict], data_period: dict) -> str:
+def generate_postpone_statistics(postpone_events: list[dict]) -> dict:
+    """見合わせイベントの集計"""
+    total = len(postpone_events)
+    open_count = sum(1 for ev in postpone_events if ev["intended_action"] == "open")
+    close_count = total - open_count
+    resolved_count = sum(1 for ev in postpone_events if ev.get("resolved_at"))
+
+    reason_counts: dict[str, int] = {}
+    trigger_counts: dict[str, int] = {}
+    for ev in postpone_events:
+        reason_counts[ev["reason"]] = reason_counts.get(ev["reason"], 0) + 1
+        trigger_counts[ev["trigger"]] = trigger_counts.get(ev["trigger"], 0) + 1
+
+    # resolve までのラグ（分）
+    lag_minutes: list[float] = []
+    for ev in postpone_events:
+        if ev.get("resolved_at") and ev.get("timestamp"):
+            try:
+                started = datetime.datetime.fromisoformat(ev["timestamp"])
+                resolved = datetime.datetime.fromisoformat(ev["resolved_at"])
+                lag_minutes.append((resolved - started).total_seconds() / 60.0)
+            except (ValueError, TypeError):
+                continue
+
+    return {
+        "total": total,
+        "open_count": open_count,
+        "close_count": close_count,
+        "resolved_count": resolved_count,
+        "unresolved_count": total - resolved_count,
+        "resolve_rate": (resolved_count / total * 100.0) if total > 0 else 0.0,
+        "reason_counts": reason_counts,
+        "trigger_counts": trigger_counts,
+        "lag_minutes": lag_minutes,
+    }
+
+
+def prepare_postpone_chart_data(postpone_events: list[dict]) -> dict:
+    """見合わせイベントから Chart.js 用データを構築"""
+    # 理由 × 方向のクロス集計
+    reason_action_matrix: dict[str, dict[str, int]] = {}
+    for ev in postpone_events:
+        reason = ev["reason"]
+        action = ev["intended_action"]
+        reason_action_matrix.setdefault(reason, {"open": 0, "close": 0})
+        reason_action_matrix[reason][action] += 1
+
+    # 日別の発生件数
+    daily_counts: dict[str, dict[str, int]] = {}
+    for ev in postpone_events:
+        date = ev["date"]
+        action = ev["intended_action"]
+        daily_counts.setdefault(date, {"open": 0, "close": 0})
+        daily_counts[date][action] += 1
+
+    daily_sorted = sorted(daily_counts.items())
+    return {
+        "reason_action_matrix": reason_action_matrix,
+        "daily_labels": [d for d, _ in daily_sorted],
+        "daily_open": [c["open"] for _, c in daily_sorted],
+        "daily_close": [c["close"] for _, c in daily_sorted],
+    }
+
+
+def prepare_sensor_samples_data(sensor_samples: list[dict], current_schedule: dict | None) -> dict:
+    """センサーサンプルから Chart.js 用データ（時刻別の散布図 + 閾値線）を構築"""
+
+    # 各サンプルを (時刻HH:MM分換算, 値) のペアに展開
+    def _points(key: str) -> list[dict[str, float]]:
+        points: list[dict[str, float]] = []
+        for sample in sensor_samples:
+            value = sample.get(key)
+            timestamp_str = sample.get("timestamp")
+            if value is None or timestamp_str is None:
+                continue
+            try:
+                ts = datetime.datetime.fromisoformat(timestamp_str)
+            except ValueError:
+                continue
+            minutes = ts.hour * 60 + ts.minute
+            points.append({"x": minutes, "y": float(value)})
+        return points
+
+    thresholds: dict[str, dict[str, float | None]] = {
+        "lux": {"open": None, "close": None},
+        "solar_rad": {"open": None, "close": None},
+        "altitude": {"open": None, "close": None},
+    }
+    if current_schedule is not None:
+        for direction in ("open", "close"):
+            entry = current_schedule.get(direction, {})
+            for sensor in ("lux", "solar_rad", "altitude"):
+                value = entry.get(sensor)
+                if value is not None:
+                    thresholds[sensor][direction] = float(value)
+
+    return {
+        "lux_points": _points("lux"),
+        "solar_rad_points": _points("solar_rad"),
+        "altitude_points": _points("altitude"),
+        "thresholds": thresholds,
+        "sample_count": len(sensor_samples),
+    }
+
+
+def prepare_threshold_margin_data(operation_metrics: list[dict], current_schedule: dict | None) -> dict:
+    """操作時のセンサー値が現在の閾値からどれだけ離れているかを集計"""
+    if current_schedule is None:
+        return {"open": [], "close": [], "thresholds": None}
+
+    open_threshold = current_schedule.get("open", {})
+    close_threshold = current_schedule.get("close", {})
+
+    def _margins(direction: str, threshold: dict) -> list[dict[str, float | None]]:
+        # open の場合: lux - threshold_lux のような「閾値を上回ったマージン」を返す
+        # close の場合: threshold_lux - lux のような「閾値を下回ったマージン」を返す
+        results: list[dict[str, float | None]] = []
+        for op in operation_metrics:
+            if op.get("action") != direction or op.get("operation_type") == "manual":
+                continue
+            entry: dict[str, float | None] = {}
+            for sensor in ("lux", "solar_rad", "altitude"):
+                value = op.get(sensor)
+                threshold_value = threshold.get(sensor)
+                if value is None or threshold_value is None:
+                    entry[sensor] = None
+                else:
+                    margin = float(value) - float(threshold_value)
+                    if direction == "close":
+                        margin = -margin
+                    entry[sensor] = margin
+            results.append(entry)
+        return results
+
+    return {
+        "open": _margins("open", open_threshold),
+        "close": _margins("close", close_threshold),
+        "thresholds": {
+            "open": {k: open_threshold.get(k) for k in ("lux", "solar_rad", "altitude")},
+            "close": {k: close_threshold.get(k) for k in ("lux", "solar_rad", "altitude")},
+        },
+    }
+
+
+def generate_metrics_html(
+    stats: dict,
+    operation_metrics: list[dict],
+    data_period: dict,
+    postpone_events: list[dict] | None = None,
+    postpone_stats: dict | None = None,
+    sensor_samples: list[dict] | None = None,
+    current_schedule: dict | None = None,
+) -> str:
     """Tailwind CSSを使用したメトリクスHTMLを生成"""
+    postpone_events = postpone_events or []
+    postpone_stats = postpone_stats or {
+        "total": 0,
+        "open_count": 0,
+        "close_count": 0,
+        "resolved_count": 0,
+        "unresolved_count": 0,
+        "resolve_rate": 0.0,
+        "reason_counts": {},
+        "trigger_counts": {},
+        "lag_minutes": [],
+    }
+    sensor_samples = sensor_samples or []
+
     # JavaScript用データを準備
     chart_data = {
         "open_times": stats["open_times"],
@@ -310,6 +495,9 @@ def generate_metrics_html(stats: dict, operation_metrics: list[dict], data_perio
         "auto_sensor_data": stats["auto_sensor_data"],
         "manual_sensor_data": stats["manual_sensor_data"],
         "time_series": prepare_time_series_data(operation_metrics),
+        "postpone": prepare_postpone_chart_data(postpone_events),
+        "sensor_samples": prepare_sensor_samples_data(sensor_samples, current_schedule),
+        "threshold_margin": prepare_threshold_margin_data(operation_metrics, current_schedule),
     }
 
     chart_data_json = json.dumps(chart_data)
@@ -360,6 +548,18 @@ def generate_metrics_html(stats: dict, operation_metrics: list[dict], data_perio
         <!-- 基本統計 -->
         {generate_basic_stats_section(stats)}
 
+        <!-- 見合わせ分析 -->
+        {generate_postpone_summary_section(postpone_stats)}
+
+        <!-- 見合わせ詳細 -->
+        {generate_postpone_detail_section(postpone_events)}
+
+        <!-- 閾値マージン分析 -->
+        {generate_threshold_margin_section(current_schedule)}
+
+        <!-- センサー日内推移 -->
+        {generate_sensor_profile_section(len(sensor_samples))}
+
         <!-- 時刻分析 -->
         {generate_time_analysis_section()}
 
@@ -378,6 +578,9 @@ def generate_metrics_html(stats: dict, operation_metrics: list[dict], data_perio
         generateTimeSeriesCharts();
         generateAutoSensorCharts();
         generateManualSensorCharts();
+        generatePostponeCharts();
+        generateSensorProfileCharts();
+        generateThresholdMarginCharts();
 
         // パーマリンク機能を初期化
         initializePermalinks();
@@ -528,6 +731,296 @@ def generate_basic_stats_section(stats: dict) -> str:
                     <div class="text-center">
                         <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">データ収集日数</p>
                         <p class="text-2xl font-bold text-indigo-500">{stats["total_days"]:,}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+POSTPONE_REASON_LABEL = {
+    "sensor_invalid": "センサー値不明",
+    "too_dark": "暗くて見合わせ",
+}
+
+
+def _format_postpone_reason(reason: str) -> str:
+    return POSTPONE_REASON_LABEL.get(reason, reason)
+
+
+def generate_postpone_summary_section(postpone_stats: dict) -> str:
+    """見合わせサマリーセクション (直近30日)"""
+    return f"""
+    <div class="mb-8">
+        <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="postpone-summary">
+            <i class="fas fa-pause-circle mr-2 text-amber-600"></i>
+            見合わせ分析 (直近30日)
+            <span class="permalink-icon" onclick="copyPermalink('postpone-summary')">
+                <i class="fas fa-link text-sm"></i>
+            </span>
+        </h2>
+
+        <div class="bg-white rounded-lg shadow mb-4">
+            <div class="border-b px-4 py-3">
+                <p class="font-semibold text-gray-700">サマリー</p>
+            </div>
+            <div class="p-4">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div class="text-center">
+                        <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">見合わせ件数</p>
+                        <p class="text-2xl font-bold text-amber-600">{postpone_stats["total"]:,}</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">☀️ 開け側</p>
+                        <p class="text-2xl font-bold text-amber-500">{postpone_stats["open_count"]:,}</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">🌙 閉め側</p>
+                        <p class="text-2xl font-bold text-amber-500">{postpone_stats["close_count"]:,}</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">解消済み</p>
+                        <p class="text-2xl font-bold text-green-600">{postpone_stats["resolved_count"]:,}</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">解消率</p>
+                        <p class="text-2xl font-bold text-green-600">{postpone_stats["resolve_rate"]:.1f}%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white rounded-lg shadow">
+                <div class="border-b px-4 py-3">
+                    <p class="font-semibold text-gray-700">理由 × 方向</p>
+                </div>
+                <div class="p-4">
+                    <div class="chart-container">
+                        <canvas id="postponeReasonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow">
+                <div class="border-b px-4 py-3">
+                    <p class="font-semibold text-gray-700">日別の発生件数</p>
+                </div>
+                <div class="p-4">
+                    <div class="chart-container">
+                        <canvas id="postponeDailyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_postpone_detail_section(postpone_events: list[dict]) -> str:
+    """見合わせ詳細表 (新しい順、最大100件)"""
+    if not postpone_events:
+        rows_html = (
+            '<tr><td colspan="8" class="text-center text-gray-500 py-4">'
+            "直近30日の見合わせ記録はありません。"
+            "</td></tr>"
+        )
+    else:
+        rows: list[str] = []
+        for ev in sorted(postpone_events, key=lambda e: e["timestamp"], reverse=True)[:100]:
+            ts = ev.get("timestamp", "")
+            try:
+                display_ts = datetime.datetime.fromisoformat(ts).strftime("%Y-%m-%d %H:%M")
+            except (ValueError, TypeError):
+                display_ts = ts
+            scheduled = ev.get("scheduled_time")
+            scheduled_display = "-"
+            if scheduled:
+                try:
+                    scheduled_display = datetime.datetime.fromisoformat(scheduled).strftime("%H:%M")
+                except (ValueError, TypeError):
+                    scheduled_display = scheduled
+            action_label = "☀️ 開け" if ev["intended_action"] == "open" else "🌙 閉め"
+            trigger_label = "スケジュール" if ev["trigger"] == "schedule" else "自動"
+            reason_label = _format_postpone_reason(ev["reason"])
+            resolved = ev.get("resolved_at")
+            resolved_label = "未解消"
+            resolved_class = "text-amber-600"
+            if resolved:
+                try:
+                    started = datetime.datetime.fromisoformat(ts)
+                    resolved_dt = datetime.datetime.fromisoformat(resolved)
+                    lag_min = (resolved_dt - started).total_seconds() / 60.0
+                    resolved_label = f"{lag_min:.0f} 分後 ({resolved_dt.strftime('%H:%M')})"
+                    resolved_class = "text-green-600"
+                except (ValueError, TypeError):
+                    resolved_label = "解消済み"
+                    resolved_class = "text-green-600"
+            lux = ev.get("lux")
+            solar_rad = ev.get("solar_rad")
+            altitude = ev.get("altitude")
+
+            def _fmt(value):
+                return f"{value:.1f}" if isinstance(value, (int | float)) else "-"
+
+            sensor_html = f"lux: {_fmt(lux)} / solar: {_fmt(solar_rad)} / alt: {_fmt(altitude)}"
+            rows.append(
+                f"<tr class='border-b'>"
+                f"<td class='px-2 py-2 text-sm whitespace-nowrap'>{display_ts}</td>"
+                f"<td class='px-2 py-2 text-sm'>{action_label}</td>"
+                f"<td class='px-2 py-2 text-sm'>{trigger_label}</td>"
+                f"<td class='px-2 py-2 text-sm whitespace-nowrap'>{scheduled_display}</td>"
+                f"<td class='px-2 py-2 text-sm'>{reason_label}</td>"
+                f"<td class='px-2 py-2 text-xs text-gray-600 whitespace-nowrap'>{sensor_html}</td>"
+                f"<td class='px-2 py-2 text-sm {resolved_class} whitespace-nowrap'>{resolved_label}</td>"
+                f"</tr>"
+            )
+        rows_html = "".join(rows)
+
+    return f"""
+    <div class="mb-8">
+        <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="postpone-detail">
+            <i class="fas fa-list mr-2 text-amber-600"></i>
+            見合わせ詳細 (最新100件)
+            <span class="permalink-icon" onclick="copyPermalink('postpone-detail')">
+                <i class="fas fa-link text-sm"></i>
+            </span>
+        </h2>
+        <div class="bg-white rounded-lg shadow overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">発生日時</th>
+                        <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">方向</th>
+                        <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">トリガー</th>
+                        <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">予定時刻</th>
+                        <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">理由</th>
+                        <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">センサー値</th>
+                        <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">解消</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows_html}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    """
+
+
+def generate_threshold_margin_section(current_schedule: dict | None) -> str:
+    """閾値マージン分析セクション"""
+    threshold_text = "-"
+    if current_schedule is not None:
+        try:
+            open_t = current_schedule.get("open", {})
+            close_t = current_schedule.get("close", {})
+            open_text = (
+                f"開け閾値: lux≥{open_t.get('lux', '-')}, "
+                f"solar_rad≥{open_t.get('solar_rad', '-')}, "
+                f"alt≥{open_t.get('altitude', '-')}"
+            )
+            close_text = (
+                f"閉め閾値: lux<{close_t.get('lux', '-')}, "
+                f"solar_rad<{close_t.get('solar_rad', '-')}, "
+                f"alt<{close_t.get('altitude', '-')}"
+            )
+            threshold_text = f"{open_text} ／ {close_text}"
+        except Exception:
+            threshold_text = "-"
+
+    return f"""
+    <div class="mb-8">
+        <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="threshold-margin">
+            <i class="fas fa-sliders mr-2 text-blue-600"></i>
+            閾値マージン分析
+            <span class="permalink-icon" onclick="copyPermalink('threshold-margin')">
+                <i class="fas fa-link text-sm"></i>
+            </span>
+        </h2>
+        <div class="text-xs text-gray-500 mb-2">参照閾値: {threshold_text}</div>
+        <div class="text-xs text-gray-500 mb-3">
+            操作時のセンサー値が現在の閾値からどれだけ離れていたか。
+            値が 0 に近いほどギリギリ。負の値は閾値を満たさないまま操作された記録（手動を除く）。
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="bg-white rounded-lg shadow">
+                <div class="border-b px-4 py-3">
+                    <p class="font-semibold text-gray-700">照度 (lux) のマージン</p>
+                </div>
+                <div class="p-4">
+                    <div class="chart-container">
+                        <canvas id="thresholdMarginLuxChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow">
+                <div class="border-b px-4 py-3">
+                    <p class="font-semibold text-gray-700">日射 (solar_rad) のマージン</p>
+                </div>
+                <div class="p-4">
+                    <div class="chart-container">
+                        <canvas id="thresholdMarginSolarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow">
+                <div class="border-b px-4 py-3">
+                    <p class="font-semibold text-gray-700">太陽高度 (altitude) のマージン</p>
+                </div>
+                <div class="p-4">
+                    <div class="chart-container">
+                        <canvas id="thresholdMarginAltitudeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_sensor_profile_section(sample_count: int) -> str:
+    """センサーサンプル日内推移セクション"""
+    return f"""
+    <div class="mb-8">
+        <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="sensor-profile">
+            <i class="fas fa-wave-square mr-2 text-emerald-600"></i>
+            センサー日内推移 (直近7日)
+            <span class="permalink-icon" onclick="copyPermalink('sensor-profile')">
+                <i class="fas fa-link text-sm"></i>
+            </span>
+        </h2>
+        <div class="text-xs text-gray-500 mb-3">
+            1分間隔のサンプル ({sample_count:,} 件) を時刻別に散布表示。赤線=開け閾値、青線=閉め閾値。
+        </div>
+        <div class="space-y-4">
+            <div class="bg-white rounded-lg shadow">
+                <div class="border-b px-4 py-3">
+                    <p class="font-semibold text-gray-700">💡 照度 (lux)</p>
+                </div>
+                <div class="p-4">
+                    <div class="chart-container">
+                        <canvas id="sensorProfileLuxChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow">
+                <div class="border-b px-4 py-3">
+                    <p class="font-semibold text-gray-700">☀️ 日射 (solar_rad)</p>
+                </div>
+                <div class="p-4">
+                    <div class="chart-container">
+                        <canvas id="sensorProfileSolarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow">
+                <div class="border-b px-4 py-3">
+                    <p class="font-semibold text-gray-700">📐 太陽高度 (altitude)</p>
+                </div>
+                <div class="p-4">
+                    <div class="chart-container">
+                        <canvas id="sensorProfileAltitudeChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -1990,5 +2483,259 @@ def generate_chart_javascript() -> str:
                     }
                 });
             }
+        }
+
+        function generatePostponeCharts() {
+            const postpone = chartData.postpone || {};
+
+            // 理由 × 方向 (積み上げ棒)
+            const reasonCtx = document.getElementById('postponeReasonChart');
+            if (reasonCtx) {
+                const matrix = postpone.reason_action_matrix || {};
+                const reasonLabelMap = {
+                    'sensor_invalid': 'センサー値不明',
+                    'too_dark': '暗くて見合わせ'
+                };
+                const reasons = Object.keys(matrix);
+                const labels = reasons.map(r => reasonLabelMap[r] || r);
+                const openData = reasons.map(r => matrix[r].open || 0);
+                const closeData = reasons.map(r => matrix[r].close || 0);
+                new Chart(reasonCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: '☀️ 開け',
+                                data: openData,
+                                backgroundColor: 'rgba(251, 191, 36, 0.7)',
+                                borderColor: 'rgba(251, 191, 36, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: '🌙 閉め',
+                                data: closeData,
+                                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                                borderColor: 'rgba(59, 130, 246, 1)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { stacked: true },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                title: { display: true, text: '件数' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 日別の発生件数
+            const dailyCtx = document.getElementById('postponeDailyChart');
+            if (dailyCtx) {
+                new Chart(dailyCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: postpone.daily_labels || [],
+                        datasets: [
+                            {
+                                label: '☀️ 開け',
+                                data: postpone.daily_open || [],
+                                backgroundColor: 'rgba(251, 191, 36, 0.7)'
+                            },
+                            {
+                                label: '🌙 閉め',
+                                data: postpone.daily_close || [],
+                                backgroundColor: 'rgba(59, 130, 246, 0.7)'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { stacked: true },
+                            y: { stacked: true, beginAtZero: true, title: { display: true, text: '件数' } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function _minutesToHHMM(minutes) {
+            const h = Math.floor(minutes / 60);
+            const m = Math.floor(minutes % 60);
+            return ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+        }
+
+        function _renderSensorProfile(canvasId, points, thresholds, yLabel) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+            const datasets = [
+                {
+                    label: 'センサー値',
+                    data: points,
+                    backgroundColor: 'rgba(16, 185, 129, 0.45)',
+                    borderColor: 'rgba(16, 185, 129, 0.8)',
+                    pointRadius: 1.5,
+                    showLine: false
+                }
+            ];
+            if (thresholds && thresholds.open !== null && thresholds.open !== undefined) {
+                datasets.push({
+                    type: 'line',
+                    label: '開け閾値',
+                    data: [
+                        { x: 0, y: thresholds.open },
+                        { x: 1440, y: thresholds.open }
+                    ],
+                    borderColor: 'rgba(220, 38, 38, 0.7)',
+                    borderWidth: 2,
+                    borderDash: [4, 4],
+                    pointRadius: 0,
+                    fill: false
+                });
+            }
+            if (thresholds && thresholds.close !== null && thresholds.close !== undefined) {
+                datasets.push({
+                    type: 'line',
+                    label: '閉め閾値',
+                    data: [
+                        { x: 0, y: thresholds.close },
+                        { x: 1440, y: thresholds.close }
+                    ],
+                    borderColor: 'rgba(37, 99, 235, 0.7)',
+                    borderWidth: 2,
+                    borderDash: [4, 4],
+                    pointRadius: 0,
+                    fill: false
+                });
+            }
+            new Chart(ctx, {
+                type: 'scatter',
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            min: 0,
+                            max: 1440,
+                            ticks: {
+                                stepSize: 120,
+                                callback: function(value) { return _minutesToHHMM(value); }
+                            },
+                            title: { display: true, text: '時刻' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: yLabel }
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateSensorProfileCharts() {
+            const data = chartData.sensor_samples || {};
+            const thresholds = data.thresholds || {};
+            _renderSensorProfile(
+                'sensorProfileLuxChart',
+                data.lux_points || [],
+                thresholds.lux,
+                '照度 (lux)'
+            );
+            _renderSensorProfile(
+                'sensorProfileSolarChart',
+                data.solar_rad_points || [],
+                thresholds.solar_rad,
+                '日射 (W/m²)'
+            );
+            _renderSensorProfile(
+                'sensorProfileAltitudeChart',
+                data.altitude_points || [],
+                thresholds.altitude,
+                '太陽高度 (°)'
+            );
+        }
+
+        function _renderMargin(canvasId, sensor, xLabel) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+            const margin = chartData.threshold_margin || {};
+            const openMargins = (margin.open || [])
+                .map(e => e[sensor])
+                .filter(v => v !== null && v !== undefined);
+            const closeMargins = (margin.close || [])
+                .map(e => e[sensor])
+                .filter(v => v !== null && v !== undefined);
+            if (openMargins.length === 0 && closeMargins.length === 0) {
+                ctx.getContext('2d').fillText('データがありません', 20, 40);
+                return;
+            }
+
+            const all = openMargins.concat(closeMargins);
+            const minV = Math.min(...all, 0);
+            const maxV = Math.max(...all, 0);
+            const span = (maxV - minV) || 1;
+            const binCount = 20;
+            const bins = Array.from({length: binCount + 1}, (_, i) => minV + span * i / binCount);
+            const labels = bins.slice(0, -1).map(b => b.toFixed(1));
+
+            function histogram(values, edges) {
+                const hist = new Array(edges.length - 1).fill(0);
+                for (const v of values) {
+                    for (let i = 0; i < edges.length - 1; i++) {
+                        if (v >= edges[i] && (i === edges.length - 2 ? v <= edges[i+1] : v < edges[i+1])) {
+                            hist[i]++;
+                            break;
+                        }
+                    }
+                }
+                return hist;
+            }
+
+            const openHist = histogram(openMargins, bins);
+            const closeHist = histogram(closeMargins, bins);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '☀️ 開け操作',
+                            data: openHist,
+                            backgroundColor: 'rgba(251, 191, 36, 0.7)'
+                        },
+                        {
+                            label: '🌙 閉め操作',
+                            data: closeHist,
+                            backgroundColor: 'rgba(59, 130, 246, 0.7)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: xLabel } },
+                        y: { beginAtZero: true, title: { display: true, text: '件数' } }
+                    }
+                }
+            });
+        }
+
+        function generateThresholdMarginCharts() {
+            _renderMargin('thresholdMarginLuxChart', 'lux', 'lux マージン');
+            _renderMargin('thresholdMarginSolarChart', 'solar_rad', 'solar_rad マージン (W/m²)');
+            _renderMargin('thresholdMarginAltitudeChart', 'altitude', 'altitude マージン (°)');
         }
     """

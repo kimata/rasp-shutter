@@ -66,6 +66,40 @@ class MetricsCollector:
             """)
 
             conn.execute("""
+                CREATE TABLE IF NOT EXISTS postpone_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TIMESTAMP NOT NULL,
+                    date TEXT NOT NULL,
+                    intended_action TEXT NOT NULL CHECK (intended_action IN ('open', 'close')),
+                    trigger TEXT NOT NULL CHECK (trigger IN ('schedule', 'auto')),
+                    scheduled_time TIMESTAMP,
+                    reason TEXT NOT NULL,
+                    lux REAL,
+                    solar_rad REAL,
+                    altitude REAL,
+                    threshold_lux REAL,
+                    threshold_solar_rad REAL,
+                    threshold_altitude REAL,
+                    resolved_at TIMESTAMP,
+                    resolved_operation_id INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS sensor_samples (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TIMESTAMP NOT NULL,
+                    date TEXT NOT NULL,
+                    lux REAL,
+                    solar_rad REAL,
+                    altitude REAL,
+                    context TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_operation_metrics_date
                 ON operation_metrics(date)
             """)
@@ -78,6 +112,26 @@ class MetricsCollector:
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_daily_failures_date
                 ON daily_failures(date)
+            """)
+
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_postpone_events_date
+                ON postpone_events(date)
+            """)
+
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_postpone_events_unresolved
+                ON postpone_events(date, intended_action, resolved_at)
+            """)
+
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_sensor_samples_timestamp
+                ON sensor_samples(timestamp)
+            """)
+
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_sensor_samples_date
+                ON sensor_samples(date)
             """)
 
             conn.commit()
@@ -126,13 +180,24 @@ class MetricsCollector:
             # Python 3.12+: datetimeアダプターを明示的に設定
             conn.execute("BEGIN")
             # 個別操作として記録
-            conn.execute(
+            cursor = conn.execute(
                 """
                 INSERT INTO operation_metrics
                 (timestamp, date, action, operation_type, lux, solar_rad, altitude)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
                 (timestamp.isoformat(), date, action, mode, lux, solar_rad, altitude),
+            )
+            operation_id = cursor.lastrowid
+
+            # 同日・同方向の未解決の見合わせを解消扱いにする
+            conn.execute(
+                """
+                UPDATE postpone_events
+                SET resolved_at = ?, resolved_operation_id = ?
+                WHERE date = ? AND intended_action = ? AND resolved_at IS NULL
+            """,
+                (timestamp.isoformat(), operation_id, date, action),
             )
             conn.execute("COMMIT")
 
@@ -157,6 +222,102 @@ class MetricsCollector:
                 VALUES (?, ?)
             """,
                 (date, timestamp.isoformat()),
+            )
+
+    def record_postpone(
+        self,
+        intended_action: str,
+        trigger: str,
+        reason: str,
+        sensor_data: rasp_shutter.type_defs.SensorData | None = None,
+        threshold: dict | None = None,
+        scheduled_time: datetime.datetime | None = None,
+        timestamp: datetime.datetime | None = None,
+        cooldown_sec: float = 60.0,
+    ) -> bool:
+        """見合わせイベントを記録 (同日・同方向・同reason は cooldown_sec 以内なら抑制)
+
+        Returns:
+            実際に記録した場合 True、クールダウンで抑制された場合 False
+        """
+        if timestamp is None:
+            timestamp = my_lib.time.now()
+
+        date = timestamp.date().isoformat()
+
+        lux = sensor_data.lux.value if sensor_data and sensor_data.lux.valid else None
+        solar_rad = sensor_data.solar_rad.value if sensor_data and sensor_data.solar_rad.valid else None
+        altitude = sensor_data.altitude.value if sensor_data and sensor_data.altitude.valid else None
+
+        threshold_lux = threshold.get("lux") if threshold else None
+        threshold_solar_rad = threshold.get("solar_rad") if threshold else None
+        threshold_altitude = threshold.get("altitude") if threshold else None
+
+        cooldown_threshold = (timestamp - datetime.timedelta(seconds=cooldown_sec)).isoformat()
+
+        with self.lock, my_lib.sqlite_util.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                """
+                SELECT 1 FROM postpone_events
+                WHERE date = ? AND intended_action = ? AND reason = ?
+                  AND timestamp >= ?
+                LIMIT 1
+            """,
+                (date, intended_action, reason, cooldown_threshold),
+            )
+            if cursor.fetchone() is not None:
+                return False
+
+            scheduled_iso = scheduled_time.isoformat() if scheduled_time else None
+            conn.execute(
+                """
+                INSERT INTO postpone_events
+                (timestamp, date, intended_action, trigger, scheduled_time, reason,
+                 lux, solar_rad, altitude,
+                 threshold_lux, threshold_solar_rad, threshold_altitude)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    timestamp.isoformat(),
+                    date,
+                    intended_action,
+                    trigger,
+                    scheduled_iso,
+                    reason,
+                    lux,
+                    solar_rad,
+                    altitude,
+                    threshold_lux,
+                    threshold_solar_rad,
+                    threshold_altitude,
+                ),
+            )
+        return True
+
+    def record_sensor_sample(
+        self,
+        sensor_data: rasp_shutter.type_defs.SensorData | None,
+        context: str | None = None,
+        timestamp: datetime.datetime | None = None,
+    ) -> None:
+        """センサーサンプルを記録"""
+        if timestamp is None:
+            timestamp = my_lib.time.now()
+
+        date = timestamp.date().isoformat()
+
+        lux = sensor_data.lux.value if sensor_data and sensor_data.lux.valid else None
+        solar_rad = sensor_data.solar_rad.value if sensor_data and sensor_data.solar_rad.valid else None
+        altitude = sensor_data.altitude.value if sensor_data and sensor_data.altitude.valid else None
+
+        with self.lock, my_lib.sqlite_util.connect(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO sensor_samples
+                (timestamp, date, lux, solar_rad, altitude, context)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """,
+                (timestamp.isoformat(), date, lux, solar_rad, altitude, context),
             )
 
     def get_operation_metrics(self, start_date: str, end_date: str) -> list:
@@ -285,6 +446,46 @@ class MetricsCollector:
 
         return self.get_failure_metrics(start_date.isoformat(), end_date.isoformat())
 
+    def get_postpone_events(self, start_date: str, end_date: str) -> list:
+        """指定期間の見合わせイベントを取得"""
+        with my_lib.sqlite_util.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT * FROM postpone_events
+                WHERE date BETWEEN ? AND ?
+                ORDER BY timestamp
+            """,
+                (start_date, end_date),
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_recent_postpone_events(self, days: int = 30) -> list:
+        """最近N日間の見合わせイベントを取得"""
+        end_date = my_lib.time.now().date()
+        start_date = end_date - datetime.timedelta(days=days)
+        return self.get_postpone_events(start_date.isoformat(), end_date.isoformat())
+
+    def get_sensor_samples(self, start_date: str, end_date: str) -> list:
+        """指定期間のセンサーサンプルを取得"""
+        with my_lib.sqlite_util.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT * FROM sensor_samples
+                WHERE date BETWEEN ? AND ?
+                ORDER BY timestamp
+            """,
+                (start_date, end_date),
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_recent_sensor_samples(self, days: int = 7) -> list:
+        """最近N日間のセンサーサンプルを取得"""
+        end_date = my_lib.time.now().date()
+        start_date = end_date - datetime.timedelta(days=days)
+        return self.get_sensor_samples(start_date.isoformat(), end_date.isoformat())
+
 
 # グローバルインスタンス
 _collector_instance: MetricsCollector | None = None
@@ -322,3 +523,37 @@ def record_shutter_operation(
 def record_failure(metrics_data_path, timestamp: datetime.datetime | None = None):
     """シャッター制御失敗を記録（便利関数）"""
     get_collector(metrics_data_path).record_failure(timestamp)
+
+
+def record_postpone(
+    metrics_data_path,
+    intended_action: str,
+    trigger: str,
+    reason: str,
+    sensor_data: rasp_shutter.type_defs.SensorData | None = None,
+    threshold: dict | None = None,
+    scheduled_time: datetime.datetime | None = None,
+    timestamp: datetime.datetime | None = None,
+    cooldown_sec: float = 60.0,
+) -> bool:
+    """見合わせイベントを記録（便利関数）"""
+    return get_collector(metrics_data_path).record_postpone(
+        intended_action=intended_action,
+        trigger=trigger,
+        reason=reason,
+        sensor_data=sensor_data,
+        threshold=threshold,
+        scheduled_time=scheduled_time,
+        timestamp=timestamp,
+        cooldown_sec=cooldown_sec,
+    )
+
+
+def record_sensor_sample(
+    metrics_data_path,
+    sensor_data: rasp_shutter.type_defs.SensorData | None,
+    context: str | None = None,
+    timestamp: datetime.datetime | None = None,
+) -> None:
+    """センサーサンプルを記録（便利関数）"""
+    get_collector(metrics_data_path).record_sensor_sample(sensor_data, context, timestamp)
