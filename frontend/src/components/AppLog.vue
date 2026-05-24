@@ -5,7 +5,16 @@
             実行ログ
         </h2>
         <div class="log mt-4">
-            <p v-if="log.length == 0" class="text-gray-500 text-center py-4">ログがありません。</p>
+            <div
+                v-if="loading"
+                class="flex items-center justify-center gap-2 text-gray-500 py-6"
+            >
+                <ArrowPathIcon class="w-5 h-5 text-green-600 animate-spin" />
+                <span>読み込み中...</span>
+            </div>
+            <p v-else-if="log.length == 0" class="text-gray-500 text-center py-4">
+                ログがありません。
+            </p>
             <div v-else class="space-y-3">
                 <div
                     v-for="(entry, index) in log.slice((page - 1) * pageSize, page * pageSize)"
@@ -201,6 +210,7 @@ export default {
             pageSize: 10,
             page: 1,
             log: [],
+            loading: true,
             eventSource: null,
         };
     },
@@ -245,10 +255,10 @@ export default {
         getIconBgClass(entry) {
             const type = this.getLogType(entry);
             const classMap = {
-                [LOG_TYPES.OPEN_SUCCESS]: "bg-green-600",
-                [LOG_TYPES.CLOSE_SUCCESS]: "bg-green-700",
-                [LOG_TYPES.SENSOR_OPEN]: "bg-green-500",
-                [LOG_TYPES.SENSOR_CLOSE]: "bg-green-800",
+                [LOG_TYPES.OPEN_SUCCESS]: "bg-lime-500",
+                [LOG_TYPES.CLOSE_SUCCESS]: "bg-emerald-800",
+                [LOG_TYPES.SENSOR_OPEN]: "bg-lime-400",
+                [LOG_TYPES.SENSOR_CLOSE]: "bg-emerald-700",
                 [LOG_TYPES.ERROR]: "bg-red-600",
                 [LOG_TYPES.POSTPONE]: "bg-amber-500",
                 [LOG_TYPES.SCHEDULE]: "bg-gray-500",
@@ -263,10 +273,10 @@ export default {
         getLabelClass(entry) {
             const type = this.getLogType(entry);
             const classMap = {
-                [LOG_TYPES.OPEN_SUCCESS]: "text-green-700",
-                [LOG_TYPES.CLOSE_SUCCESS]: "text-green-800",
-                [LOG_TYPES.SENSOR_OPEN]: "text-green-600",
-                [LOG_TYPES.SENSOR_CLOSE]: "text-green-900",
+                [LOG_TYPES.OPEN_SUCCESS]: "text-lime-700",
+                [LOG_TYPES.CLOSE_SUCCESS]: "text-emerald-800",
+                [LOG_TYPES.SENSOR_OPEN]: "text-lime-600",
+                [LOG_TYPES.SENSOR_CLOSE]: "text-emerald-700",
                 [LOG_TYPES.ERROR]: "text-red-700",
                 [LOG_TYPES.POSTPONE]: "text-amber-700",
                 [LOG_TYPES.SCHEDULE]: "text-gray-600",
@@ -316,6 +326,9 @@ export default {
                         position: "top-right",
                         message: "ログデータの取得に失敗しました。",
                     });
+                })
+                .finally(() => {
+                    this.loading = false;
                 });
         },
         watchEvent: function () {
