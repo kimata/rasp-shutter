@@ -477,7 +477,12 @@ def maybe_record_sensor_sample(config: rasp_shutter.config.AppConfig) -> None:
     """SENSOR_SAMPLE_INTERVAL_SEC 経過していればセンサーサンプルを別スレッドで記録する
 
     InfluxDB I/O でブロックしてスケジューラループを止めないよう、fire-and-forget で実行する。
+    DUMMY_MODE では InfluxDB が到達不能なケースが多く、無駄なタイムアウトと
+    collector lock 競合でテストが不安定になるため、サンプリング自体を無効化する。
     """
+    if rasp_shutter.util.is_dummy_mode():
+        return
+
     worker_id = my_lib.pytest_util.get_worker_id()
     now = my_lib.time.now()
     last = _last_sensor_sample_time.get(worker_id)
