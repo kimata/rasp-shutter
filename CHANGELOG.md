@@ -1,23 +1,23 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+このプロジェクトの注目すべき変更点をすべてこのファイルに記載します。
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/),
-and this project adheres to [Semantic Versioning](https://semver.org/).
+このファイルのフォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に基づいており、
+このプロジェクトは [Semantic Versioning](https://semver.org/spec/v2.0.0.html) に準拠しています。
 
 ## [0.1.1] - 2025-01-24
 
-### Fixed
+### 🐛 Fixed
 
 - Docker: .git をマウントして uv-dynamic-versioning を修正
 
-### Changed
+### 🔄 Changed
 
 - Frontend: 全体的なスペーシングを改善
 
 ## [0.1.0] - 2025-01-23
 
-### Added
+### ✨ Added
 
 - 初回リリース
 - スケジュールや照度センサーに基づく電動シャッター自動制御
