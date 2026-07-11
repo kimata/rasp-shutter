@@ -99,6 +99,41 @@ class TestScheduleValidate:
         schedule_data["open"]["time"] = "TEST"  # 不正な形式
         assert rasp_shutter.control.scheduler.schedule_validate(schedule_data) is False
 
+    def test_validate_out_of_range_time(self):
+        """timeが範囲外の場合（scheduleライブラリ登録時の例外を防止）"""
+        import rasp_shutter.control.scheduler
+
+        for invalid_time in ["99:99", "25:00", "12:60", "24:00"]:
+            schedule_data = ScheduleFactory.create()
+            schedule_data["open"]["time"] = invalid_time
+            assert rasp_shutter.control.scheduler.schedule_validate(schedule_data) is False, invalid_time
+
+    def test_validate_time_with_extra_characters(self):
+        """timeに余分な文字が含まれる場合（fullmatchで拒否）"""
+        import rasp_shutter.control.scheduler
+
+        for invalid_time in ["xx12:34yy", "12:345", " 08:00"]:
+            schedule_data = ScheduleFactory.create()
+            schedule_data["open"]["time"] = invalid_time
+            assert rasp_shutter.control.scheduler.schedule_validate(schedule_data) is False, invalid_time
+
+    def test_validate_boundary_time(self):
+        """timeの境界値が有効と判定される"""
+        import rasp_shutter.control.scheduler
+
+        for valid_time in ["00:00", "23:59", "05:30"]:
+            schedule_data = ScheduleFactory.create()
+            schedule_data["open"]["time"] = valid_time
+            assert rasp_shutter.control.scheduler.schedule_validate(schedule_data) is True, valid_time
+
+    def test_validate_invalid_time_type(self):
+        """timeの型が不正な場合"""
+        import rasp_shutter.control.scheduler
+
+        schedule_data = ScheduleFactory.create()
+        schedule_data["open"]["time"] = 700  # intは無効
+        assert rasp_shutter.control.scheduler.schedule_validate(schedule_data) is False
+
     def test_validate_invalid_wday_length(self):
         """wdayの長さが不正な場合"""
         import rasp_shutter.control.scheduler
@@ -157,6 +192,7 @@ class TestConvScheduleTimeToDatetime:
     def test_convert_time_string(self):
         """時刻文字列からdatetimeへの変換"""
         import my_lib.time
+
         import rasp_shutter.control.scheduler
 
         result = rasp_shutter.control.scheduler.conv_schedule_time_to_datetime("08:30")
@@ -190,8 +226,9 @@ class TestGetScheduler:
 
     def test_get_scheduler_returns_scheduler(self):
         """スケジューラーインスタンスを返すことを確認"""
-        import rasp_shutter.control.scheduler
         import schedule
+
+        import rasp_shutter.control.scheduler
 
         scheduler = rasp_shutter.control.scheduler.get_scheduler()
 
@@ -225,18 +262,19 @@ class TestScheduleDataManagement:
         # クリーンアップ
         rasp_shutter.control.scheduler.set_schedule_data(None)
 
-    def test_get_schedule_data_returns_none_initially(self):
+    def test_get_schedule_data_returns_none_initially(self, monkeypatch):
         """初期状態ではNoneを返す"""
-        import os
-
         import rasp_shutter.control.scheduler
 
         # ワーカーIDを変更して新しいインスタンスを作成
-        original_worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
-        os.environ["PYTEST_XDIST_WORKER"] = "test_worker_unique"
+        # NOTE: os.environ を直接書き換えると、非 xdist 実行時（元々未設定）に
+        # PYTEST_XDIST_WORKER=main が残留し、以降の全テストで my_lib.pytest_util.get_path()
+        # がサフィックスを付与するようになってしまう。monkeypatch なら元が未設定の場合は
+        # 未設定に復元される。
+        monkeypatch.setenv("PYTEST_XDIST_WORKER", "test_worker_unique")
 
-        try:
-            result = rasp_shutter.control.scheduler.get_schedule_data()
-            assert result is None
-        finally:
-            os.environ["PYTEST_XDIST_WORKER"] = original_worker
+        result = rasp_shutter.control.scheduler.get_schedule_data()
+        assert result is None
+
+        # 作成されたワーカーエントリを掃除
+        rasp_shutter.control.scheduler._schedule_data_instances.pop("test_worker_unique", None)

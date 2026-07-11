@@ -143,7 +143,12 @@ def call_shutter_api(config: rasp_shutter.config.AppConfig, index: int, state: s
 
     endpoint = shutter.endpoint.open if state == "open" else shutter.endpoint.close
     logging.debug("Request %s", endpoint)
-    if requests.get(endpoint, timeout=5).status_code != 200:
+    try:
+        if requests.get(endpoint, timeout=5).status_code != 200:
+            result = False
+    except requests.exceptions.RequestException:
+        # NOTE: 接続不可・タイムアウトも HTTP エラーと同様に「制御失敗」として扱う
+        logging.exception("Failed to request %s", endpoint)
         result = False
 
     return result
@@ -194,35 +199,45 @@ def set_shutter_state_impl(
     mode: CONTROL_MODE,
     sense_data: rasp_shutter.type_defs.SensorData | None,
     user: str,
-) -> None:
+) -> bool:
+    """1台のシャッターを制御する。
+
+    Returns:
+        制御に成功した場合と、制御間隔が短く見合わせた場合は True。
+        制御に失敗した場合は False。
+    """
     # NOTE: 閉じている場合に再度閉じるボタンをおしたり、逆に開いている場合に再度
     # 開くボタンを押すことが続くと、スイッチがエラーになるので exec_hist を使って
     # 防止する。また、明るさに基づく自動の開閉が連続するのを防止する。
     # exec_hist はこれ以外の目的で使わない。
     exec_hist = exec_stat_file(state, index)
-    diff_sec = my_lib.footprint.elapsed(exec_hist)
+    diff_sec = rasp_shutter.util.footprint_elapsed(exec_hist)
 
     shutter_name = config.shutter[index].name
 
     # NOTE: 制御間隔が短く、実際には制御できなかった場合、ログを残す。
     state_text = rasp_shutter.type_defs.state_to_action_text(state)
-    time_diff_str = time_str(diff_sec)
     by_text = f"(by {user})" if user != "" else ""
 
     # NamedTupleで制御間隔チェック
     interval_config = MODE_INTERVAL_CONFIG[mode]
     if (diff_sec / interval_config.divisor) < interval_config.interval_threshold:
+        # NOTE: この分岐に入る場合、diff_sec は有限値（履歴が存在しない場合は inf になり入らない）
+        time_diff_str = time_str(diff_sec)
         my_lib.webapp.log.info(
             f"🔔 {interval_config.log_prefix}{shutter_name}のシャッターを{state_text}るのを見合わせました。"
             f"{time_diff_str}前に{state_text}ています。{by_text}"
         )
-        return
+        return True
 
     result = call_shutter_api(config, index, state)
 
-    my_lib.footprint.update(exec_hist)
-    exec_inv_hist = exec_stat_file("close" if state == "open" else "open", index)
-    my_lib.footprint.clear(exec_inv_hist)
+    if result:
+        # NOTE: 実際に制御できた場合のみ実行履歴を更新する。
+        # 失敗時に更新すると、制御間隔チェックによりリトライが抑止されてしまう。
+        my_lib.footprint.update(exec_hist)
+        exec_inv_hist = exec_stat_file("close" if state == "open" else "open", index)
+        my_lib.footprint.clear(exec_inv_hist)
 
     sensor_text_str = sensor_text(sense_data)
     by_newline_text = f"\n(by {user})" if user != "" else ""
@@ -254,6 +269,8 @@ def set_shutter_state_impl(
         except Exception as e:
             logging.warning("失敗メトリクス記録に失敗しました: %s", e)
 
+    return result
+
 
 def set_shutter_state(
     config: rasp_shutter.config.AppConfig,
@@ -267,35 +284,51 @@ def set_shutter_state(
         "set_shutter_state index=[%s], state=%s, mode=%s", ",".join(str(n) for n in index_list), state, mode
     )
 
-    if state == "open":
-        if mode != CONTROL_MODE.MANUAL:
-            # NOTE: 手動以外でシャッターを開けた場合は、
-            # 自動で閉じた履歴を削除する。
-            my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
-    else:
-        # NOTE: シャッターを閉じる指示がされた場合は、
-        # 暗くて延期されていた開ける制御を取り消す。
-        my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
-
+    success = True
     with control_lock:
         for index in index_list:
             try:
-                set_shutter_state_impl(config, index, state, mode, sense_data, user)
+                if not set_shutter_state_impl(config, index, state, mode, sense_data, user):
+                    success = False
             except Exception:
                 logging.exception("Failed to control shutter (index=%d)", index)
+                success = False
                 continue
 
-    return get_shutter_state(config)
+    # NOTE: 実際に制御できた場合のみ状態を進める。失敗時に進めると、
+    # 暗くて延期されていた開ける制御などのリカバリ経路が失われる。
+    if success:
+        if state == "open":
+            if mode != CONTROL_MODE.MANUAL:
+                # NOTE: 手動以外でシャッターを開けた場合は、
+                # 自動で閉じた履歴を削除する。
+                my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
+        else:
+            # NOTE: シャッターを閉じた場合は、
+            # 暗くて延期されていた開ける制御を取り消す。
+            my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+
+    response = get_shutter_state(config)
+    if not success:
+        response.result = "error"
+    return response
+
+
+def _sensor_value_text(sensor_value: rasp_shutter.type_defs.SensorValue) -> str:
+    """センサー値を表示用文字列に変換（無効な場合は「?」）"""
+    if sensor_value.valid and sensor_value.value is not None:
+        return f"{sensor_value.value:.1f}"
+    return "?"
 
 
 def sensor_text(sense_data: rasp_shutter.type_defs.SensorData | None) -> str:
     if sense_data is None:
         return ""
-    else:
-        solar_rad = sense_data.solar_rad.value
-        lux = sense_data.lux.value
-        altitude = sense_data.altitude.value
-        return f"(日射: {solar_rad:.1f} W/m^2, 照度: {lux:.1f} LUX, 高度: {altitude:.1f})"
+
+    solar_rad = _sensor_value_text(sense_data.solar_rad)
+    lux = _sensor_value_text(sense_data.lux)
+    altitude = _sensor_value_text(sense_data.altitude)
+    return f"(日射: {solar_rad} W/m^2, 照度: {lux} LUX, 高度: {altitude})"
 
 
 # NOTE: テスト用のコード

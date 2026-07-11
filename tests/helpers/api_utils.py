@@ -28,27 +28,29 @@ class ShutterAPI:
         self.client = client
         self.url_prefix = rasp_shutter.config.URL_PREFIX
 
-    def open(self, index: int | None = None) -> dict[str, Any]:
+    def open(self, index: int | None = None, expect_result: str = "success") -> dict[str, Any]:
         """シャッターを開く
 
         Args:
             index: シャッターのインデックス（Noneの場合は全シャッター）
+            expect_result: 期待する result の値（制御失敗を検証する場合は "error"）
 
         Returns:
             APIレスポンスのJSON
         """
-        return self._control("open", index)
+        return self._control("open", index, expect_result)
 
-    def close(self, index: int | None = None) -> dict[str, Any]:
+    def close(self, index: int | None = None, expect_result: str = "success") -> dict[str, Any]:
         """シャッターを閉じる
 
         Args:
             index: シャッターのインデックス（Noneの場合は全シャッター）
+            expect_result: 期待する result の値（制御失敗を検証する場合は "error"）
 
         Returns:
             APIレスポンスのJSON
         """
-        return self._control("close", index)
+        return self._control("close", index, expect_result)
 
     def get_state(self) -> dict[str, Any]:
         """シャッターの状態を取得
@@ -70,12 +72,15 @@ class ShutterAPI:
         assert response.status_code == 200
         return _get_json(response)
 
-    def _control(self, state: str, index: int | None = None) -> dict[str, Any]:
+    def _control(
+        self, state: str, index: int | None = None, expect_result: str = "success"
+    ) -> dict[str, Any]:
         """シャッター制御の内部メソッド
 
         Args:
             state: "open" または "close"
             index: シャッターのインデックス
+            expect_result: 期待する result の値（制御失敗を検証する場合は "error"）
 
         Returns:
             APIレスポンスのJSON
@@ -90,7 +95,7 @@ class ShutterAPI:
         )
         assert response.status_code == 200
         result = _get_json(response)
-        assert result["result"] == "success"
+        assert result["result"] == expect_result
         return result
 
 
@@ -111,11 +116,12 @@ class ScheduleAPI:
         assert response.status_code == 200
         return _get_json(response)
 
-    def update(self, schedule_data: dict) -> dict[str, Any]:
+    def update(self, schedule_data: dict, expect_success: bool = True) -> dict[str, Any]:
         """スケジュールを更新
 
         Args:
             schedule_data: スケジュールデータ
+            expect_success: 成功を期待するか（バリデーション失敗を検証する場合は False）
 
         Returns:
             APIレスポンスのJSON
@@ -124,8 +130,14 @@ class ScheduleAPI:
             f"{self.url_prefix}/api/schedule_ctrl",
             query_string={"cmd": "set", "data": json.dumps(schedule_data)},
         )
-        assert response.status_code == 200
-        return _get_json(response)
+        result = _get_json(response)
+        if expect_success:
+            assert response.status_code == 200
+        else:
+            # NOTE: バリデーション失敗時は 400 と {"result": "error"} が返る
+            assert response.status_code == 400
+            assert result["result"] == "error"
+        return result
 
 
 class LogAPI:

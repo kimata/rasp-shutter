@@ -225,11 +225,46 @@ class TestShutterControlFailure:
         mocker.patch.dict(os.environ, {"DUMMY_MODE": "false"})
         mocker.patch("rasp_shutter.control.webapi.control.requests.get", side_effect=request_mock)
 
-        shutter_api.open(index=1)
+        # NOTE: 制御に失敗した場合、API は result="error" を返す
+        shutter_api.open(index=1, expect_result="error")
         shutter_api.close(index=1)
 
         log_checker.wait_and_check(["CLEAR", "OPEN_FAIL", "CLOSE_MANUAL"])
         slack_checker.check_error_contains("手動で開けるのに失敗しました")
+
+    def test_shutter_ctrl_close_fail_keeps_pending(self, client, time_machine, mocker):
+        """閉め制御に失敗した場合、暗くて延期されていた開ける制御を取り消さない"""
+        setup_midnight_time(client, time_machine)
+
+        import my_lib.footprint
+
+        import rasp_shutter.control.config
+
+        shutter_api = ShutterAPI(client)
+        log_checker = LogChecker(client)
+        slack_checker = SlackChecker()
+
+        # 暗くて開けるのを延期している状態を作る
+        my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+
+        mocker.patch("rasp_shutter.control.webapi.control.call_shutter_api", return_value=False)
+
+        shutter_api.close(expect_result="error")
+
+        # 失敗時は pending open を維持する
+        assert my_lib.footprint.exists(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+
+        mocker.stopall()
+
+        shutter_api.close()
+
+        # 成功したら pending open は取り消される
+        assert not my_lib.footprint.exists(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+
+        # NOTE: エラーログと Slack 通知は非同期に処理されるため、テスト終了前に
+        # 到着を待って引き取る（次のテストの check_no_error() を壊さないようにする）
+        log_checker.wait_and_check(["CLEAR", "CLOSE_FAIL", "CLOSE_FAIL", "CLOSE_MANUAL", "CLOSE_MANUAL"])
+        slack_checker.check_error_contains("閉めるのに失敗しました")
 
 
 class TestShutterStateInconsistent:

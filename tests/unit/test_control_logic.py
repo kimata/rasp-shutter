@@ -91,7 +91,6 @@ class TestSensorText:
     def test_sensor_text_with_valid_data(self):
         """有効なセンサーデータのテキスト生成"""
         import rasp_shutter.control.webapi.control
-
         from tests.fixtures.sensor_factory import SensorDataFactory
 
         sense_data = SensorDataFactory.custom(
@@ -114,6 +113,56 @@ class TestSensorText:
 
         # Noneの場合は空文字列を返す
         assert result == ""
+
+    def test_sensor_text_with_invalid_data(self):
+        """センサー値が無効な場合（TypeErrorにならず「?」表示になる）"""
+        import rasp_shutter.control.webapi.control
+        from tests.fixtures.sensor_factory import SensorDataFactory
+
+        sense_data = SensorDataFactory.custom(
+            solar_rad=200.5,
+            lux_valid=False,
+            altitude=30.2,
+        )
+
+        result = rasp_shutter.control.webapi.control.sensor_text(sense_data)
+
+        assert "200.5" in result
+        assert "?" in result
+        assert "30.2" in result
+
+
+class TestCallShutterApi:
+    """call_shutter_api関数のテスト"""
+
+    def test_connection_error_returns_false(self, monkeypatch):
+        """ESP32に到達できない場合、例外ではなくFalseを返す"""
+        import types
+
+        import requests
+
+        import rasp_shutter.config
+        import rasp_shutter.control.webapi.control
+
+        monkeypatch.setenv("DUMMY_MODE", "false")
+
+        def raise_connection_error(*_args, **_kwargs):
+            raise requests.exceptions.ConnectionError("connection refused")
+
+        monkeypatch.setattr(requests, "get", raise_connection_error)
+
+        shutter = rasp_shutter.config.ShutterConfig(
+            name="test",
+            endpoint=rasp_shutter.config.ShutterEndpointConfig(
+                open="http://localhost:1/open",
+                close="http://localhost:1/close",
+            ),
+        )
+        config = types.SimpleNamespace(shutter=[shutter])
+
+        result = rasp_shutter.control.webapi.control.call_shutter_api(config, 0, "open")  # type: ignore[arg-type]
+
+        assert result is False
 
 
 class TestCmdHist:

@@ -35,8 +35,10 @@ RETRY_COUNT = 3
 # schedule ライブラリの曜日メソッド名（日曜始まり、wday[0]=日曜 に対応）
 WEEKDAY_METHODS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
 
-# 時刻フォーマット検証用パターン（HH:MM形式）
-SCHEDULE_TIME_PATTERN = re.compile(r"\d{2}:\d{2}")
+# 時刻フォーマット検証用パターン（HH:MM形式、00:00〜23:59）
+# NOTE: 範囲チェックを行わないと、"99:99" 等が schedule ライブラリの登録時に
+# ScheduleValueError を起こし、スケジューラが停止する。
+SCHEDULE_TIME_PATTERN = re.compile(r"(?:[01][0-9]|2[0-3]):[0-5][0-9]")
 
 should_terminate = threading.Event()
 
@@ -54,6 +56,10 @@ _loop_condition_lock = threading.Lock()
 # センサーサンプリング間隔（秒）と前回サンプル時刻（ワーカー別）
 SENSOR_SAMPLE_INTERVAL_SEC = 60.0
 _last_sensor_sample_time: dict[str, datetime.datetime] = {}
+
+# 自動制御が失敗した時刻（ワーカー・アクション別）
+# 失敗直後に毎ループ再試行してログ・通信がスパムになるのを防ぐ
+_last_auto_control_failure: dict[str, datetime.datetime] = {}
 
 
 def get_scheduler() -> schedule.Scheduler:
@@ -294,10 +300,13 @@ def exec_shutter_control_impl(
 ) -> bool:
     try:
         # NOTE: Web 経由だと認証つけた場合に困るので、直接関数を呼ぶ
-        rasp_shutter.control.webapi.control.set_shutter_state(
+        response = rasp_shutter.control.webapi.control.set_shutter_state(
             config, list(range(len(config.shutter))), state, mode, sense_data, user
         )
-        return True
+        # NOTE: 1台でも制御に失敗した場合は result が "error" になる。
+        # 成功したシャッターは実行履歴により次回リトライ時に見合わせられるため、
+        # リトライで二重制御されることはない。
+        return response.result == "success"
     except Exception:
         logging.exception("Failed to control shutter")
 
@@ -322,6 +331,34 @@ def exec_shutter_control(
     return False
 
 
+def _auto_control_failure_key(action: str) -> str:
+    return f"{my_lib.pytest_util.get_worker_id()}:{action}"
+
+
+def _is_auto_control_retry_suppressed(action: str) -> bool:
+    """直前の自動制御失敗からリトライ間隔が経過していない場合 True を返す"""
+    last_failure = _last_auto_control_failure.get(_auto_control_failure_key(action))
+    if last_failure is None:
+        return False
+
+    elapsed = (my_lib.time.now() - last_failure).total_seconds()
+    return elapsed < rasp_shutter.control.config.AUTO_CONTROL_RETRY_INTERVAL_SEC
+
+
+def _record_auto_control_failure(action: str) -> None:
+    _last_auto_control_failure[_auto_control_failure_key(action)] = my_lib.time.now()
+
+
+def _clear_auto_control_failure(action: str) -> None:
+    _last_auto_control_failure.pop(_auto_control_failure_key(action), None)
+
+
+def reset_auto_control_failure_state() -> None:
+    """自動制御の失敗記録をリセット（テスト用）"""
+    for action in ["open", "close"]:
+        _last_auto_control_failure.pop(_auto_control_failure_key(action), None)
+
+
 def shutter_auto_open(config: rasp_shutter.config.AppConfig) -> None:
     logging.debug("try auto open")
 
@@ -334,16 +371,25 @@ def shutter_auto_open(config: rasp_shutter.config.AppConfig) -> None:
         logging.debug("inactive")
         return
 
-    elapsed_pending_open = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+    elapsed_pending_open = rasp_shutter.util.footprint_elapsed(
+        rasp_shutter.control.config.STAT_PENDING_OPEN.to_path()
+    )
     if elapsed_pending_open > rasp_shutter.control.config.ELAPSED_PENDING_OPEN_MAX_SEC:
         # NOTE: 暗くて開けるのを延期されている場合以外は処理を行わない。
         logging.debug("NOT pending")
         return
 
-    elapsed_auto_close = my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
+    elapsed_auto_close = rasp_shutter.util.footprint_elapsed(
+        rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path()
+    )
     if elapsed_auto_close < rasp_shutter.control.config.EXEC_INTERVAL_AUTO_MIN * 60:
         # NOTE: 自動で閉めてから時間が経っていない場合は、処理を行わない。
         logging.debug("just closed before %d", elapsed_auto_close)
+        return
+
+    if _is_auto_control_retry_suppressed("open"):
+        # NOTE: 直前の自動制御が失敗している場合は、リトライ間隔が経過するまで再試行しない。
+        logging.debug("retry suppressed after failure")
         return
 
     sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
@@ -351,15 +397,20 @@ def shutter_auto_open(config: rasp_shutter.config.AppConfig) -> None:
         sensor_text = rasp_shutter.control.webapi.control.sensor_text(sense_data)
         my_lib.webapp.log.info(f"🌅 暗くて延期されていましたが、明るくなってきたので開けます。{sensor_text}")
 
-        exec_shutter_control(
+        if exec_shutter_control(
             config,
             "open",
             rasp_shutter.control.webapi.control.CONTROL_MODE.AUTO,
             sense_data,
             "sensor",
-        )
-        my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
-        my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
+        ):
+            # NOTE: 制御に成功した場合のみ状態を進める。失敗時は pending を維持し、
+            # リトライ間隔経過後に再試行できるようにする。
+            my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+            my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
+            _clear_auto_control_failure("open")
+        else:
+            _record_auto_control_failure("open")
     else:
         logging.debug(
             "Skip pendding open (solar_rad: %.1f W/m^2, lux: %.1f LUX)",
@@ -412,15 +463,20 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
         logging.debug("after close time")
         return
     elif (
-        my_lib.footprint.elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
+        rasp_shutter.util.footprint_elapsed(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
         <= rasp_shutter.control.config.ELAPSED_AUTO_CLOSE_MAX_SEC
     ):
         # NOTE: 12時間以内に自動で閉めていた場合は処理しない
         logging.debug("already close")
         return
 
+    if _is_auto_control_retry_suppressed("close"):
+        # NOTE: 直前の自動制御が失敗している場合は、リトライ間隔が経過するまで再試行しない。
+        logging.debug("retry suppressed after failure")
+        return
+
     for index in range(len(config.shutter)):
-        elapsed_open = my_lib.footprint.elapsed(
+        elapsed_open = rasp_shutter.util.footprint_elapsed(
             rasp_shutter.control.webapi.control.exec_stat_file("open", index)
         )
         if elapsed_open < rasp_shutter.control.config.EXEC_INTERVAL_AUTO_MIN * 60:
@@ -435,24 +491,29 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
             f"🌇 予定より早いですが、暗くなってきたので閉めます。{sensor_text}",
         )
 
-        exec_shutter_control(
+        if exec_shutter_control(
             config,
             "close",
             rasp_shutter.control.webapi.control.CONTROL_MODE.AUTO,
             sense_data,
             "sensor",
-        )
-        logging.info("Set Auto CLOSE")
-        my_lib.footprint.update(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
-
-        # NOTE: まだ明るくなる可能性がある時間帯の場合、再度自動的に開けるようにする
-        hour = my_lib.time.now().hour
-        if (
-            hour > rasp_shutter.control.config.HOUR_MORNING_START
-            and hour < rasp_shutter.control.config.HOUR_PENDING_OPEN_END
         ):
-            logging.info("Set Pending OPEN")
-            my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+            # NOTE: 制御に成功した場合のみ状態を進める。失敗時は AUTO_CLOSE を更新せず、
+            # リトライ間隔経過後に再試行できるようにする。
+            logging.info("Set Auto CLOSE")
+            my_lib.footprint.update(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
+            _clear_auto_control_failure("close")
+
+            # NOTE: まだ明るくなる可能性がある時間帯の場合、再度自動的に開けるようにする
+            hour = my_lib.time.now().hour
+            if (
+                hour > rasp_shutter.control.config.HOUR_MORNING_START
+                and hour < rasp_shutter.control.config.HOUR_PENDING_OPEN_END
+            ):
+                logging.info("Set Pending OPEN")
+                my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+        else:
+            _record_auto_control_failure("close")
 
     else:  # pragma: no cover
         # NOTE: pending close の制御は無いのでここには来ない。
@@ -527,76 +588,92 @@ def shutter_auto_control(config: rasp_shutter.config.AppConfig) -> None:
     _signal_auto_control_completed()
 
 
+def _schedule_pending_open(
+    config: rasp_shutter.config.AppConfig,
+    sense_data: rasp_shutter.type_defs.SensorData,
+    reason: str,
+    threshold: dict | None,
+    scheduled_time: datetime.datetime | None,
+) -> None:
+    """スケジュールされた「開ける」を見合わせ、復旧後に自動で開けるよう pending を設定する。
+
+    too_dark（まだ暗い）と sensor_invalid（センサー値が不明）の両方で、
+    STAT_PENDING_OPEN を設定することで shutter_auto_open() による復旧を可能にする。
+    """
+    rasp_shutter.control.webapi.control.cmd_hist_push({"cmd": "pending", "state": "open"})
+    logging.info("Set Pending OPEN")
+    my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+    rasp_shutter.metrics.collector.record_postpone(
+        config.metrics.data,
+        intended_action="open",
+        trigger="schedule",
+        reason=reason,
+        sensor_data=sense_data,
+        threshold=threshold,
+        scheduled_time=scheduled_time,
+    )
+
+
 def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) -> None:
     logging.info("Execute schedule control")
 
     sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
 
     schedule_data = get_schedule_data()
-    schedule_dict: dict[str, Any] | None = {**schedule_data} if schedule_data is not None else None
-    scheduled_time = (
-        conv_schedule_time_to_datetime(schedule_dict[state]["time"]) if schedule_dict is not None else None
-    )
-    threshold = {**schedule_dict[state]} if schedule_dict is not None else None
+    if schedule_data is None:
+        # テスト間のクリア中は何もしない
+        logging.debug("Schedule data not set, skipping schedule control")
+        _signal_auto_control_completed()
+        return
 
-    if check_brightness(sense_data, state) == BRIGHTNESS_STATE.UNKNOWN:
+    schedule_dict: dict[str, Any] = {**schedule_data}
+    scheduled_time = conv_schedule_time_to_datetime(schedule_dict[state]["time"])
+    threshold = {**schedule_dict[state]}
+
+    sensor_unknown = not sense_data.lux.valid or not sense_data.solar_rad.valid
+
+    if state == "close":
+        # NOTE: 閉める判断にセンサー値は使わないため、センサーが無効でも
+        # スケジュールに従って閉める。夕方にセンサーが一時的に落ちていても
+        # シャッターが夜間開けっ放しにならないようにする。
+        if sensor_unknown:
+            my_lib.webapp.log.info("⚠️ センサー値が不明ですが、スケジュールに従ってシャッターを閉めます。")
+        if exec_shutter_control(
+            config,
+            state,
+            rasp_shutter.control.webapi.control.CONTROL_MODE.SCHEDULE,
+            sense_data,
+            "scheduler",
+        ):
+            # NOTE: 閉め制御に成功した場合のみ、暗くて延期されていた開ける制御を取り消す。
+            # 失敗時は pending を維持し、状態を進めない。
+            my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+        _signal_auto_control_completed()
+        return
+
+    # state == "open"
+    brightness = check_brightness(sense_data, state)
+
+    if brightness == BRIGHTNESS_STATE.UNKNOWN:
+        # NOTE: センサー値が不明なので開けるのを見合わせるが、too_dark と同様に
+        # pending を設定し、センサー復旧後に明るければ shutter_auto_open() が開ける。
         error_sensor = []
-
         if not sense_data.solar_rad.valid:
             error_sensor.append("日射センサ")
         if not sense_data.lux.valid:
             error_sensor.append("照度センサ")
 
         error_sensor_text = "と".join(error_sensor)
-        state_text = rasp_shutter.type_defs.state_to_action_text(state)
-        my_lib.webapp.log.error(f"😵 {error_sensor_text}の値が不明なので{state_text}るのを見合わせました。")
-        rasp_shutter.metrics.collector.record_postpone(
-            config.metrics.data,
-            intended_action=state,
-            trigger="schedule",
-            reason="sensor_invalid",
-            sensor_data=sense_data,
-            threshold=threshold,
-            scheduled_time=scheduled_time,
+        my_lib.webapp.log.error(
+            f"😵 {error_sensor_text}の値が不明なので開けるのを見合わせました。明るくなり次第開けます。"
         )
-        _signal_auto_control_completed()
-        return
-
-    if state == "open":
-        if check_brightness(sense_data, state) == BRIGHTNESS_STATE.DARK:
-            sensor_text = rasp_shutter.control.webapi.control.sensor_text(sense_data)
-            my_lib.webapp.log.info(f"📝 まだ暗いので開けるのを見合わせました。{sensor_text}")
-
-            rasp_shutter.control.webapi.control.cmd_hist_push(
-                {
-                    "cmd": "pending",
-                    "state": state,
-                }
-            )
-
-            # NOTE: 暗いので開けれなかったことを通知
-            logging.info("Set Pending OPEN")
-            my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
-            rasp_shutter.metrics.collector.record_postpone(
-                config.metrics.data,
-                intended_action="open",
-                trigger="schedule",
-                reason="too_dark",
-                sensor_data=sense_data,
-                threshold=threshold,
-                scheduled_time=scheduled_time,
-            )
-        else:
-            # NOTE: ここにきたときのみ、スケジュールに従って開ける
-            exec_shutter_control(
-                config,
-                state,
-                rasp_shutter.control.webapi.control.CONTROL_MODE.SCHEDULE,
-                sense_data,
-                "scheduler",
-            )
+        _schedule_pending_open(config, sense_data, "sensor_invalid", threshold, scheduled_time)
+    elif brightness == BRIGHTNESS_STATE.DARK:
+        sensor_text = rasp_shutter.control.webapi.control.sensor_text(sense_data)
+        my_lib.webapp.log.info(f"📝 まだ暗いので開けるのを見合わせました。{sensor_text}")
+        _schedule_pending_open(config, sense_data, "too_dark", threshold, scheduled_time)
     else:
-        my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+        # NOTE: ここにきたときのみ、スケジュールに従って開ける
         exec_shutter_control(
             config,
             state,
@@ -611,6 +688,7 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
 
 SCHEDULE_FIELD_TYPES: dict[str, type] = {
     "is_active": bool,
+    "time": str,
     "lux": int,
     "altitude": int,
     "solar_rad": int,
@@ -634,7 +712,7 @@ def schedule_validate(schedule_data: dict) -> bool:
                 logging.warning("Type of %s is invalid: %s", field, type(entry.get(field)))
                 return False
 
-        if not SCHEDULE_TIME_PATTERN.search(entry["time"]):
+        if not SCHEDULE_TIME_PATTERN.fullmatch(entry["time"]):
             logging.warning("Format of time is invalid: %s", entry["time"])
             return False
         if len(entry["wday"]) != 7:

@@ -4,9 +4,13 @@ rasp-shutter アプリケーション用のユーティリティ関数
 """
 
 import functools
+import math
 import os
+import pathlib
 from collections.abc import Callable
 from typing import TypeVar
+
+import my_lib.footprint
 
 F = TypeVar("F", bound=Callable)
 
@@ -47,6 +51,28 @@ def check_dummy_mode_for_api() -> tuple[dict[str, str], int] | None:
     if not is_dummy_mode():
         return {"error": "Test API is only available in DUMMY_MODE"}, 403
     return None
+
+
+def footprint_elapsed(path: pathlib.Path) -> float:
+    """フットプリントの最終更新からの経過秒数を返す（欠如・破損時は math.inf）
+
+    my_lib.footprint.elapsed() は、ファイルが存在しない・破損している場合の
+    戻り値がバージョンによって異なる（旧: time.time() 相当の巨大値、新: None）。
+    どちらのバージョンでも「無限大に古い」というセマンティクスで扱えるよう、
+    フットプリントの経過時間はこのヘルパー経由で参照する。
+
+    Returns
+    -------
+        float: 経過秒数。ファイルが存在しない・破損している場合は math.inf
+
+    """
+    if not my_lib.footprint.exists(path):
+        return math.inf
+
+    elapsed = my_lib.footprint.elapsed(path)
+    if elapsed is None:  # 新バージョンの my_lib は欠如・破損時に None を返す
+        return math.inf
+    return elapsed
 
 
 def is_pytest_running() -> bool:

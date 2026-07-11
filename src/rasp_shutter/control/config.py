@@ -100,6 +100,8 @@ EXEC_INTERVAL_AUTO_MIN = 2
 EXEC_INTERVAL_SCHEDULE_HOUR = 12
 # この時間（分）内に同じ制御が手動で再度リクエストされた場合、実行をやめる
 EXEC_INTERVAL_MANUAL_MINUTES = 1
+# 自動制御が失敗した後、再試行するまでの間隔（秒）
+AUTO_CONTROL_RETRY_INTERVAL_SEC = 2 * 60
 
 
 # ======================================================================

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: S101
 """スケジューラー実行の統合テスト"""
 
 from tests.fixtures.schedule_factory import ScheduleFactory, time_evening, time_morning, time_str
@@ -191,6 +192,46 @@ class TestScheduleControlFail:
             ]
         )
         slack_checker.check_no_error()
+
+    def test_schedule_close_fail_keeps_pending(self, client, mocker, time_machine, mock_sensor_data):
+        """スケジュールの閉め制御が失敗した場合、pending open を維持する"""
+        import my_lib.footprint
+
+        import rasp_shutter.control.config
+
+        setup_midnight_time(client, time_machine)
+
+        mock_sensor_data(SensorDataFactory.dark())
+
+        schedule_api = ScheduleAPI(client)
+        ctrl_checker = CtrlLogChecker(client)
+        log_checker = LogChecker(client)
+
+        move_time_and_wait(time_machine, client, time_morning(0))
+
+        # 開けるのは暗くて見合わせ（pending 設定）、その後の閉めるは失敗させる
+        schedule_data = ScheduleFactory.create(
+            open_time=time_str(time_morning(1)),
+            close_time=time_str(time_morning(5)),
+        )
+        schedule_api.update(schedule_data)
+        wait_for_schedule_update_seq(client)
+
+        move_time_and_wait(time_machine, client, time_morning(1))
+        move_time_and_wait(time_machine, client, time_morning(2))
+
+        ctrl_checker.wait_and_check([{"cmd": "pending", "state": "open"}])
+        assert my_lib.footprint.exists(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+
+        mocker.patch("rasp_shutter.control.scheduler.exec_shutter_control_impl", return_value=False)
+
+        move_time_and_wait(time_machine, client, time_morning(5))
+        move_time_and_wait(time_machine, client, time_morning(6))
+
+        log_checker.wait_and_check(["CLEAR", "SCHEDULE", "OPEN_PENDING", "FAIL_CONTROL"])
+
+        # 閉め制御に失敗した場合、暗くて延期されていた開ける制御は取り消されない
+        assert my_lib.footprint.exists(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
 
     def test_schedule_ctrl_control_fail_exception(self, client, mocker, time_machine, mock_sensor_data):
         """制御中に例外が発生する場合"""
