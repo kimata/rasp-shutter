@@ -1,0 +1,73 @@
+<svg width="960" height="620" viewBox="0 0 960 620" xmlns="http://www.w3.org/2000/svg" font-family="'Hiragino Sans','Noto Sans JP',sans-serif" font-size="12.5">
+  <text x="480" y="28" text-anchor="middle" font-size="17" font-weight="bold" fill="#1f2328">Flask ブループリント構成（すべて /rasp-shutter プレフィックス）</text>
+
+  <!-- app.py -->
+  <rect x="330" y="50" width="300" height="46" rx="8" fill="#34435a"/>
+  <text x="480" y="70" text-anchor="middle" fill="#fff" font-weight="bold">app.py create_app()</text>
+  <text x="480" y="88" text-anchor="middle" fill="#cdd6e0" font-size="11">register_blueprint × 9（+ TEST 時 2）</text>
+
+  <!-- own blueprints -->
+  <rect x="30" y="130" width="440" height="300" rx="10" fill="#f3eefc" stroke="#6e40c9" stroke-width="1.5"/>
+  <text x="250" y="154" text-anchor="middle" font-weight="bold" fill="#6e40c9">rasp_shutter 固有ブループリント</text>
+  <g font-size="11.5">
+    <rect x="46" y="168" width="408" height="56" rx="5" fill="#fff" stroke="#6e40c9"/>
+    <text x="56" y="186" font-weight="bold">control/webapi/control.py（rasp-shutter-control）</text>
+    <text x="56" y="202">GET|POST /api/shutter_ctrl（cmd=1 は POST 限定・405）</text>
+    <text x="56" y="217">GET /api/shutter_list ・ GET /api/ctrl/log</text>
+
+    <rect x="46" y="232" width="408" height="42" rx="5" fill="#fff" stroke="#6e40c9"/>
+    <text x="56" y="250" font-weight="bold">control/webapi/schedule.py（rasp-shutter-schedule）</text>
+    <text x="56" y="266">GET|POST /api/schedule_ctrl（cmd=set は POST 限定・405）</text>
+
+    <rect x="46" y="282" width="408" height="42" rx="5" fill="#fff" stroke="#6e40c9"/>
+    <text x="56" y="300" font-weight="bold">control/webapi/sensor.py（rasp-shutter-sensor）</text>
+    <text x="56" y="316">GET /api/sensor</text>
+
+    <rect x="46" y="332" width="408" height="56" rx="5" fill="#fff" stroke="#6e40c9"/>
+    <text x="56" y="350" font-weight="bold">metrics/webapi/page.py（metrics）</text>
+    <text x="56" y="366">GET /api/metrics（Jinja2） ・ GET /api/metrics/data（JSON）</text>
+    <text x="56" y="381">GET /metrics/static/*（静的 JS） ・ GET /favicon.ico</text>
+  </g>
+  <text x="250" y="416" text-anchor="middle" font-size="11" fill="#57606a">スケジュール blueprint の init() がスケジューラスレッドを起動する</text>
+
+  <!-- my_lib blueprints -->
+  <rect x="490" y="130" width="440" height="220" rx="10" fill="#eef7f0" stroke="#1a7f37" stroke-width="1.5"/>
+  <text x="710" y="154" text-anchor="middle" font-weight="bold" fill="#1a7f37">my_lib.webapp 共有ブループリント</text>
+  <g font-size="11.5">
+    <rect x="506" y="168" width="408" height="40" rx="5" fill="#fff" stroke="#1a7f37"/>
+    <text x="516" y="186" font-weight="bold">base</text>
+    <text x="516" y="201">ルートリダイレクト + frontend/dist の静的配信（Vue SPA）</text>
+
+    <rect x="506" y="216" width="408" height="40" rx="5" fill="#fff" stroke="#1a7f37"/>
+    <text x="516" y="234" font-weight="bold">event</text>
+    <text x="516" y="249">GET /api/event（Server-Sent Events。schedule / log を通知）</text>
+
+    <rect x="506" y="264" width="408" height="40" rx="5" fill="#fff" stroke="#1a7f37"/>
+    <text x="516" y="282" font-weight="bold">log</text>
+    <text x="516" y="297">GET /api/log_view ・ GET /api/log_clear（SQLite + Slack 通知）</text>
+
+    <rect x="506" y="312" width="408" height="28" rx="5" fill="#fff" stroke="#1a7f37"/>
+    <text x="516" y="331"><tspan font-weight="bold">util</tspan>　/api/sysinfo など</text>
+  </g>
+
+  <!-- test blueprints -->
+  <rect x="490" y="370" width="440" height="120" rx="10" fill="#fffbdd" stroke="#9a6700" stroke-width="1.5" stroke-dasharray="6 3"/>
+  <text x="710" y="394" text-anchor="middle" font-weight="bold" fill="#9a6700">テスト専用（環境変数 TEST=true のときのみ登録）</text>
+  <g font-size="11.5">
+    <rect x="506" y="406" width="408" height="34" rx="5" fill="#fff" stroke="#9a6700"/>
+    <text x="516" y="427"><tspan font-weight="bold">test/time.py</tspan>　時刻モック API（time-machine 連携）</text>
+    <rect x="506" y="448" width="408" height="34" rx="5" fill="#fff" stroke="#9a6700"/>
+    <text x="516" y="469"><tspan font-weight="bold">test/sync.py</tspan>　/api/test/scheduler/loop_sequence 等の同期 API</text>
+  </g>
+
+  <!-- lines -->
+  <line x1="400" y1="96" x2="250" y2="130" stroke="#6e40c9" stroke-width="1.5"/>
+  <line x1="560" y1="96" x2="710" y2="130" stroke="#1a7f37" stroke-width="1.5"/>
+  <line x1="620" y1="96" x2="750" y2="370" stroke="#9a6700" stroke-width="1.5" stroke-dasharray="6 3"/>
+
+  <!-- note -->
+  <rect x="30" y="510" width="900" height="80" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="46" y="534" font-weight="bold">補足</text>
+  <text x="46" y="554" font-size="11.5">・状態変更（shutter_ctrl の cmd=1、schedule_ctrl の cmd=set）は POST 限定。GET で呼ぶと 405 を返す。CORS は使用しない（同一オリジン配信）。</text>
+  <text x="46" y="572" font-size="11.5">・リクエスト検証は flask_pydantic + rasp_shutter/schemas.py（state は Literal["open","close"]、index は範囲チェックで 400）。</text>
+</svg>

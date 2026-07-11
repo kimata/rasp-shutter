@@ -1,0 +1,77 @@
+<svg width="960" height="640" viewBox="0 0 960 640" xmlns="http://www.w3.org/2000/svg" font-family="'Hiragino Sans','Noto Sans JP',sans-serif" font-size="12">
+  <defs>
+    <marker id="sa" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#1f2328"/>
+    </marker>
+    <marker id="sd" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#8c959f"/>
+    </marker>
+  </defs>
+  <text x="480" y="26" text-anchor="middle" font-size="17" font-weight="bold" fill="#1f2328">手動制御のシーケンス（ManualEntry → /api/shutter_ctrl）</text>
+
+  <!-- lifelines -->
+  <g font-weight="bold" text-anchor="middle">
+    <rect x="40" y="46" width="150" height="34" rx="6" fill="#eaf2fb" stroke="#0969da"/><text x="115" y="68">ManualEntry.vue</text>
+    <rect x="240" y="46" width="170" height="34" rx="6" fill="#f3eefc" stroke="#6e40c9"/><text x="325" y="68">api_shutter_ctrl</text>
+    <rect x="450" y="46" width="180" height="34" rx="6" fill="#f3eefc" stroke="#6e40c9"/><text x="540" y="68">set_shutter_state(_impl)</text>
+    <rect x="670" y="46" width="120" height="34" rx="6" fill="#fff1e5" stroke="#d4610a"/><text x="730" y="68">ESP32</text>
+    <rect x="820" y="46" width="120" height="34" rx="6" fill="#f0f3f6" stroke="#57606a"/><text x="880" y="68">記録系</text>
+  </g>
+  <g stroke="#8c959f" stroke-dasharray="4 4">
+    <line x1="115" y1="80" x2="115" y2="600"/>
+    <line x1="325" y1="80" x2="325" y2="600"/>
+    <line x1="540" y1="80" x2="540" y2="600"/>
+    <line x1="730" y1="80" x2="730" y2="600"/>
+    <line x1="880" y1="80" x2="880" y2="600"/>
+  </g>
+
+  <!-- messages -->
+  <g>
+    <line x1="115" y1="110" x2="325" y2="110" stroke="#1f2328" stroke-width="1.5" marker-end="url(#sa)"/>
+    <text x="220" y="102" text-anchor="middle">POST ?cmd=1&amp;index&amp;state（ボタンは disable）</text>
+
+    <line x1="325" y1="146" x2="330" y2="146" stroke="none"/>
+    <rect x="245" y="132" width="160" height="30" rx="4" fill="#fff8c5" stroke="#9a6700"/>
+    <text x="325" y="151" text-anchor="middle" font-size="11">検証: POST か / index 範囲 / state Literal</text>
+
+    <line x1="325" y1="186" x2="540" y2="186" stroke="#1f2328" stroke-width="1.5" marker-end="url(#sa)"/>
+    <text x="430" y="178" text-anchor="middle">set_shutter_state(index_list, state, MANUAL)</text>
+
+    <rect x="455" y="200" width="170" height="30" rx="4" fill="#fff8c5" stroke="#9a6700"/>
+    <text x="540" y="219" text-anchor="middle" font-size="11">control_lock 取得（直列化）</text>
+
+    <rect x="455" y="242" width="170" height="44" rx="4" fill="#fff8c5" stroke="#9a6700"/>
+    <text x="540" y="259" text-anchor="middle" font-size="11">シャッター毎: exe 履歴と間隔チェック</text>
+    <text x="540" y="275" text-anchor="middle" font-size="11">（手動 1 分以内 → POSTPONED）</text>
+
+    <line x1="540" y1="310" x2="730" y2="310" stroke="#1f2328" stroke-width="1.5" marker-end="url(#sa)"/>
+    <text x="635" y="302" text-anchor="middle">call_shutter_api: GET endpoint（timeout 5 秒）</text>
+    <line x1="730" y1="336" x2="540" y2="336" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#sd)"/>
+    <text x="635" y="330" text-anchor="middle" fill="#57606a">200 = 成功 / それ以外・例外 = 失敗</text>
+
+    <rect x="455" y="352" width="170" height="46" rx="4" fill="#ddf4e4" stroke="#1a7f37"/>
+    <text x="540" y="369" text-anchor="middle" font-size="11" fill="#1a7f37">成功時のみ: exe/{i}_{state} 更新、</text>
+    <text x="540" y="385" text-anchor="middle" font-size="11" fill="#1a7f37">逆方向をクリア</text>
+
+    <line x1="540" y1="424" x2="880" y2="424" stroke="#1f2328" stroke-width="1.5" marker-end="url(#sa)"/>
+    <text x="710" y="416" text-anchor="middle">ログ（my_lib.webapp.log）+ メトリクス（個体別に記録）</text>
+    <text x="710" y="440" text-anchor="middle" font-size="11" fill="#57606a">失敗時は log.error → Slack 通知 + record_failure</text>
+
+    <rect x="455" y="456" width="170" height="46" rx="4" fill="#fff8c5" stroke="#9a6700"/>
+    <text x="540" y="473" text-anchor="middle" font-size="11">集約: FAILURE あり → result="error"</text>
+    <text x="540" y="489" text-anchor="middle" font-size="11">POSTPONED → postponed[] に名前</text>
+
+    <line x1="540" y1="520" x2="325" y2="520" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#sd)"/>
+    <text x="430" y="512" text-anchor="middle" fill="#57606a">ShutterStateResponse（state / result / postponed）</text>
+
+    <line x1="325" y1="552" x2="115" y2="552" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#sd)"/>
+    <text x="220" y="544" text-anchor="middle" fill="#57606a">200 JSON</text>
+
+    <rect x="40" y="566" width="150" height="52" rx="4" fill="#eaf2fb" stroke="#0969da"/>
+    <text x="115" y="583" text-anchor="middle" font-size="11">result で成功 / エラー、</text>
+    <text x="115" y="598" text-anchor="middle" font-size="11">postponed で warning</text>
+    <text x="115" y="612" text-anchor="middle" font-size="11">トーストを出し分け</text>
+  </g>
+
+  <text x="480" y="632" text-anchor="middle" font-size="11.5" fill="#57606a">スケジュール・自動制御も同じ set_shutter_state() を直接呼ぶ（scheduler.exec_shutter_control_impl 経由。Web を経由しない）</text>
+</svg>

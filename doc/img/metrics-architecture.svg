@@ -1,0 +1,94 @@
+<svg width="960" height="620" viewBox="0 0 960 620" xmlns="http://www.w3.org/2000/svg" font-family="'Hiragino Sans','Noto Sans JP',sans-serif" font-size="12.5">
+  <defs>
+    <marker id="ma" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#57606a"/>
+    </marker>
+  </defs>
+  <text x="480" y="28" text-anchor="middle" font-size="17" font-weight="bold" fill="#1f2328">メトリクスモジュール構成（記録 → 集計 → 表示の分離）</text>
+
+  <!-- writers -->
+  <rect x="40" y="60" width="250" height="130" rx="10" fill="#eef7f0" stroke="#1a7f37" stroke-width="1.5"/>
+  <text x="165" y="84" text-anchor="middle" font-weight="bold" fill="#1a7f37">記録元</text>
+  <g font-size="11.5">
+    <text x="56" y="108">・control.py set_shutter_state_impl</text>
+    <text x="72" y="124" fill="#57606a">操作 / 失敗（シャッター個体別）</text>
+    <text x="56" y="144">・scheduler.py</text>
+    <text x="72" y="160" fill="#57606a">見合わせ（閾値スナップショット付き）</text>
+    <text x="72" y="176" fill="#57606a">センサーサンプル（60 秒間隔・別スレッド）</text>
+  </g>
+
+  <!-- collector -->
+  <rect x="340" y="60" width="280" height="270" rx="10" fill="#f0f3f6" stroke="#57606a" stroke-width="1.5"/>
+  <text x="480" y="84" text-anchor="middle" font-weight="bold">metrics/collector.py</text>
+  <text x="480" y="102" text-anchor="middle" font-size="11" fill="#57606a">スレッドセーフなシングルトン（get_collector）</text>
+  <g font-size="11.5">
+    <rect x="356" y="114" width="248" height="40" rx="5" fill="#fff" stroke="#57606a"/>
+    <text x="366" y="130" font-weight="bold">operation_metrics</text>
+    <text x="366" y="146" fill="#57606a">操作記録 + センサー値 + 個体（index/name）</text>
+    <rect x="356" y="162" width="248" height="40" rx="5" fill="#fff" stroke="#57606a"/>
+    <text x="366" y="178" font-weight="bold">daily_failures</text>
+    <text x="366" y="194" fill="#57606a">失敗記録（1 行 = 1 件、個体別）</text>
+    <rect x="356" y="210" width="248" height="40" rx="5" fill="#fff" stroke="#57606a"/>
+    <text x="366" y="226" font-weight="bold">postpone_events</text>
+    <text x="366" y="242" fill="#57606a">見合わせ + 当時の閾値 + 解消時刻</text>
+    <rect x="356" y="258" width="248" height="40" rx="5" fill="#fff" stroke="#57606a"/>
+    <text x="366" y="274" font-weight="bold">sensor_samples</text>
+    <text x="366" y="290" fill="#57606a">1 分間隔・context 付き・保持 30 日</text>
+  </g>
+  <text x="480" y="320" text-anchor="middle" font-size="11" fill="#57606a">SQLite（config.metrics.data）・my_lib.sqlite_util</text>
+
+  <!-- analyzer -->
+  <rect x="670" y="60" width="260" height="180" rx="10" fill="#fffbee" stroke="#9a6700" stroke-width="1.5"/>
+  <text x="800" y="84" text-anchor="middle" font-weight="bold" fill="#9a6700">metrics/analyzer.py</text>
+  <g font-size="11.5">
+    <text x="686" y="108">・統計集計（generate_statistics 等）</text>
+    <text x="686" y="126">・個体別集計（generate_shutter_statistics）</text>
+    <text x="686" y="144">・見合わせ分析・解消ラグ</text>
+    <text x="686" y="162">・閾値チューニング（what-if 試算）</text>
+    <text x="686" y="180">・失敗時系列・context 別散布データ</text>
+    <text x="686" y="206" font-weight="bold">build_dashboard_data() が</text>
+    <text x="686" y="222" font-weight="bold">JSON API の唯一の入口</text>
+  </g>
+
+  <!-- webapi -->
+  <rect x="340" y="370" width="590" height="150" rx="10" fill="#f3eefc" stroke="#6e40c9" stroke-width="1.5"/>
+  <text x="635" y="394" text-anchor="middle" font-weight="bold" fill="#6e40c9">metrics/webapi/（page.py = ルート 3 本のみ）</text>
+  <g font-size="11.5">
+    <rect x="356" y="406" width="270" height="46" rx="5" fill="#fff" stroke="#6e40c9"/>
+    <text x="366" y="424" font-weight="bold">GET /api/metrics</text>
+    <text x="366" y="440">templates/metrics/dashboard.html（骨格のみ）</text>
+    <rect x="356" y="460" width="270" height="46" rx="5" fill="#fff" stroke="#6e40c9"/>
+    <text x="366" y="478" font-weight="bold">GET /api/metrics/data</text>
+    <text x="366" y="494">build_dashboard_data() の JSON（DB なし = 503）</text>
+    <rect x="644" y="406" width="270" height="100" rx="5" fill="#fff" stroke="#6e40c9"/>
+    <text x="654" y="424" font-weight="bold">/metrics/static/js/（Blueprint 静的配信）</text>
+    <text x="654" y="442">metrics-dashboard.js: fetch + DOM 描画</text>
+    <text x="654" y="458" fill="#57606a">（textContent のみ。innerHTML 不使用）</text>
+    <text x="654" y="476">metrics-charts.js: Chart.js 描画</text>
+    <text x="654" y="492" fill="#57606a">（ヒストグラム等はデータ駆動 config 配列）</text>
+  </g>
+
+  <!-- browser -->
+  <rect x="40" y="370" width="250" height="150" rx="10" fill="#eaf2fb" stroke="#0969da" stroke-width="1.5"/>
+  <text x="165" y="394" text-anchor="middle" font-weight="bold" fill="#0969da">ブラウザ</text>
+  <g font-size="11.5">
+    <text x="56" y="418">1. /api/metrics で骨格 HTML 取得</text>
+    <text x="56" y="436">2. 静的 JS を読み込み</text>
+    <text x="56" y="454">3. JS が /api/metrics/data を fetch</text>
+    <text x="56" y="472">4. カード・テーブル・26+ チャートを描画</text>
+    <text x="56" y="496" fill="#57606a">Tailwind / Chart.js は CDN 読み込み</text>
+  </g>
+
+  <!-- arrows -->
+  <line x1="290" y1="125" x2="340" y2="125" stroke="#57606a" stroke-width="1.5" marker-end="url(#ma)"/>
+  <text x="315" y="115" text-anchor="middle" font-size="10.5" fill="#57606a">record_*</text>
+  <line x1="620" y1="150" x2="670" y2="150" stroke="#57606a" stroke-width="1.5" marker-end="url(#ma)"/>
+  <text x="645" y="140" text-anchor="middle" font-size="10.5" fill="#57606a">get_*</text>
+  <line x1="800" y1="240" x2="700" y2="370" stroke="#57606a" stroke-width="1.5" marker-end="url(#ma)"/>
+  <line x1="290" y1="440" x2="340" y2="440" stroke="#0969da" stroke-width="1.5" marker-end="url(#ma)"/>
+
+  <!-- note -->
+  <rect x="40" y="544" width="890" height="50" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="56" y="566" font-size="11.5">DB 由来の文字列（見合わせ理由など）はサーバー側で HTML に埋め込まず、JSON で渡して JS が textContent で挿入するため、格納データ経由の XSS が構造的に発生しない。</text>
+  <text x="56" y="584" font-size="11.5">スキーマ変更は CREATE TABLE への列追加 + PRAGMA table_info による ALTER TABLE マイグレーション（無停止・過去行は NULL）。</text>
+</svg>

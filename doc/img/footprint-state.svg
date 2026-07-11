@@ -1,0 +1,69 @@
+<svg width="960" height="600" viewBox="0 0 960 600" xmlns="http://www.w3.org/2000/svg" font-family="'Hiragino Sans','Noto Sans JP',sans-serif" font-size="12.5">
+  <text x="480" y="28" text-anchor="middle" font-size="17" font-weight="bold" fill="#1f2328">footprint による状態管理（stat_dir_path 配下のタイムスタンプファイル）</text>
+  <text x="480" y="50" text-anchor="middle" font-size="12" fill="#57606a">my_lib.footprint（update / clear / exists / elapsed）で読み書き。elapsed は rasp_shutter.util.footprint_elapsed() 経由（欠如・破損時は inf）</text>
+
+  <!-- pending/open -->
+  <rect x="40" y="80" width="430" height="150" rx="10" fill="#fffbee" stroke="#9a6700" stroke-width="1.5"/>
+  <text x="56" y="106" font-weight="bold" fill="#9a6700">pending/open（STAT_PENDING_OPEN）</text>
+  <text x="56" y="126" font-size="11.5">意味: 「開けたいが、まだ開けられていない」。有効期間 6 時間。</text>
+  <g font-size="11.5">
+    <text x="56" y="150" font-weight="bold">設定:</text>
+    <text x="100" y="150">スケジュール開けが暗い / センサー不明 / 制御失敗のとき。</text>
+    <text x="100" y="166">自動クローズ後（5 &lt; hour &lt; 13）にも設定。</text>
+    <text x="56" y="188" font-weight="bold">クリア:</text>
+    <text x="100" y="188">自動開け成功時・閉め制御の成功時。</text>
+    <text x="56" y="210" font-weight="bold">参照:</text>
+    <text x="100" y="210">shutter_auto_open の発動条件・shutter_auto_close の抑制条件。</text>
+  </g>
+
+  <!-- pending/close -->
+  <rect x="490" y="80" width="430" height="150" rx="10" fill="#fdf0f4" stroke="#bf3989" stroke-width="1.5"/>
+  <text x="506" y="106" font-weight="bold" fill="#bf3989">pending/close（STAT_PENDING_CLOSE）</text>
+  <text x="506" y="126" font-size="11.5">意味: 「スケジュールで閉められなかった」。有効期間 6 時間。</text>
+  <g font-size="11.5">
+    <text x="506" y="150" font-weight="bold">設定:</text>
+    <text x="550" y="150">shutter_schedule_control の閉め制御失敗時。</text>
+    <text x="506" y="172" font-weight="bold">クリア:</text>
+    <text x="550" y="172">再試行成功時・6 時間の失効時（Slack エラー通知付き）・</text>
+    <text x="550" y="188">clean_stat_exec。</text>
+    <text x="506" y="210" font-weight="bold">参照:</text>
+    <text x="550" y="210">shutter_pending_close（2 分間隔の再試行）。</text>
+  </g>
+
+  <!-- auto/close -->
+  <rect x="40" y="250" width="430" height="140" rx="10" fill="#eef4fb" stroke="#0969da" stroke-width="1.5"/>
+  <text x="56" y="276" font-weight="bold" fill="#0969da">auto/close（STAT_AUTO_CLOSE）</text>
+  <text x="56" y="296" font-size="11.5">意味: 「暗くなったので自動で閉めた」履歴。有効期間 12 時間。</text>
+  <g font-size="11.5">
+    <text x="56" y="320" font-weight="bold">設定:</text>
+    <text x="100" y="320">shutter_auto_close の制御成功時。</text>
+    <text x="56" y="342" font-weight="bold">クリア:</text>
+    <text x="100" y="342">自動開け成功時・手動以外での開け成功時。</text>
+    <text x="56" y="364" font-weight="bold">参照:</text>
+    <text x="100" y="364">12 時間以内の再クローズ抑制・自動開けの直後判定（2 分）。</text>
+  </g>
+
+  <!-- exe hist -->
+  <rect x="490" y="250" width="430" height="140" rx="10" fill="#eef7f0" stroke="#1a7f37" stroke-width="1.5"/>
+  <text x="506" y="276" font-weight="bold" fill="#1a7f37">exe/{index}_{open|close}（実行履歴、シャッター台数 × 2）</text>
+  <text x="506" y="296" font-size="11.5">意味: 各シャッターに対して最後に成功した open / close の時刻。</text>
+  <g font-size="11.5">
+    <text x="506" y="320" font-weight="bold">設定:</text>
+    <text x="550" y="320">call_shutter_api 成功時に更新し、逆方向をクリア。</text>
+    <text x="506" y="342" font-weight="bold">参照:</text>
+    <text x="550" y="342">制御間隔チェック（手動 1 分 / スケジュール・自動 12 時間）→</text>
+    <text x="550" y="358">「見合わせ」判定。get_shutter_state() の開閉状態推定</text>
+    <text x="550" y="374">（open と close の新しい方が現在状態。両方なければ UNKNOWN）。</text>
+  </g>
+
+  <!-- design principle -->
+  <rect x="40" y="412" width="880" height="76" rx="10" fill="#ddf4e4" stroke="#1a7f37" stroke-width="1.5"/>
+  <text x="56" y="438" font-weight="bold" fill="#1a7f37">設計原則: footprint は「制御が実際に成功したときだけ」進める</text>
+  <text x="56" y="460" font-size="11.5">ESP32 への制御が失敗した場合、pending のクリアや履歴の更新は行わない。これにより「暗くて延期 → 明るくなったら開ける」などの</text>
+  <text x="56" y="477" font-size="11.5">リカバリ経路が失敗後も生き続け、リトライ抑制（2 分）とあわせて自動再試行が機能する。</text>
+
+  <!-- liveness -->
+  <rect x="40" y="508" width="880" height="66" rx="10" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="56" y="532" font-weight="bold">関連: liveness ファイル（config.liveness.file.scheduler）</text>
+  <text x="56" y="554" font-size="11.5">スケジューラループが約 10 秒ごとに更新する生存確認用 footprint。healthz.py（Kubernetes livenessProbe）が鮮度を検査する。</text>
+</svg>

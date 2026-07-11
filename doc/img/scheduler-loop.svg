@@ -1,0 +1,72 @@
+<svg width="960" height="560" viewBox="0 0 960 560" xmlns="http://www.w3.org/2000/svg" font-family="'Hiragino Sans','Noto Sans JP',sans-serif" font-size="12.5">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#1a7f37"/>
+    </marker>
+    <marker id="ag" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#57606a"/>
+    </marker>
+  </defs>
+  <text x="480" y="28" text-anchor="middle" font-size="17" font-weight="bold" fill="#1f2328">スケジューラスレッドのメインループ（scheduler.py schedule_worker）</text>
+
+  <!-- start -->
+  <rect x="60" y="52" width="360" height="60" rx="10" fill="#e6f4ea" stroke="#1a7f37" stroke-width="1.5"/>
+  <text x="240" y="76" text-anchor="middle" font-weight="bold">起動時（schedule blueprint の init 経由）</text>
+  <text x="240" y="96" text-anchor="middle" font-size="11.5">schedule_load()（pickle）→ set_schedule_data → set_schedule</text>
+
+  <!-- loop container -->
+  <rect x="60" y="136" width="560" height="360" rx="10" fill="#f6f8fa" stroke="#1a7f37" stroke-width="2"/>
+  <text x="340" y="160" text-anchor="middle" font-weight="bold" fill="#1a7f37">ループ（本番 0.5 秒 / DUMMY_MODE 0.1 秒間隔）</text>
+
+  <g font-size="11.5">
+    <rect x="90" y="176" width="500" height="48" rx="6" fill="#fff" stroke="#57606a"/>
+    <text x="100" y="196" font-weight="bold">1. キュー確認（multiprocessing.Queue）</text>
+    <text x="100" y="212">新スケジュール受信時: set_schedule_data → set_schedule → schedule_store</text>
+
+    <rect x="90" y="234" width="500" height="48" rx="6" fill="#fff" stroke="#57606a"/>
+    <text x="100" y="254" font-weight="bold">2. scheduler.run_pending()（schedule ライブラリ）</text>
+    <text x="100" y="270">時刻ジョブ（曜日 × at 時刻）と毎秒ジョブ（shutter_auto_control）を実行</text>
+
+    <rect x="90" y="292" width="500" height="48" rx="6" fill="#fff" stroke="#57606a"/>
+    <text x="100" y="312" font-weight="bold">3. maybe_record_sensor_sample()</text>
+    <text x="100" y="328">60 秒間隔・別スレッドで metrics.db に記録（DUMMY_MODE では無効）</text>
+
+    <rect x="90" y="350" width="500" height="48" rx="6" fill="#fff" stroke="#57606a"/>
+    <text x="100" y="370" font-weight="bold">4. _increment_loop_sequence()（finally 節）</text>
+    <text x="100" y="386">テスト同期用のシーケンス番号を必ず加算（例外発生時も）</text>
+
+    <rect x="90" y="408" width="500" height="48" rx="6" fill="#fff" stroke="#57606a"/>
+    <text x="100" y="428" font-weight="bold">5. liveness footprint 更新（約 10 秒ごと）</text>
+    <text x="100" y="444">config.liveness.file.scheduler。healthz.py がこの鮮度を監視</text>
+
+    <text x="340" y="482" text-anchor="middle" fill="#57606a">例外はループ内で捕捉して継続（OverflowError は time-machine 由来）</text>
+  </g>
+
+  <line x1="240" y1="112" x2="240" y2="136" stroke="#1a7f37" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- jobs registered -->
+  <rect x="660" y="136" width="270" height="240" rx="10" fill="#e6f4ea" stroke="#1a7f37" stroke-width="1.5"/>
+  <text x="795" y="160" text-anchor="middle" font-weight="bold" fill="#1a7f37">set_schedule() が登録するジョブ</text>
+  <g font-size="11.5">
+    <rect x="676" y="174" width="238" height="76" rx="6" fill="#fff" stroke="#1a7f37"/>
+    <text x="686" y="192" font-weight="bold">時刻ジョブ（open / close 各 1 種）</text>
+    <text x="686" y="208">is_active な entry の wday ごとに</text>
+    <text x="686" y="223">every().曜日.at(HH:MM) で登録</text>
+    <text x="686" y="240" fill="#57606a">→ shutter_schedule_control(state)</text>
+
+    <rect x="676" y="260" width="238" height="60" rx="6" fill="#fff" stroke="#1a7f37"/>
+    <text x="686" y="278" font-weight="bold">毎秒ジョブ</text>
+    <text x="686" y="294">every(1).seconds</text>
+    <text x="686" y="310" fill="#57606a">→ shutter_auto_control()</text>
+
+    <text x="795" y="348" text-anchor="middle" font-size="11" fill="#57606a">スケジュール更新のたびに</text>
+    <text x="795" y="364" text-anchor="middle" font-size="11" fill="#57606a">scheduler.clear() → 全ジョブ再登録</text>
+  </g>
+  <line x1="620" y1="258" x2="660" y2="258" stroke="#57606a" stroke-width="1.5" marker-end="url(#ag)"/>
+
+  <!-- termination -->
+  <rect x="660" y="410" width="270" height="86" rx="10" fill="#fde8e8" stroke="#cf222e" stroke-width="1.5"/>
+  <text x="795" y="434" text-anchor="middle" font-weight="bold" fill="#cf222e">終了（SIGTERM / SIGINT）</text>
+  <text x="795" y="456" text-anchor="middle" font-size="11.5">should_terminate イベントで</text>
+  <text x="795" y="472" text-anchor="middle" font-size="11.5">ループを抜け、app.py が join（最大 10 秒）</text>
+</svg>
