@@ -22,7 +22,12 @@ def get_solar_altitude(config: rasp_shutter.config.AppConfig) -> rasp_shutter.ty
     )
 
 
-def get_sensor_data(config: rasp_shutter.config.AppConfig) -> rasp_shutter.type_defs.SensorData:
+def get_sensor_data_impl(config: rasp_shutter.config.AppConfig) -> rasp_shutter.type_defs.SensorData:
+    """センサーデータを InfluxDB から取得する実装本体
+
+    NOTE: テストでは get_sensor_data() がセッションスコープでモックされるため、
+    実装自体のユニットテストはこの関数を直接対象にする（tests/unit/test_sensor_logic.py）。
+    """
     timezone = my_lib.time.get_zoneinfo()
 
     sensor_values: dict[str, rasp_shutter.type_defs.SensorValue] = {}
@@ -51,6 +56,10 @@ def get_sensor_data(config: rasp_shutter.config.AppConfig) -> rasp_shutter.type_
         solar_rad=sensor_values["solar_rad"],
         altitude=get_solar_altitude(config),
     )
+
+
+def get_sensor_data(config: rasp_shutter.config.AppConfig) -> rasp_shutter.type_defs.SensorData:
+    return get_sensor_data_impl(config)
 
 
 @blueprint.route("/api/sensor", methods=["GET"])
