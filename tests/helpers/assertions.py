@@ -36,6 +36,8 @@ class LogChecker:
         "CLOSE_DARK": "暗くなってきたので閉めます",
         "CLOSE_PENDING": "閉めるのを見合わせました",
         "CLOSE_SENSOR_UNKNOWN": "センサー値が不明ですが",
+        "CLOSE_RETRY": "再試行します",
+        "CLOSE_GIVEUP": "再試行を諦めました",
         "SCHEDULE": "スケジュールを更新",
         "INVALID": "スケジュールの指定が不正",
         "FAIL_SENSOR": "センサの値が不明",

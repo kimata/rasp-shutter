@@ -69,6 +69,7 @@ class _DynamicPath(os.PathLike[str]):
 
 
 STAT_PENDING_OPEN = _DynamicPath("pending/open")
+STAT_PENDING_CLOSE = _DynamicPath("pending/close")
 STAT_AUTO_CLOSE = _DynamicPath("auto/close")
 
 # ======================================================================
@@ -88,6 +89,8 @@ HOUR_AUTO_CLOSE_END = 20
 # ======================================================================
 # 暗くて開けるのを延期中と判定する最大経過時間（6時間）
 ELAPSED_PENDING_OPEN_MAX_SEC = 6 * 60 * 60
+# 閉め制御失敗後、再試行を続ける最大経過時間（6時間）
+ELAPSED_PENDING_CLOSE_MAX_SEC = 6 * 60 * 60
 # 自動で閉めた履歴の有効期間（12時間）
 ELAPSED_AUTO_CLOSE_MAX_SEC = 12 * 60 * 60
 

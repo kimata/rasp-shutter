@@ -524,6 +524,43 @@ def shutter_auto_close(config: rasp_shutter.config.AppConfig) -> None:
         )
 
 
+def shutter_pending_close(config: rasp_shutter.config.AppConfig) -> None:
+    """スケジュールされた閉め制御の失敗後の再試行を行う
+
+    閉め時刻を過ぎた後に制御が失敗すると、通常経路（スケジュールジョブ・自動クローズ）では
+    誰も再試行しない。STAT_PENDING_CLOSE が設定されている間、リトライ間隔ごとに再試行し、
+    上限時間を超えたら諦めて通知する。
+    """
+    pending_close_path = rasp_shutter.control.config.STAT_PENDING_CLOSE.to_path()
+    if not my_lib.footprint.exists(pending_close_path):
+        return
+
+    elapsed_pending_close = rasp_shutter.util.footprint_elapsed(pending_close_path)
+    if elapsed_pending_close > rasp_shutter.control.config.ELAPSED_PENDING_CLOSE_MAX_SEC:
+        # NOTE: 上限を超えたら一度だけ通知して諦める（footprint を消すことで再通知を防ぐ）
+        my_lib.footprint.clear(pending_close_path)
+        my_lib.webapp.log.error("😵 閉め制御の再試行を諦めました。シャッターが開いたままの可能性があります。")
+        return
+
+    if _is_auto_control_retry_suppressed("close"):
+        logging.debug("retry suppressed after failure")
+        return
+
+    sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
+    my_lib.webapp.log.info("🔁 スケジュールで閉められなかったので、再試行します。")
+    if exec_shutter_control(
+        config,
+        "close",
+        rasp_shutter.control.webapi.control.CONTROL_MODE.SCHEDULE,
+        sense_data,
+        "scheduler",
+    ):
+        my_lib.footprint.clear(pending_close_path)
+        _clear_auto_control_failure("close")
+    else:
+        _record_auto_control_failure("close")
+
+
 def _sample_context_for_hour(hour: int) -> str:
     """現在時刻から sensor_samples の context 文字列を決定"""
     cfg = rasp_shutter.control.config
@@ -583,6 +620,9 @@ def shutter_auto_control(config: rasp_shutter.config.AppConfig) -> None:
 
     if hour > cfg.HOUR_MORNING_START and hour < cfg.HOUR_AUTO_CLOSE_END:
         shutter_auto_close(config)
+
+    # NOTE: 閉め失敗の再試行は時間帯によらず行う（上限時間で自動的に打ち切られる）
+    shutter_pending_close(config)
 
     # テスト同期用の完了シグナル
     _signal_auto_control_completed()
@@ -648,6 +688,12 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
             # NOTE: 閉め制御に成功した場合のみ、暗くて延期されていた開ける制御を取り消す。
             # 失敗時は pending を維持し、状態を進めない。
             my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+        else:
+            # NOTE: 閉め時刻を過ぎると通常経路では誰も再試行しないため（夜間開けっ放しになる）、
+            # footprint を設定して shutter_pending_close() による再試行を有効にする。
+            logging.info("Set Pending CLOSE")
+            my_lib.footprint.update(rasp_shutter.control.config.STAT_PENDING_CLOSE.to_path())
+            _record_auto_control_failure("close")
         _signal_auto_control_completed()
         return
 
@@ -674,13 +720,17 @@ def shutter_schedule_control(config: rasp_shutter.config.AppConfig, state: str) 
         _schedule_pending_open(config, sense_data, "too_dark", threshold, scheduled_time)
     else:
         # NOTE: ここにきたときのみ、スケジュールに従って開ける
-        exec_shutter_control(
+        if not exec_shutter_control(
             config,
             state,
             rasp_shutter.control.webapi.control.CONTROL_MODE.SCHEDULE,
             sense_data,
             "scheduler",
-        )
+        ):
+            # NOTE: 失敗時は pending open を設定し、shutter_auto_open() による
+            # 再試行（明るいままならリトライ間隔経過後に開ける）を有効にする。
+            _schedule_pending_open(config, sense_data, "control_failure", threshold, scheduled_time)
+            _record_auto_control_failure("open")
 
     # テスト同期用の完了シグナル
     _signal_auto_control_completed()

@@ -171,6 +171,7 @@ def clean_stat_exec(config: rasp_shutter.config.AppConfig) -> None:
         my_lib.footprint.clear(exec_stat_file("close", index))
 
     my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
+    my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_CLOSE.to_path())
     my_lib.footprint.clear(rasp_shutter.control.config.STAT_AUTO_CLOSE.to_path())
 
 
