@@ -8,6 +8,7 @@ Internal data structures remain as dataclasses in types.py.
 
 import typing
 
+import pydantic
 from my_lib.pydantic import BaseSchema
 
 
@@ -66,6 +67,7 @@ class ShutterStateResponseSchema(BaseSchema):
 
     state: list[ShutterStateEntrySchema]
     result: str = "success"
+    postponed: list[str] = pydantic.Field(default_factory=list)
     cmd: str | None = None
 
 

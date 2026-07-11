@@ -82,11 +82,13 @@ class ShutterStateResponse:
     ----------
         state: シャッター状態のリスト
         result: 処理結果
+        postponed: 制御間隔が短く見合わせたシャッター名のリスト
 
     """
 
     state: list[ShutterStateEntry] = field(default_factory=list)
     result: str = "success"
+    postponed: list[str] = field(default_factory=list)
 
 
 # ======================================================================

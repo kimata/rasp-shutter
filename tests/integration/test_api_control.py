@@ -267,6 +267,24 @@ class TestShutterControlFailure:
         slack_checker.check_error_contains("閉めるのに失敗しました")
 
 
+class TestShutterControlPostponed:
+    """見合わせ情報のレスポンステスト"""
+
+    def test_shutter_ctrl_postponed_in_response(self, client, time_machine, config):
+        """制御間隔が短い場合、レスポンスの postponed に対象シャッター名が入る"""
+        setup_midnight_time(client, time_machine)
+
+        shutter_api = ShutterAPI(client)
+
+        result = shutter_api.open(index=0)
+        assert result["postponed"] == []
+
+        # 直後の同一操作は見合わせられ、postponed に名前が入る（result は success のまま）
+        result = shutter_api.open(index=0)
+        assert result["result"] == "success"
+        assert result["postponed"] == [config.shutter[0].name]
+
+
 class TestShutterControlValidation:
     """シャッター制御 API の入力検証テスト"""
 

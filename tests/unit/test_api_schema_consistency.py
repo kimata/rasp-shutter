@@ -225,7 +225,7 @@ class TestShutterStateResponseSchema:
         response = rasp_shutter.type_defs.ShutterStateResponse()
         result = dataclasses.asdict(response)
 
-        expected_fields = {"state", "result"}
+        expected_fields = {"state", "result", "postponed"}
         assert set(result.keys()) == expected_fields, (
             f"ShutterStateResponse のフィールドが期待と異なります: {set(result.keys())} != {expected_fields}"
         )
@@ -537,7 +537,7 @@ class TestNegativeFieldNameChecks:
         response = rasp_shutter.type_defs.ShutterStateResponse()
         result = dataclasses.asdict(response)
 
-        allowed_fields = {"state", "result"}
+        allowed_fields = {"state", "result", "postponed"}
         unexpected = set(result.keys()) - allowed_fields
         assert not unexpected, f"ShutterStateResponse に想定外のフィールドがあります: {unexpected}"
 

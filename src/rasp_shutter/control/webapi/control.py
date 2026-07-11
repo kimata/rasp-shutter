@@ -35,6 +35,14 @@ class CONTROL_MODE(enum.Enum):
     AUTO = "🤖自動"
 
 
+class EXEC_RESULT(enum.Enum):
+    """1台のシャッター制御の実行結果"""
+
+    SUCCESS = "success"
+    POSTPONED = "postponed"  # 制御間隔が短く見合わせた（エラーではない）
+    FAILURE = "failure"
+
+
 MODE_TO_STR: dict[CONTROL_MODE, str] = {
     CONTROL_MODE.MANUAL: "manual",
     CONTROL_MODE.SCHEDULE: "schedule",
@@ -198,12 +206,12 @@ def set_shutter_state_impl(
     mode: CONTROL_MODE,
     sense_data: rasp_shutter.type_defs.SensorData | None,
     user: str,
-) -> bool:
+) -> EXEC_RESULT:
     """1台のシャッターを制御する。
 
     Returns:
-        制御に成功した場合と、制御間隔が短く見合わせた場合は True。
-        制御に失敗した場合は False。
+        制御に成功した場合は SUCCESS、制御間隔が短く見合わせた場合は POSTPONED、
+        制御に失敗した場合は FAILURE。
     """
     # NOTE: 閉じている場合に再度閉じるボタンをおしたり、逆に開いている場合に再度
     # 開くボタンを押すことが続くと、スイッチがエラーになるので exec_hist を使って
@@ -227,7 +235,7 @@ def set_shutter_state_impl(
             f"🔔 {interval_config.log_prefix}{shutter_name}のシャッターを{state_text}るのを見合わせました。"
             f"{time_diff_str}前に{state_text}ています。{by_text}"
         )
-        return True
+        return EXEC_RESULT.POSTPONED
 
     result = call_shutter_api(config, index, state)
 
@@ -268,7 +276,7 @@ def set_shutter_state_impl(
         except Exception as e:
             logging.warning("失敗メトリクス記録に失敗しました: %s", e)
 
-    return result
+    return EXEC_RESULT.SUCCESS if result else EXEC_RESULT.FAILURE
 
 
 def set_shutter_state(
@@ -284,11 +292,15 @@ def set_shutter_state(
     )
 
     success = True
+    postponed: list[str] = []
     with control_lock:
         for index in index_list:
             try:
-                if not set_shutter_state_impl(config, index, state, mode, sense_data, user):
+                exec_result = set_shutter_state_impl(config, index, state, mode, sense_data, user)
+                if exec_result == EXEC_RESULT.FAILURE:
                     success = False
+                elif exec_result == EXEC_RESULT.POSTPONED:
+                    postponed.append(config.shutter[index].name)
             except Exception:
                 logging.exception("Failed to control shutter (index=%d)", index)
                 success = False
@@ -308,6 +320,7 @@ def set_shutter_state(
             my_lib.footprint.clear(rasp_shutter.control.config.STAT_PENDING_OPEN.to_path())
 
     response = get_shutter_state(config)
+    response.postponed = postponed
     if not success:
         response.result = "error"
     return response
