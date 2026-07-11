@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>シャッター メトリクス ダッシュボード</title>
+        <link rel="icon" type="image/x-icon" href="{{ favicon_url }}" />
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot"></script>
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        />
+        <style>
+            .chart-container {
+                position: relative;
+                height: 350px;
+                margin: 0.5rem 0;
+            }
+            @media (max-width: 768px) {
+                .chart-container {
+                    height: 300px;
+                    margin: 0.25rem 0;
+                }
+            }
+            .permalink-header {
+                position: relative;
+                display: inline-block;
+            }
+            .permalink-icon {
+                opacity: 0;
+                transition: opacity 0.2s;
+                cursor: pointer;
+                margin-left: 0.5rem;
+                color: #3b82f6;
+                font-size: 0.875rem;
+            }
+            .permalink-icon:hover {
+                color: #1d4ed8;
+            }
+            .permalink-header:hover .permalink-icon {
+                opacity: 1;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50 font-sans">
+        <div class="container mx-auto px-2 sm:px-4 py-4">
+            <div class="text-center mb-8">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
+                    <i class="fas fa-chart-line mr-2 text-blue-600"></i>
+                    シャッター メトリクス ダッシュボード
+                </h1>
+                <p class="text-gray-600" id="data-period-text">読み込み中...</p>
+            </div>
+
+            <div
+                id="dashboard-error"
+                class="hidden bg-red-50 border border-red-200 rounded-lg p-4 mb-8 text-center"
+            >
+                <i class="fas fa-triangle-exclamation text-red-500 mr-2"></i>
+                <span class="text-red-700">メトリクスデータの読み込みに失敗しました。</span>
+            </div>
+
+            <!-- 基本統計 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="basic-stats">
+                    <i class="fas fa-chart-bar mr-2 text-blue-600"></i>
+                    基本統計
+                    <span class="permalink-icon" onclick="copyPermalink('basic-stats')">
+                        <i class="fas fa-link text-sm"></i>
+                    </span>
+                </h2>
+
+                <div class="bg-white rounded-lg shadow">
+                    <div class="border-b px-4 py-3">
+                        <p class="font-semibold text-gray-700">操作回数</p>
+                    </div>
+                    <div class="p-4">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                            <div class="text-center">
+                                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                                    👆 手動開操作 ☀️
+                                </p>
+                                <p class="text-2xl font-bold text-green-500" id="stat-manual-open">-</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                                    👆 手動閉操作 🌙
+                                </p>
+                                <p class="text-2xl font-bold text-blue-500" id="stat-manual-close">-</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                                    🤖 自動開操作 ☀️
+                                </p>
+                                <p class="text-2xl font-bold text-green-500" id="stat-auto-open">-</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                                    🤖 自動閉操作 🌙
+                                </p>
+                                <p class="text-2xl font-bold text-blue-500" id="stat-auto-close">-</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">制御失敗</p>
+                                <p class="text-2xl font-bold text-red-500" id="stat-failure">-</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                                    データ収集日数
+                                </p>
+                                <p class="text-2xl font-bold text-indigo-500" id="stat-total-days">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- シャッター個体別統計 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="shutter-breakdown">
+                    <i class="fas fa-table-list mr-2 text-blue-600"></i>
+                    シャッター個体別統計
+                    <span class="permalink-icon" onclick="copyPermalink('shutter-breakdown')">
+                        <i class="fas fa-link text-sm"></i>
+                    </span>
+                </h2>
+                <div class="bg-white rounded-lg shadow overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">
+                                    シャッター名
+                                </th>
+                                <th class="px-2 py-2 text-right text-xs font-semibold text-gray-700">
+                                    手動開
+                                </th>
+                                <th class="px-2 py-2 text-right text-xs font-semibold text-gray-700">
+                                    手動閉
+                                </th>
+                                <th class="px-2 py-2 text-right text-xs font-semibold text-gray-700">
+                                    自動開
+                                </th>
+                                <th class="px-2 py-2 text-right text-xs font-semibold text-gray-700">
+                                    自動閉
+                                </th>
+                                <th class="px-2 py-2 text-right text-xs font-semibold text-gray-700">合計</th>
+                                <th class="px-2 py-2 text-right text-xs font-semibold text-gray-700">失敗</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shutter-breakdown-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 見合わせ分析 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="postpone-summary">
+                    <i class="fas fa-pause-circle mr-2 text-amber-600"></i>
+                    見合わせ分析 (直近30日)
+                    <span class="permalink-icon" onclick="copyPermalink('postpone-summary')">
+                        <i class="fas fa-link text-sm"></i>
+                    </span>
+                </h2>
+
+                <div class="bg-white rounded-lg shadow mb-4">
+                    <div class="border-b px-4 py-3">
+                        <p class="font-semibold text-gray-700">サマリー</p>
+                    </div>
+                    <div class="p-4">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                            <div class="text-center">
+                                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">見合わせ件数</p>
+                                <p class="text-2xl font-bold text-amber-600" id="postpone-total">-</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">☀️ 開け側</p>
+                                <p class="text-2xl font-bold text-amber-500" id="postpone-open">-</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">🌙 閉め側</p>
+                                <p class="text-2xl font-bold text-amber-500" id="postpone-close">-</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">解消済み</p>
+                                <p class="text-2xl font-bold text-green-600" id="postpone-resolved">-</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">解消率</p>
+                                <p class="text-2xl font-bold text-green-600" id="postpone-resolve-rate">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3">
+                            <p class="font-semibold text-gray-700">理由 × 方向</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="postponeReasonChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3">
+                            <p class="font-semibold text-gray-700">日別の発生件数</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="postponeDailyChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 見合わせ詳細 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="postpone-detail">
+                    <i class="fas fa-list mr-2 text-amber-600"></i>
+                    見合わせ詳細 (最新100件)
+                    <span class="permalink-icon" onclick="copyPermalink('postpone-detail')">
+                        <i class="fas fa-link text-sm"></i>
+                    </span>
+                </h2>
+                <div class="bg-white rounded-lg shadow overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">
+                                    発生日時
+                                </th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">方向</th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">
+                                    トリガー
+                                </th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">
+                                    予定時刻
+                                </th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">理由</th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">
+                                    センサー値
+                                </th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700">解消</th>
+                            </tr>
+                        </thead>
+                        <tbody id="postpone-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 閾値マージン分析 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="threshold-margin">
+                    <i class="fas fa-sliders mr-2 text-blue-600"></i>
+                    閾値マージン分析
+                    <span class="permalink-icon" onclick="copyPermalink('threshold-margin')">
+                        <i class="fas fa-link text-sm"></i>
+                    </span>
+                </h2>
+                <div class="text-xs text-gray-500 mb-2">参照閾値: <span id="threshold-text">-</span></div>
+                <div class="text-xs text-gray-500 mb-3">
+                    操作時のセンサー値が現在の閾値からどれだけ離れていたか。 値が 0
+                    に近いほどギリギリ。負の値は閾値を満たさないまま操作された記録（手動を除く）。
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3">
+                            <p class="font-semibold text-gray-700">照度 (lux) のマージン</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="thresholdMarginLuxChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3">
+                            <p class="font-semibold text-gray-700">日射 (solar_rad) のマージン</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="thresholdMarginSolarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3">
+                            <p class="font-semibold text-gray-700">太陽高度 (altitude) のマージン</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="thresholdMarginAltitudeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 閾値チューニング支援 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="threshold-tuning">
+                    <i class="fas fa-wrench mr-2 text-teal-600"></i>
+                    閾値チューニング支援
+                    <span class="permalink-icon" onclick="copyPermalink('threshold-tuning')">
+                        <i class="fas fa-link text-sm"></i>
+                    </span>
+                </h2>
+                <div class="text-xs text-gray-500 mb-3">
+                    「暗くて見合わせ」となった開け操作について、閾値までの不足量の分布と、
+                    閾値を緩和した場合に即時開けられた割合（what-if）、見合わせ解消までの時間を表示します。
+                    what-if の判定は自動制御と同じ AND
+                    条件（照度・日射とも閾値超え、太陽高度は現行閾値のまま）です。
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3">
+                            <p class="font-semibold text-gray-700">照度 (lux) の不足量分布</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="tuningShortfallLuxChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3">
+                            <p class="font-semibold text-gray-700">日射 (solar_rad) の不足量分布</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="tuningShortfallSolarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3">
+                            <p class="font-semibold text-gray-700">閾値緩和 what-if（即時開けられた率）</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="tuningWhatIfChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3">
+                            <p class="font-semibold text-gray-700">見合わせ解消までの時間分布</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="tuningResolveLagChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- センサー日内推移 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="sensor-profile">
+                    <i class="fas fa-wave-square mr-2 text-emerald-600"></i>
+                    センサー日内推移 (直近7日)
+                    <span class="permalink-icon" onclick="copyPermalink('sensor-profile')">
+                        <i class="fas fa-link text-sm"></i>
+                    </span>
+                </h2>
+                <div class="text-xs text-gray-500 mb-3">
+                    1分間隔のサンプル (<span id="sensor-sample-count">0</span> 件)
+                    を時刻別・記録時間帯別に散布表示。 赤線=開け閾値、青線=閉め閾値。
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3">
+                            <p class="font-semibold text-gray-700">💡 照度 (lux)</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="sensorProfileLuxChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3">
+                            <p class="font-semibold text-gray-700">☀️ 日射 (solar_rad)</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="sensorProfileSolarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3">
+                            <p class="font-semibold text-gray-700">📐 太陽高度 (altitude)</p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="sensorProfileAltitudeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 時刻分析 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="time-analysis">
+                    <i class="fas fa-clock mr-2 text-blue-600"></i>
+                    時刻分析
+                    <span class="permalink-icon" onclick="copyPermalink('time-analysis')">
+                        <i class="fas fa-link text-sm"></i>
+                    </span>
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3 permalink-header" id="open-time-histogram">
+                            <p class="font-semibold text-gray-700">
+                                ☀️ 開操作時刻の頻度分布
+                                <span class="permalink-icon" onclick="copyPermalink('open-time-histogram')">
+                                    <i class="fas fa-link text-sm"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="openTimeHistogramChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3 permalink-header" id="close-time-histogram">
+                            <p class="font-semibold text-gray-700">
+                                🌙 閉操作時刻の頻度分布
+                                <span class="permalink-icon" onclick="copyPermalink('close-time-histogram')">
+                                    <i class="fas fa-link text-sm"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="closeTimeHistogramChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 時系列データ分析 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="time-series">
+                    <i class="fas fa-chart-line mr-2 text-blue-600"></i>
+                    時系列データ分析
+                    <span class="permalink-icon" onclick="copyPermalink('time-series')">
+                        <i class="fas fa-link text-sm"></i>
+                    </span>
+                </h2>
+
+                <div class="space-y-4">
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3 permalink-header" id="time-series-chart">
+                            <p class="font-semibold text-gray-700">
+                                🕐 操作時刻の時系列遷移
+                                <span class="permalink-icon" onclick="copyPermalink('time-series-chart')">
+                                    <i class="fas fa-link text-sm"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="timeSeriesChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3 permalink-header" id="lux-time-series">
+                            <p class="font-semibold text-gray-700">
+                                💡 照度データの時系列遷移
+                                <span class="permalink-icon" onclick="copyPermalink('lux-time-series')">
+                                    <i class="fas fa-link text-sm"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="luxTimeSeriesChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3 permalink-header" id="solar-rad-time-series">
+                            <p class="font-semibold text-gray-700">
+                                ☀️ 日射データの時系列遷移
+                                <span class="permalink-icon" onclick="copyPermalink('solar-rad-time-series')">
+                                    <i class="fas fa-link text-sm"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="solarRadTimeSeriesChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3 permalink-header" id="altitude-time-series">
+                            <p class="font-semibold text-gray-700">
+                                📐 太陽高度の時系列遷移
+                                <span class="permalink-icon" onclick="copyPermalink('altitude-time-series')">
+                                    <i class="fas fa-link text-sm"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="altitudeTimeSeriesChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 制御失敗の推移 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="failure-time-series">
+                    <i class="fas fa-circle-exclamation mr-2 text-red-600"></i>
+                    制御失敗の推移
+                    <span class="permalink-icon" onclick="copyPermalink('failure-time-series')">
+                        <i class="fas fa-link text-sm"></i>
+                    </span>
+                </h2>
+                <div class="bg-white rounded-lg shadow">
+                    <div class="border-b px-4 py-3">
+                        <p class="font-semibold text-gray-700">日別の制御失敗件数</p>
+                    </div>
+                    <div class="p-4">
+                        <div class="chart-container">
+                            <canvas id="failureTimeSeriesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- センサーデータ分析（自動操作） -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="auto-sensor-analysis">
+                    <i class="fas fa-robot mr-2 text-blue-600"></i>
+                    センサーデータ分析（自動操作）
+                    <span class="permalink-icon" onclick="copyPermalink('auto-sensor-analysis')">
+                        <i class="fas fa-link text-sm"></i>
+                    </span>
+                </h2>
+
+                <!-- 照度データ -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3 permalink-header" id="auto-open-lux">
+                            <p class="font-semibold text-gray-700">
+                                🤖 自動開操作時の照度データ ☀️
+                                <span class="permalink-icon" onclick="copyPermalink('auto-open-lux')">
+                                    <i class="fas fa-link text-sm"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="autoOpenLuxChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3 permalink-header" id="auto-close-lux">
+                            <p class="font-semibold text-gray-700">
+                                🤖 自動閉操作時の照度データ 🌙
+                                <span class="permalink-icon" onclick="copyPermalink('auto-close-lux')">
+                                    <i class="fas fa-link text-sm"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="autoCloseLuxChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 日射データ -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3 permalink-header" id="auto-open-solar-rad">
+                            <p class="font-semibold text-gray-700">
+                                🤖 自動開操作時の日射データ ☀️
+                                <span class="permalink-icon" onclick="copyPermalink('auto-open-solar-rad')">
+                                    <i class="fas fa-link text-sm"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="autoOpenSolarRadChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3 permalink-header" id="auto-close-solar-rad">
+                            <p class="font-semibold text-gray-700">
+                                🤖 自動閉操作時の日射データ 🌙
+                                <span class="permalink-icon" onclick="copyPermalink('auto-close-solar-rad')">
+                                    <i class="fas fa-link text-sm"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="autoCloseSolarRadChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 太陽高度データ -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3 permalink-header" id="auto-open-altitude">
+                            <p class="font-semibold text-gray-700">
+                                🤖 自動開操作時の太陽高度データ ☀️
+                                <span class="permalink-icon" onclick="copyPermalink('auto-open-altitude')">
+                                    <i class="fas fa-link text-sm"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="autoOpenAltitudeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="border-b px-4 py-3 permalink-header" id="auto-close-altitude">
+                            <p class="font-semibold text-gray-700">
+                                🤖 自動閉操作時の太陽高度データ 🌙
+                                <span class="permalink-icon" onclick="copyPermalink('auto-close-altitude')">
+                                    <i class="fas fa-link text-sm"></i>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="p-4">
+                            <div class="chart-container">
+                                <canvas id="autoCloseAltitudeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- センサーデータ分析（手動操作） -->
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 permalink-header" id="manual-sensor-analysis">
+                    <i class="fas fa-hand-paper mr-2 text-blue-600"></i>
+                    センサーデータ分析（手動操作）
+                    <span class="permalink-icon" onclick="copyPermalink('manual-sensor-analysis')">
+                        <i class="fas fa-link text-sm"></i>
+                    </span>
+                </h2>
+
+                <!-- データなし表示 -->
+                <div id="manual-no-data" class="hidden bg-gray-50 rounded-lg p-8 text-center">
+                    <i class="fas fa-inbox text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600">手動操作のデータがまだありません。</p>
+                    <p class="text-sm text-gray-500 mt-2">
+                        手動でシャッターを操作すると、ここにセンサーデータが表示されます。
+                    </p>
+                </div>
+
+                <!-- グラフ表示エリア -->
+                <div id="manual-charts">
+                    <!-- 照度データ -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="bg-white rounded-lg shadow">
+                            <div class="border-b px-4 py-3 permalink-header" id="manual-open-lux">
+                                <p class="font-semibold text-gray-700">
+                                    👆 手動開操作時の照度データ ☀️
+                                    <span class="permalink-icon" onclick="copyPermalink('manual-open-lux')">
+                                        <i class="fas fa-link text-sm"></i>
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="p-4">
+                                <div class="chart-container">
+                                    <canvas id="manualOpenLuxChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow">
+                            <div class="border-b px-4 py-3 permalink-header" id="manual-close-lux">
+                                <p class="font-semibold text-gray-700">
+                                    👆 手動閉操作時の照度データ 🌙
+                                    <span class="permalink-icon" onclick="copyPermalink('manual-close-lux')">
+                                        <i class="fas fa-link text-sm"></i>
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="p-4">
+                                <div class="chart-container">
+                                    <canvas id="manualCloseLuxChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 日射データ -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="bg-white rounded-lg shadow">
+                            <div class="border-b px-4 py-3 permalink-header" id="manual-open-solar-rad">
+                                <p class="font-semibold text-gray-700">
+                                    👆 手動開操作時の日射データ ☀️
+                                    <span
+                                        class="permalink-icon"
+                                        onclick="copyPermalink('manual-open-solar-rad')"
+                                    >
+                                        <i class="fas fa-link text-sm"></i>
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="p-4">
+                                <div class="chart-container">
+                                    <canvas id="manualOpenSolarRadChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow">
+                            <div class="border-b px-4 py-3 permalink-header" id="manual-close-solar-rad">
+                                <p class="font-semibold text-gray-700">
+                                    👆 手動閉操作時の日射データ 🌙
+                                    <span
+                                        class="permalink-icon"
+                                        onclick="copyPermalink('manual-close-solar-rad')"
+                                    >
+                                        <i class="fas fa-link text-sm"></i>
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="p-4">
+                                <div class="chart-container">
+                                    <canvas id="manualCloseSolarRadChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 太陽高度データ -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white rounded-lg shadow">
+                            <div class="border-b px-4 py-3 permalink-header" id="manual-open-altitude">
+                                <p class="font-semibold text-gray-700">
+                                    👆 手動開操作時の太陽高度データ ☀️
+                                    <span
+                                        class="permalink-icon"
+                                        onclick="copyPermalink('manual-open-altitude')"
+                                    >
+                                        <i class="fas fa-link text-sm"></i>
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="p-4">
+                                <div class="chart-container">
+                                    <canvas id="manualOpenAltitudeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow">
+                            <div class="border-b px-4 py-3 permalink-header" id="manual-close-altitude">
+                                <p class="font-semibold text-gray-700">
+                                    👆 手動閉操作時の太陽高度データ 🌙
+                                    <span
+                                        class="permalink-icon"
+                                        onclick="copyPermalink('manual-close-altitude')"
+                                    >
+                                        <i class="fas fa-link text-sm"></i>
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="p-4">
+                                <div class="chart-container">
+                                    <canvas id="manualCloseAltitudeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- manual-charts -->
+            </div>
+        </div>
+
+        <script src="{{ charts_js_url }}"></script>
+        <script src="{{ dashboard_js_url }}"></script>
+        <script>
+            initMetricsDashboard("{{ data_url }}");
+        </script>
+    </body>
+</html>

@@ -256,6 +256,15 @@ class MetricsAPI:
         response = self.client.get(f"{self.url_prefix}/api/metrics")
         return response.status_code, response.data.decode("utf-8")
 
+    def get_data(self) -> tuple[int, dict[str, Any]]:
+        """メトリクスダッシュボード用データを取得
+
+        Returns:
+            (ステータスコード, レスポンス JSON) のタプル
+        """
+        response = self.client.get(f"{self.url_prefix}/api/metrics/data")
+        return response.status_code, _get_json(response)
+
 
 class SystemAPI:
     """システム情報APIヘルパー"""

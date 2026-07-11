@@ -77,3 +77,107 @@ class TestMetricsPageContent:
         # ページが正常に生成されることを確認
         assert "手動開操作" in body
         assert "手動閉操作" in body
+
+    def test_metrics_page_references_dashboard_js(self, client, time_machine):
+        """メトリクスページに metrics-dashboard.js への参照が含まれる"""
+        setup_midnight_time(client, time_machine)
+
+        # DB を確実に作成するため操作を行う
+        shutter_api = ShutterAPI(client)
+        shutter_api.open(index=0)
+
+        metrics_api = MetricsAPI(client)
+        status_code, body = metrics_api.get_page()
+
+        assert status_code == 200
+        assert "metrics-dashboard.js" in body
+
+
+class TestMetricsDataAPI:
+    """メトリクスデータ API のテスト"""
+
+    def test_metrics_data_top_level_keys(self, client, time_machine):
+        """GET /api/metrics/data が 200 とトップレベルキーを返す"""
+        setup_midnight_time(client, time_machine)
+
+        # DB を確実に作成するため操作を行う
+        shutter_api = ShutterAPI(client)
+        shutter_api.open(index=0)
+
+        metrics_api = MetricsAPI(client)
+        status_code, data = metrics_api.get_data()
+
+        assert status_code == 200
+        for key in (
+            "data_period",
+            "stats",
+            "shutter_breakdown",
+            "postpone",
+            "charts",
+            "threshold_tuning",
+            "reason_labels",
+            "current_thresholds",
+        ):
+            assert key in data, f"トップレベルキー {key} がない"
+
+        assert "summary" in data["postpone"]
+        assert "chart" in data["postpone"]
+        assert "events" in data["postpone"]
+        for chart_key in (
+            "open_times",
+            "close_times",
+            "auto_sensor_data",
+            "manual_sensor_data",
+            "time_series",
+            "failure_time_series",
+            "sensor_samples",
+            "threshold_margin",
+        ):
+            assert chart_key in data["charts"], f"charts キー {chart_key} がない"
+
+    def test_metrics_data_reflects_operations(self, client, time_machine, config):
+        """操作後に stats.manual_open_total が増え、shutter_breakdown にシャッター名が現れる"""
+        setup_midnight_time(client, time_machine)
+
+        shutter_api = ShutterAPI(client)
+        shutter_api.open(index=0)
+
+        metrics_api = MetricsAPI(client)
+        status_code, data_before = metrics_api.get_data()
+        assert status_code == 200
+        before_count = data_before["stats"]["manual_open_total"]
+
+        # NOTE: 同方向の連続操作は制御間隔チェックで見合わせになるため、
+        # 一度閉めてから再度開ける
+        shutter_api.close(index=0)
+        shutter_api.open(index=0)
+
+        status_code, data_after = metrics_api.get_data()
+        assert status_code == 200
+        assert data_after["stats"]["manual_open_total"] == before_count + 1
+
+        # shutter_breakdown に config のシャッター名が現れる
+        shutter_names = [entry["shutter_name"] for entry in data_after["shutter_breakdown"]]
+        assert config.shutter[0].name in shutter_names
+
+
+class TestMetricsStaticFiles:
+    """メトリクス静的ファイル配信のテスト"""
+
+    def test_dashboard_js_served(self, client):
+        """metrics-dashboard.js が配信される"""
+        import rasp_shutter.config
+
+        response = client.get(f"{rasp_shutter.config.URL_PREFIX}/metrics/static/js/metrics-dashboard.js")
+
+        assert response.status_code == 200
+        assert "initMetricsDashboard" in response.data.decode("utf-8")
+
+    def test_charts_js_served(self, client):
+        """metrics-charts.js が配信される"""
+        import rasp_shutter.config
+
+        response = client.get(f"{rasp_shutter.config.URL_PREFIX}/metrics/static/js/metrics-charts.js")
+
+        assert response.status_code == 200
+        assert "renderAllCharts" in response.data.decode("utf-8")
