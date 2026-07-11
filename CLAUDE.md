@@ -130,13 +130,24 @@ docker compose run --build --rm --publish 5000:5000 rasp-shutter
 
 Flaskアプリはモジュラーブループリントアーキテクチャを使用しています：
 
-- `rasp_shutter.api.control` - 手動シャッター制御とESP32通信
-- `rasp_shutter.api.schedule` - スケジュール管理と自動化ロジック
-- `rasp_shutter.api.sensor` - センサーデータ処理（照度、温度）
-- `rasp_shutter.api.test.time` - 時間モック用テストAPI（DUMMY_MODEのみ）
+- `rasp_shutter.control.webapi.control` - 手動シャッター制御とESP32通信
+- `rasp_shutter.control.webapi.schedule` - スケジュール管理と自動化ロジック
+- `rasp_shutter.control.webapi.sensor` - センサーデータ処理（照度、日射、太陽高度）
+- `rasp_shutter.control.webapi.test.*` - 時間モック・同期用テストAPI（DUMMY_MODE/TESTのみ）
+- `rasp_shutter.metrics.webapi.page` - メトリクスダッシュボード（`/api/metrics` = Jinja2 テンプレート、`/api/metrics/data` = JSON API、`/metrics/static/` = 静的 JS）
 - `my_lib.webapp.*` - 共有ライブラリモジュール（ログ、イベント、ユーティリティ）
 
 すべてのルートは`/rasp-shutter`でプレフィックスされます（`my_lib.webapp.config.URL_PREFIX`で設定）。
+
+**状態変更 API は POST 限定**です（`/api/shutter_ctrl` の cmd=1、`/api/schedule_ctrl` の cmd=set。GET で呼ぶと 405）。CORS は使用していません（フロントエンドは同一オリジン配信。開発時は vite の proxy 設定で Flask に中継）。
+
+### メトリクスモジュール構成
+
+- `rasp_shutter.metrics.collector` - SQLite への記録と取得（スレッドセーフなシングルトン、シャッター個体別記録、sensor_samples の保持期間 30 日）
+- `rasp_shutter.metrics.analyzer` - 集計・分析ロジック（統計、見合わせ分析、閾値チューニング試算、`build_dashboard_data()` が JSON API の入口）
+- `rasp_shutter.metrics.webapi.page` - Flask ルートのみ（158 行）
+- `rasp_shutter/metrics/webapi/templates/metrics/dashboard.html` - ページ骨格（データは JS が `/api/metrics/data` からフェッチ）
+- `rasp_shutter/metrics/webapi/static/js/` - チャート描画（metrics-charts.js）と DOM 描画（metrics-dashboard.js、textContent のみ使用）
 
 ## 主要コンポーネント
 

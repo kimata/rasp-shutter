@@ -231,6 +231,7 @@ uv run pytest tests/test_playwright.py
 
 - `GET /rasp-shutter/api/sensor` - リアルタイムセンサーデータ取得
 - `GET /rasp-shutter/api/metrics` - メトリクスダッシュボードページ表示
+- `GET /rasp-shutter/api/metrics/data` - ダッシュボード用データ（JSON）
 
 ### データソース設定
 
