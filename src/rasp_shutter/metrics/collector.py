@@ -21,6 +21,12 @@ import my_lib.time
 
 import rasp_shutter.type_defs
 
+# センサーサンプルの保持期間（日）。表示は直近 7 日のみのため、無制限に増やさない。
+SENSOR_SAMPLE_RETENTION_DAYS = 30
+
+# F-8: シャッター個体別メトリクス用の列（既存 DB へのマイグレーション対象）
+_SHUTTER_COLUMNS = (("shutter_index", "INTEGER"), ("shutter_name", "TEXT"))
+
 
 class MetricsCollector:
     """シャッターメトリクス収集クラス"""
@@ -36,6 +42,8 @@ class MetricsCollector:
         """
         self.db_path = db_path
         self.lock = threading.Lock()
+        # sensor_samples の日次クリーンアップを 1 日 1 回に抑えるための記録
+        self._last_cleanup_date: str | None = None
         self._init_database()
 
     def _init_database(self):
@@ -51,6 +59,8 @@ class MetricsCollector:
                     lux REAL,
                     solar_rad REAL,
                     altitude REAL,
+                    shutter_index INTEGER,
+                    shutter_name TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -61,6 +71,8 @@ class MetricsCollector:
                     date TEXT NOT NULL,
                     failure_count INTEGER DEFAULT 1,
                     timestamp TIMESTAMP NOT NULL,
+                    shutter_index INTEGER,
+                    shutter_name TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -134,11 +146,22 @@ class MetricsCollector:
                 ON sensor_samples(date)
             """)
 
+            self._migrate_schema(conn)
+
             conn.commit()
 
-    def _get_today_date(self) -> str:
-        """今日の日付を文字列で取得"""
-        return my_lib.time.now().date().isoformat()
+    def _migrate_schema(self, conn: sqlite3.Connection) -> None:
+        """既存 DB にシャッター個体列を追加する（無停止マイグレーション）
+
+        新規 DB は CREATE TABLE 文に列が含まれるため、ここは既存 DB 専用の保険。
+        過去の行は NULL のまま（「記録前」として扱う）。
+        """
+        for table in ("operation_metrics", "daily_failures"):
+            existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+            for column, column_type in _SHUTTER_COLUMNS:
+                if column not in existing:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {column_type}")
+                    logging.info("Migrated %s: added column %s", table, column)
 
     def record_shutter_operation(
         self,
@@ -146,6 +169,8 @@ class MetricsCollector:
         mode: str,
         sensor_data: rasp_shutter.type_defs.SensorData | None = None,
         timestamp: datetime.datetime | None = None,
+        shutter_index: int | None = None,
+        shutter_name: str | None = None,
     ):
         """
         シャッター操作を記録
@@ -156,6 +181,8 @@ class MetricsCollector:
             mode: "manual", "schedule", "auto"
             sensor_data: センサーデータ（照度、日射、太陽高度など）
             timestamp: 操作時刻（指定しない場合は現在時刻）
+            shutter_index: シャッターのインデックス
+            shutter_name: シャッター名
 
         """
         if timestamp is None:
@@ -176,17 +203,28 @@ class MetricsCollector:
             if sensor_data.altitude.valid:
                 altitude = sensor_data.altitude.value
 
+        # NOTE: INSERT + UPDATE の原子性は my_lib.sqlite_util.connect の
+        # コンテキストマネージャ（成功時 commit / 例外時 rollback）で担保される
         with self.lock, my_lib.sqlite_util.connect(self.db_path) as conn:
-            # Python 3.12+: datetimeアダプターを明示的に設定
-            conn.execute("BEGIN")
             # 個別操作として記録
             cursor = conn.execute(
                 """
                 INSERT INTO operation_metrics
-                (timestamp, date, action, operation_type, lux, solar_rad, altitude)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                (timestamp, date, action, operation_type, lux, solar_rad, altitude,
+                 shutter_index, shutter_name)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-                (timestamp.isoformat(), date, action, mode, lux, solar_rad, altitude),
+                (
+                    timestamp.isoformat(),
+                    date,
+                    action,
+                    mode,
+                    lux,
+                    solar_rad,
+                    altitude,
+                    shutter_index,
+                    shutter_name,
+                ),
             )
             operation_id = cursor.lastrowid
 
@@ -199,15 +237,21 @@ class MetricsCollector:
             """,
                 (timestamp.isoformat(), operation_id, date, action),
             )
-            conn.execute("COMMIT")
 
-    def record_failure(self, timestamp: datetime.datetime | None = None):
+    def record_failure(
+        self,
+        timestamp: datetime.datetime | None = None,
+        shutter_index: int | None = None,
+        shutter_name: str | None = None,
+    ):
         """
         シャッター制御失敗を記録
 
         Args:
         ----
             timestamp: 失敗時刻（指定しない場合は現在時刻）
+            shutter_index: シャッターのインデックス
+            shutter_name: シャッター名
 
         """
         if timestamp is None:
@@ -218,10 +262,10 @@ class MetricsCollector:
         with self.lock, my_lib.sqlite_util.connect(self.db_path) as conn:
             conn.execute(
                 """
-                INSERT INTO daily_failures (date, timestamp)
-                VALUES (?, ?)
+                INSERT INTO daily_failures (date, timestamp, shutter_index, shutter_name)
+                VALUES (?, ?, ?, ?)
             """,
-                (date, timestamp.isoformat()),
+                (date, timestamp.isoformat(), shutter_index, shutter_name),
             )
 
     def record_postpone(
@@ -319,6 +363,23 @@ class MetricsCollector:
             """,
                 (timestamp.isoformat(), date, lux, solar_rad, altitude, context),
             )
+
+            # NOTE: 1 分間隔の記録で無制限に増えるのを防ぐため、日付が変わったタイミングで
+            # 保持期間を過ぎた行を削除する（1 日 1 回、同一トランザクション内）
+            if self._last_cleanup_date != date:
+                self._last_cleanup_date = date
+                cutoff = (
+                    timestamp.date() - datetime.timedelta(days=SENSOR_SAMPLE_RETENTION_DAYS)
+                ).isoformat()
+                deleted = conn.execute("DELETE FROM sensor_samples WHERE date < ?", (cutoff,)).rowcount
+                if deleted > 0:
+                    logging.info("Deleted %d old sensor samples (before %s)", deleted, cutoff)
+
+    def cleanup_old_sensor_samples(self, retention_days: int = SENSOR_SAMPLE_RETENTION_DAYS) -> int:
+        """保持期間を過ぎた sensor_samples 行を削除し、削除件数を返す"""
+        cutoff = (my_lib.time.now().date() - datetime.timedelta(days=retention_days)).isoformat()
+        with self.lock, my_lib.sqlite_util.connect(self.db_path) as conn:
+            return conn.execute("DELETE FROM sensor_samples WHERE date < ?", (cutoff,)).rowcount
 
     def get_operation_metrics(self, start_date: str, end_date: str) -> list:
         """
@@ -486,27 +547,87 @@ class MetricsCollector:
         start_date = end_date - datetime.timedelta(days=days)
         return self.get_sensor_samples(start_date.isoformat(), end_date.isoformat())
 
+    def get_shutter_operation_counts(self) -> list:
+        """シャッター個体別の操作回数を取得（F-8）
+
+        Returns
+        -------
+        {shutter_index, shutter_name, action, operation_type, count} のリスト
+        （マイグレーション前の行は shutter_index / shutter_name が None）
+
+        """
+        with my_lib.sqlite_util.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT shutter_index, shutter_name, action, operation_type, COUNT(*) AS count
+                FROM operation_metrics
+                GROUP BY shutter_index, shutter_name, action, operation_type
+            """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_shutter_failure_counts(self) -> list:
+        """シャッター個体別の失敗回数を取得（F-8）"""
+        with my_lib.sqlite_util.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT shutter_index, shutter_name, COUNT(*) AS count
+                FROM daily_failures
+                GROUP BY shutter_index, shutter_name
+            """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_daily_failure_counts(self, start_date: str, end_date: str) -> list:
+        """日別の失敗件数を取得（F-9）"""
+        with my_lib.sqlite_util.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT date, COUNT(*) AS count
+                FROM daily_failures
+                WHERE date BETWEEN ? AND ?
+                GROUP BY date
+                ORDER BY date
+            """,
+                (start_date, end_date),
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
 
 # グローバルインスタンス
 _collector_instance: MetricsCollector | None = None
+# NOTE: スケジューラスレッド・サンプリングスレッド・Flask ワーカーから同時に初回アクセス
+# されると check-then-set が競合し、別々の Lock を持つインスタンスが 2 個できてしまう
+_collector_lock = threading.Lock()
 
 
 def get_collector(metrics_data_path) -> MetricsCollector:
-    """メトリクス収集インスタンスを取得"""
+    """メトリクス収集インスタンスを取得（スレッドセーフ）"""
     global _collector_instance
 
-    if _collector_instance is None:
-        db_path = pathlib.Path(metrics_data_path)
-        _collector_instance = MetricsCollector(db_path)
-        logging.info("Metrics collector initialized: %s", db_path)
+    with _collector_lock:
+        if _collector_instance is None:
+            db_path = pathlib.Path(metrics_data_path)
+            _collector_instance = MetricsCollector(db_path)
+            logging.info("Metrics collector initialized: %s", db_path)
+        elif _collector_instance.db_path != pathlib.Path(metrics_data_path):
+            logging.warning(
+                "Metrics collector already initialized with different path: %s (requested: %s)",
+                _collector_instance.db_path,
+                metrics_data_path,
+            )
 
-    return _collector_instance
+        return _collector_instance
 
 
 def reset_collector():
     """グローバルコレクタインスタンスをリセット (テスト用)"""
     global _collector_instance
-    _collector_instance = None
+    with _collector_lock:
+        _collector_instance = None
 
 
 def record_shutter_operation(
@@ -515,14 +636,30 @@ def record_shutter_operation(
     metrics_data_path,
     sensor_data: rasp_shutter.type_defs.SensorData | None = None,
     timestamp: datetime.datetime | None = None,
+    shutter_index: int | None = None,
+    shutter_name: str | None = None,
 ):
     """シャッター操作を記録（便利関数）"""
-    get_collector(metrics_data_path).record_shutter_operation(action, mode, sensor_data, timestamp)
+    get_collector(metrics_data_path).record_shutter_operation(
+        action,
+        mode,
+        sensor_data,
+        timestamp,
+        shutter_index=shutter_index,
+        shutter_name=shutter_name,
+    )
 
 
-def record_failure(metrics_data_path, timestamp: datetime.datetime | None = None):
+def record_failure(
+    metrics_data_path,
+    timestamp: datetime.datetime | None = None,
+    shutter_index: int | None = None,
+    shutter_name: str | None = None,
+):
     """シャッター制御失敗を記録（便利関数）"""
-    get_collector(metrics_data_path).record_failure(timestamp)
+    get_collector(metrics_data_path).record_failure(
+        timestamp, shutter_index=shutter_index, shutter_name=shutter_name
+    )
 
 
 def record_postpone(
