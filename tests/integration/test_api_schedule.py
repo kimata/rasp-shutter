@@ -198,6 +198,55 @@ class TestScheduleValidation:
         log_checker.wait_and_check(["CLEAR", "INVALID"])
         slack_checker.check_error_contains("スケジュールの指定が不正です。")
 
+    def test_schedule_ctrl_invalid_json(self, client, time_machine):
+        """data が JSON として壊れている場合は 400"""
+        setup_midnight_time(client, time_machine)
+
+        response = client.post(
+            f"{rasp_shutter.config.URL_PREFIX}/api/schedule_ctrl",
+            query_string={"cmd": "set", "data": "{broken json"},
+        )
+        assert response.status_code == 400
+        assert response.json is not None
+        assert response.json["result"] == "error"
+
+    def test_schedule_ctrl_invalid_json_type(self, client, time_machine):
+        """data が dict でない JSON の場合は 400"""
+        setup_midnight_time(client, time_machine)
+
+        response = client.post(
+            f"{rasp_shutter.config.URL_PREFIX}/api/schedule_ctrl",
+            query_string={"cmd": "set", "data": "[1, 2]"},
+        )
+        assert response.status_code == 400
+        assert response.json is not None
+        assert response.json["result"] == "error"
+
+    def test_schedule_ctrl_invalid_key_name(self, client, time_machine):
+        """キー名が open/close 以外の場合は 400"""
+        setup_midnight_time(client, time_machine)
+
+        schedule_api = ScheduleAPI(client)
+
+        schedule_data = ScheduleFactory.create()
+        schedule_data["foo"] = schedule_data.pop("close")
+        schedule_api.update(schedule_data, expect_success=False)
+
+    def test_schedule_ctrl_set_requires_post(self, client, time_machine):
+        """cmd=set は GET では受け付けない（405）"""
+        setup_midnight_time(client, time_machine)
+
+        import json
+
+        schedule_data = ScheduleFactory.create()
+        response = client.get(
+            f"{rasp_shutter.config.URL_PREFIX}/api/schedule_ctrl",
+            query_string={"cmd": "set", "data": json.dumps(schedule_data)},
+        )
+        assert response.status_code == 405
+        assert response.json is not None
+        assert response.json["result"] == "error"
+
     def test_schedule_ctrl_validate_fail(self, client, mocker):
         """バリデーション失敗時の動作"""
         mocker.patch("rasp_shutter.control.scheduler.schedule_validate", return_value=False)

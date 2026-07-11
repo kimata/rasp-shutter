@@ -7,7 +7,6 @@ import threading
 import typing
 
 import flask
-import flask_cors
 import my_lib.flask_util
 import my_lib.footprint
 import my_lib.pytest_util
@@ -340,10 +339,14 @@ def cmd_hist_push(cmd: dict) -> None:  # pragma: no cover
 
 
 @blueprint.route("/api/shutter_ctrl", methods=["GET", "POST"])
-@flask_cors.cross_origin()
 @validate(query=ShutterCtrlRequest)
-def api_shutter_ctrl(query: ShutterCtrlRequest) -> flask.Response:
+def api_shutter_ctrl(query: ShutterCtrlRequest) -> flask.Response | tuple[flask.Response, int]:
     config: rasp_shutter.config.AppConfig = flask.current_app.config["CONFIG"]
+
+    # NOTE: 負のインデックスは Python のシーケンスでは末尾参照になり、意図しない
+    # シャッターが制御されてしまうため、-1（全シャッター指定）以外は拒否する。
+    if query.index != -1 and not (0 <= query.index < len(config.shutter)):
+        return flask.jsonify({"result": "error", "reason": "invalid index"}), 400
 
     # NOTE: シャッターが指定されていない場合は、全てを制御対象にする
     index_list = list(range(len(config.shutter))) if query.index == -1 else [query.index]
@@ -351,6 +354,10 @@ def api_shutter_ctrl(query: ShutterCtrlRequest) -> flask.Response:
     sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
 
     if query.cmd == 1:
+        # NOTE: 状態変更は POST 限定（GET だとプリフェッチや CSRF で誤発火し得る）
+        if flask.request.method != "POST":
+            return flask.jsonify({"result": "error", "reason": "control requires POST"}), 405
+
         result = set_shutter_state(
             config,
             index_list,
@@ -366,7 +373,6 @@ def api_shutter_ctrl(query: ShutterCtrlRequest) -> flask.Response:
 
 # NOTE: テスト用
 @blueprint.route("/api/ctrl/log", methods=["GET"])
-@flask_cors.cross_origin()
 @validate(query=CtrlLogRequest)
 def api_shutter_ctrl_log(query: CtrlLogRequest) -> flask.Response:
     if query.cmd == "clear":
@@ -381,7 +387,6 @@ def api_shutter_ctrl_log(query: CtrlLogRequest) -> flask.Response:
 
 
 @blueprint.route("/api/shutter_list", methods=["GET"])
-@flask_cors.cross_origin()
 def api_shutter_list() -> flask.Response:
     config: rasp_shutter.config.AppConfig = flask.current_app.config["CONFIG"]
 

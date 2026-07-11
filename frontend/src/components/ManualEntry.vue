@@ -44,7 +44,7 @@ export default {
     methods: {
         control: function (mode) {
             axios
-                .get(this.AppConfig["apiEndpoint"] + "shutter_ctrl", {
+                .post(this.AppConfig["apiEndpoint"] + "shutter_ctrl", null, {
                     params: { cmd: 1, index: this.index, state: mode },
                 })
                 .then((response) => {

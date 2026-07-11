@@ -6,6 +6,8 @@ These schemas are used for request validation and response serialization.
 Internal data structures remain as dataclasses in types.py.
 """
 
+import typing
+
 from my_lib.pydantic import BaseSchema
 
 
@@ -17,7 +19,7 @@ class ShutterCtrlRequest(BaseSchema):
 
     cmd: int = 0
     index: int = -1
-    state: str = "close"
+    state: typing.Literal["open", "close"] = "close"
 
 
 class ScheduleCtrlRequest(BaseSchema):
@@ -76,7 +78,6 @@ class ScheduleEntrySchema(BaseSchema):
     solar_rad: int
     lux: int
     altitude: int
-    endpoint: str | None = None
 
 
 class ScheduleDataSchema(BaseSchema):

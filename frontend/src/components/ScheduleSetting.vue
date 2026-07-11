@@ -133,7 +133,7 @@ export default {
         save: function () {
             this.saving = true;
             axios
-                .get(this.AppConfig["apiEndpoint"] + "schedule_ctrl", {
+                .post(this.AppConfig["apiEndpoint"] + "schedule_ctrl", null, {
                     params: { cmd: "set", data: JSON.stringify(this.current) },
                 })
                 .then((response) => {

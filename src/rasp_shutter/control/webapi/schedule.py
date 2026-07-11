@@ -2,10 +2,8 @@
 import json
 import multiprocessing
 import threading
-import urllib.parse
 
 import flask
-import flask_cors
 import my_lib.flask_util
 import my_lib.pytest_util
 import my_lib.webapp.event
@@ -102,13 +100,22 @@ def schedule_str(schedule_data: dict) -> str:
 
 
 @blueprint.route("/api/schedule_ctrl", methods=["GET", "POST"])
-@flask_cors.cross_origin()
 @validate(query=ScheduleCtrlRequest)
 def api_schedule_ctrl(query: ScheduleCtrlRequest) -> flask.Response | tuple[flask.Response, int]:
     if query.cmd == "set" and query.data is not None:
-        schedule_data = json.loads(query.data)
+        # NOTE: 状態変更は POST 限定（GET だとプリフェッチや CSRF で誤発火し得る）
+        if flask.request.method != "POST":
+            return flask.jsonify({"result": "error", "reason": "set requires POST"}), 405
 
-        if not rasp_shutter.control.scheduler.schedule_validate(schedule_data):
+        try:
+            schedule_data = json.loads(query.data)
+        except json.JSONDecodeError:
+            my_lib.webapp.log.error("😵 スケジュールの指定が不正です。")
+            return flask.jsonify({"result": "error"}), 400
+
+        if not isinstance(schedule_data, dict) or not rasp_shutter.control.scheduler.schedule_validate(
+            schedule_data
+        ):
             my_lib.webapp.log.error("😵 スケジュールの指定が不正です。")
             # NOTE: 200 で旧スケジュールを返すとクライアントが保存成功と誤認するため、
             # バリデーション失敗はエラーとして返す。
@@ -120,15 +127,6 @@ def api_schedule_ctrl(query: ScheduleCtrlRequest) -> flask.Response | tuple[flas
         assert schedule_queue is not None  # noqa: S101
 
         with schedule_lock:
-            schedule_data = json.loads(query.data)
-
-            endpoint = urllib.parse.urljoin(
-                flask.request.url_root,
-                flask.url_for("rasp-shutter-control.api_shutter_ctrl"),
-            )
-
-            for entry in schedule_data.values():
-                entry["endpoint"] = endpoint
             schedule_queue.put(schedule_data)
 
             rasp_shutter.control.scheduler.schedule_store(schedule_data)

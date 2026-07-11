@@ -696,8 +696,10 @@ SCHEDULE_FIELD_TYPES: dict[str, type] = {
 
 
 def schedule_validate(schedule_data: dict) -> bool:
-    if len(schedule_data) != 2:
-        logging.warning("Count of entry is Invalid: %d", len(schedule_data))
+    if set(schedule_data.keys()) != {"open", "close"}:
+        # NOTE: キー名まで検証しないと、"open"/"close" 以外の state のジョブが
+        # スケジューラに登録され、不整合な制御が実行されてしまう。
+        logging.warning("Schedule keys are invalid: %s", sorted(schedule_data.keys()))
         return False
 
     for entry in schedule_data.values():

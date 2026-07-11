@@ -267,6 +267,51 @@ class TestShutterControlFailure:
         slack_checker.check_error_contains("閉めるのに失敗しました")
 
 
+class TestShutterControlValidation:
+    """シャッター制御 API の入力検証テスト"""
+
+    def test_shutter_ctrl_requires_post(self, client, time_machine):
+        """cmd=1（制御）は GET では受け付けない（405）"""
+        setup_midnight_time(client, time_machine)
+
+        import rasp_shutter.config
+
+        response = client.get(
+            f"{rasp_shutter.config.URL_PREFIX}/api/shutter_ctrl",
+            query_string={"cmd": 1, "state": "open"},
+        )
+        assert response.status_code == 405
+        assert response.json is not None
+        assert response.json["result"] == "error"
+
+    def test_shutter_ctrl_invalid_index(self, client, time_machine):
+        """範囲外の index は 400（負のインデックスで別シャッターが動くのを防ぐ）"""
+        setup_midnight_time(client, time_machine)
+
+        import rasp_shutter.config
+
+        for invalid_index in [-2, 100]:
+            response = client.post(
+                f"{rasp_shutter.config.URL_PREFIX}/api/shutter_ctrl",
+                query_string={"cmd": 1, "index": invalid_index, "state": "open"},
+            )
+            assert response.status_code == 400, invalid_index
+            assert response.json is not None
+            assert response.json["result"] == "error"
+
+    def test_shutter_ctrl_invalid_state(self, client, time_machine):
+        """open/close 以外の state は 400"""
+        setup_midnight_time(client, time_machine)
+
+        import rasp_shutter.config
+
+        response = client.post(
+            f"{rasp_shutter.config.URL_PREFIX}/api/shutter_ctrl",
+            query_string={"cmd": 1, "state": "foo"},
+        )
+        assert response.status_code == 400
+
+
 class TestShutterStateInconsistent:
     """シャッター状態不整合テスト
 

@@ -20,7 +20,6 @@ import signal
 import sys
 
 import flask
-import flask_cors
 import my_lib.proc_util
 import my_lib.webapp.base
 import my_lib.webapp.config
@@ -121,8 +120,6 @@ def create_app(config: rasp_shutter.config.AppConfig, dummy_mode: bool = False) 
         atexit.register(notify_terminate)
     else:  # pragma: no cover
         pass
-
-    flask_cors.CORS(app)
 
     app.config["CONFIG"] = config
     app.config["DUMMY_MODE"] = dummy_mode

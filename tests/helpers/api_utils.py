@@ -89,7 +89,8 @@ class ShutterAPI:
         if index is not None:
             query["index"] = index
 
-        response = self.client.get(
+        # NOTE: 状態変更 API は POST 限定
+        response = self.client.post(
             f"{self.url_prefix}/api/shutter_ctrl",
             query_string=query,
         )
@@ -126,7 +127,8 @@ class ScheduleAPI:
         Returns:
             APIレスポンスのJSON
         """
-        response = self.client.get(
+        # NOTE: 状態変更 API は POST 限定
+        response = self.client.post(
             f"{self.url_prefix}/api/schedule_ctrl",
             query_string={"cmd": "set", "data": json.dumps(schedule_data)},
         )

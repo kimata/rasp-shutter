@@ -3,7 +3,6 @@ import dataclasses
 import datetime
 
 import flask
-import flask_cors
 import my_lib.sensor_data
 import my_lib.time
 import pysolar.solar
@@ -55,7 +54,6 @@ def get_sensor_data(config: rasp_shutter.config.AppConfig) -> rasp_shutter.type_
 
 
 @blueprint.route("/api/sensor", methods=["GET"])
-@flask_cors.cross_origin()
 def api_sensor_data() -> flask.Response:
     config: rasp_shutter.config.AppConfig = flask.current_app.config["CONFIG"]
     return flask.jsonify(dataclasses.asdict(get_sensor_data(config)))
