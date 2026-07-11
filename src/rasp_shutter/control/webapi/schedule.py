@@ -104,13 +104,15 @@ def schedule_str(schedule_data: dict) -> str:
 @blueprint.route("/api/schedule_ctrl", methods=["GET", "POST"])
 @flask_cors.cross_origin()
 @validate(query=ScheduleCtrlRequest)
-def api_schedule_ctrl(query: ScheduleCtrlRequest) -> flask.Response:
+def api_schedule_ctrl(query: ScheduleCtrlRequest) -> flask.Response | tuple[flask.Response, int]:
     if query.cmd == "set" and query.data is not None:
         schedule_data = json.loads(query.data)
 
         if not rasp_shutter.control.scheduler.schedule_validate(schedule_data):
             my_lib.webapp.log.error("😵 スケジュールの指定が不正です。")
-            return flask.jsonify(rasp_shutter.control.scheduler.schedule_load())
+            # NOTE: 200 で旧スケジュールを返すとクライアントが保存成功と誤認するため、
+            # バリデーション失敗はエラーとして返す。
+            return flask.jsonify({"result": "error"}), 400
 
         schedule_lock = get_schedule_lock()
         schedule_queue = get_schedule_queue()

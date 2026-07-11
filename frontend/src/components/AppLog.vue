@@ -349,7 +349,7 @@ export default {
             axios
                 .get(this.AppConfig["apiEndpoint"] + "log_clear")
                 .then((response) => {
-                    if (response.data.result) {
+                    if (response.data.result === "success") {
                         this.$root.$toast.open({
                             type: "success",
                             position: "top-right",

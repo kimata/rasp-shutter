@@ -48,7 +48,7 @@ export default {
                     params: { cmd: 1, index: this.index, state: mode },
                 })
                 .then((response) => {
-                    if (response.data.result) {
+                    if (response.data.result === "success") {
                         this.$root.$toast.open({
                             type: "success",
                             position: "top-right",

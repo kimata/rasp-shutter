@@ -144,11 +144,15 @@ export default {
                         message: "正常に保存できました。",
                     });
                 })
-                .catch(() => {
+                .catch((error) => {
+                    const isInvalid =
+                        error.response && error.response.data && error.response.data.result === "error";
                     this.$root.$toast.open({
                         type: "error",
                         position: "top-right",
-                        message: "保存に失敗しました。",
+                        message: isInvalid
+                            ? "スケジュールの指定が不正なため保存できませんでした。"
+                            : "保存に失敗しました。",
                     });
                 })
                 .finally(() => {

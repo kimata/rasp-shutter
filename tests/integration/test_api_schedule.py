@@ -2,7 +2,7 @@
 # ruff: noqa: S101
 """スケジュールAPIの統合テスト"""
 
-import pathlib
+import my_lib.pytest_util
 
 import rasp_shutter.config
 from tests.fixtures.schedule_factory import ScheduleFactory
@@ -41,7 +41,9 @@ class TestScheduleRead:
         """破損したスケジュールファイルの読み取り"""
         schedule_path = rasp_shutter.config.get_environment().schedule_file_path
         if schedule_path is not None:
-            with pathlib.Path(schedule_path).open(mode="wb") as f:
+            # NOTE: my_lib.serializer は get_path() でワーカーサフィックスを付与して
+            # 読み書きするため、実際に読まれるファイルに破損データを書き込む
+            with my_lib.pytest_util.get_path(schedule_path).open(mode="wb") as f:
                 f.write(b"TEST")
 
             schedule_api = ScheduleAPI(client)
@@ -99,7 +101,7 @@ class TestScheduleValidation:
 
         schedule_data = ScheduleFactory.create()
         del schedule_data["open"]
-        schedule_api.update(schedule_data)
+        schedule_api.update(schedule_data, expect_success=False)
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
@@ -112,7 +114,7 @@ class TestScheduleValidation:
 
         schedule_data = ScheduleFactory.create()
         del schedule_data["open"]["is_active"]
-        schedule_api.update(schedule_data)
+        schedule_api.update(schedule_data, expect_success=False)
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
@@ -125,7 +127,7 @@ class TestScheduleValidation:
 
         schedule_data = ScheduleFactory.create()
         schedule_data["open"]["is_active"] = "TEST"
-        schedule_api.update(schedule_data)
+        schedule_api.update(schedule_data, expect_success=False)
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
@@ -138,7 +140,7 @@ class TestScheduleValidation:
 
         schedule_data = ScheduleFactory.create()
         schedule_data["open"]["lux"] = "TEST"
-        schedule_api.update(schedule_data)
+        schedule_api.update(schedule_data, expect_success=False)
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
@@ -151,7 +153,7 @@ class TestScheduleValidation:
 
         schedule_data = ScheduleFactory.create()
         schedule_data["open"]["solar_rad"] = "TEST"
-        schedule_api.update(schedule_data)
+        schedule_api.update(schedule_data, expect_success=False)
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
@@ -164,7 +166,7 @@ class TestScheduleValidation:
 
         schedule_data = ScheduleFactory.create()
         schedule_data["open"]["time"] = "TEST"
-        schedule_api.update(schedule_data)
+        schedule_api.update(schedule_data, expect_success=False)
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
@@ -177,7 +179,7 @@ class TestScheduleValidation:
 
         schedule_data = ScheduleFactory.create()
         schedule_data["open"]["wday"] = [True] * 5
-        schedule_api.update(schedule_data)
+        schedule_api.update(schedule_data, expect_success=False)
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
 
@@ -191,7 +193,7 @@ class TestScheduleValidation:
 
         schedule_data = ScheduleFactory.create()
         schedule_data["open"]["wday"] = ["TEST"] * 7
-        schedule_api.update(schedule_data)
+        schedule_api.update(schedule_data, expect_success=False)
 
         log_checker.wait_and_check(["CLEAR", "INVALID"])
         slack_checker.check_error_contains("スケジュールの指定が不正です。")
