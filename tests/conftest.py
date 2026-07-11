@@ -235,6 +235,7 @@ def _clear(app, config):  # app is dependency only, not used directly
     """
     import my_lib.footprint
     import my_lib.notify.slack
+    import my_lib.pytest_util
 
     import rasp_shutter.config
 
@@ -253,12 +254,14 @@ def _clear(app, config):  # app is dependency only, not used directly
     # 各テスト前にクリアして前のテストのスケジュールが影響しないようにする
     rasp_shutter.control.scheduler.clear_scheduler_jobs()
     rasp_shutter.control.scheduler.reset_sensor_sample_state()
+    rasp_shutter.control.scheduler.reset_auto_control_failure_state()
 
     # Clear schedule file to ensure clean state for each test
-    # NOTE: ワーカー固有のパスは app fixture で設定済み
+    # NOTE: my_lib.serializer は get_path() でワーカーサフィックスを付与して読み書きするため、
+    # 実際に読み書きされるファイルを削除する
     schedule_path = rasp_shutter.config.get_environment().schedule_file_path
     if schedule_path is not None:
-        schedule_path.unlink(missing_ok=True)
+        my_lib.pytest_util.get_path(schedule_path).unlink(missing_ok=True)
 
     my_lib.notify.slack._interval_clear()
     my_lib.notify.slack._hist_clear()
@@ -296,20 +299,22 @@ def app(config):
 
     # データファイルパスをワーカー固有に変更（並列実行時の競合を回避）
     # NOTE: my_lib.pytest_util.get_path() は PYTEST_XDIST_WORKER が設定されている場合のみ
-    # サフィックスを付与し、通常実行時はそのままのパスを返す
+    # サフィックスを付与し、通常実行時はそのままのパスを返す。
+    # my_lib.serializer（スケジュール）と my_lib.webapp.log（ログ）は内部で get_path() を
+    # 適用するため、ここでさらに適用すると二重サフィックス（例: schedule.dat.gw0.gw0）になり、
+    # クリーンアップやテストからの直接ファイルアクセスが実ファイルとずれる。
+    # そのため、スケジュール・ログのパスは素のまま渡し、get_path() を適用しない
+    # metrics（my_lib.sqlite_util）と stat_dir のみここでワーカー固有化する。
     worker_metrics_path = my_lib.pytest_util.get_path(config.metrics.data)
     worker_metrics_path.parent.mkdir(parents=True, exist_ok=True)
-    worker_schedule_path = my_lib.pytest_util.get_path(config.webapp.data.schedule_file_path)
-    worker_schedule_path.parent.mkdir(parents=True, exist_ok=True)
-    worker_log_path = my_lib.pytest_util.get_path(config.webapp.data.log_file_path)
-    worker_log_path.parent.mkdir(parents=True, exist_ok=True)
+    schedule_path = config.webapp.data.schedule_file_path
+    schedule_path.parent.mkdir(parents=True, exist_ok=True)
+    config.webapp.data.log_file_path.parent.mkdir(parents=True, exist_ok=True)
     worker_stat_path = my_lib.pytest_util.get_path(config.webapp.data.stat_dir_path)
     worker_stat_path.parent.mkdir(parents=True, exist_ok=True)
 
     new_data = dataclasses.replace(
         config.webapp.data,
-        schedule_file_path=worker_schedule_path,
-        log_file_path=worker_log_path,
         stat_dir_path=worker_stat_path,
     )
     new_webapp = dataclasses.replace(config.webapp, data=new_data)
@@ -320,7 +325,8 @@ def app(config):
     import rasp_shutter.control.webapi.schedule
 
     with unittest.mock.patch.dict("os.environ", {"WERKZEUG_RUN_MAIN": "true"}):
-        worker_schedule_path.unlink(missing_ok=True)
+        # NOTE: serializer が実際に読み書きするワーカー固有ファイルを削除する
+        my_lib.pytest_util.get_path(schedule_path).unlink(missing_ok=True)
 
         app = create_app(config, dummy_mode=True)
 

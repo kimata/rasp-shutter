@@ -233,19 +233,18 @@ def _clear(app, config):
 
 **ワーカー固有パスの設定**（`app` fixture 内）:
 
-- `SCHEDULE_FILE_PATH`: `data/schedule_{worker_id}.dat`
-- `LOG_DIR_PATH`: `data/log_{worker_id}.db`
-- `STAT_DIR_PATH`: `/dev/shm/rasp-shutter-{worker_id}`
+- `stat_dir_path` と `metrics.data` のみ、fixture 側で `my_lib.pytest_util.get_path()` によりワーカー固有化する
+- スケジュールファイルとログ DB は **素のパスのまま** 渡す（下記のとおり my_lib 側がサフィックスを付与するため）
 
 #### my_lib によるファイル名サフィックス追加
 
-`my_lib.serializer.store()` と `my_lib.serializer.load()` は内部で `my_lib.pytest_util.get_path()` を呼び出し、pytest-xdist 実行時にファイル名にワーカーIDサフィックスを追加する：
+`my_lib.serializer.store()/load()`（スケジュール）と `my_lib.webapp.log`（ログ DB）は内部で `my_lib.pytest_util.get_path()` を呼び出し、pytest-xdist 実行時にファイル名にワーカーIDサフィックスを追加する：
 
 ```
-schedule_gw0.dat → schedule_gw0.dat.gw0  # serializer 経由でアクセス時
+schedule.dat → schedule.dat.gw0  # serializer 経由でアクセス時
 ```
 
-**注意**: バックアップファイル（`.old`）にはサフィックスが追加されないため、conftest.py でワーカー固有パスを設定することで競合を回避する。
+**注意**: これらのパスに fixture 側でもサフィックスを付与すると二重サフィックス（`schedule.dat.gw0.gw0`）になり、クリーンアップやテストからの直接ファイルアクセスが実ファイルとずれる。テストからスケジュールファイルへ直接アクセスする場合は `my_lib.pytest_util.get_path(schedule_path)` を経由すること。
 
 #### トラブルシューティング
 
@@ -305,10 +304,10 @@ config = dataclasses.replace(config, metrics=new_metrics)
 
 **現在ワーカー分離されているファイル**:
 
-- `SCHEDULE_FILE_PATH`: `data/schedule_{worker_id}.dat`
-- `LOG_DIR_PATH`: `data/log_{worker_id}.db`
-- `STAT_DIR_PATH`: `/dev/shm/rasp-shutter-{worker_id}`
-- `metrics.data`: `data/metrics_{worker_id}.db`
+- スケジュールファイル: `data/schedule.dat.{worker_id}`（my_lib.serializer が付与）
+- ログ DB: `data/log.db.{worker_id}`（my_lib.webapp.log が付与）
+- `stat_dir_path`: fixture 側で `get_path()` によりワーカー固有化
+- `metrics.data`: fixture 側で `get_path()` によりワーカー固有化（`data/metrics.db.{worker_id}`）
 
 ## コーディング規約
 
