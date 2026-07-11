@@ -53,6 +53,7 @@ import axios from "axios";
 import { CloudArrowUpIcon, ClockIcon } from "@heroicons/vue/24/outline";
 import AppConfig from "../mixins/AppConfig.js";
 import ScheduleEntry from "./ScheduleEntry.vue";
+import { subscribeEvent } from "../utils/event-stream.js";
 
 export default {
     name: "schedule-setting",
@@ -66,6 +67,7 @@ export default {
     data() {
         return {
             saving: false,
+            unsubscribeEvent: null,
             current: {
                 open: {
                     is_active: false,
@@ -106,7 +108,14 @@ export default {
     },
     created() {
         this.updateSchedule();
-        this.watchEvent();
+        this.unsubscribeEvent = subscribeEvent(this.AppConfig["apiEndpoint"] + "event", "schedule", () => {
+            this.updateSchedule();
+        });
+    },
+    unmounted() {
+        if (this.unsubscribeEvent !== null) {
+            this.unsubscribeEvent();
+        }
     },
     computed: {
         isChanged: function () {
@@ -175,20 +184,6 @@ export default {
                 }
             }
             return false;
-        },
-        watchEvent: function () {
-            this.eventSource = new EventSource(this.AppConfig["apiEndpoint"] + "event");
-            this.eventSource.addEventListener("message", (e) => {
-                if (e.data == "schedule") {
-                    this.updateSchedule();
-                }
-            });
-            this.eventSource.onerror = () => {
-                if (this.eventSource.readyState == 2) {
-                    this.eventSource.close();
-                    setTimeout(this.watchEvent, 10000);
-                }
-            };
         },
     },
 };

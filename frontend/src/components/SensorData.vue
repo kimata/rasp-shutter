@@ -92,10 +92,12 @@ export default {
         }, 10000);
     },
     unmounted() {
-        if (this.interval == null) {
-            return;
+        if (this.interval !== null) {
+            clearInterval(this.interval);
         }
-        clearInterval(this.interval);
+        // アニメーション用のタイマーも全て解放する
+        Object.values(this.animatingValues).forEach((timerId) => clearInterval(timerId));
+        this.animatingValues = {};
     },
     methods: {
         updateSensor: function () {

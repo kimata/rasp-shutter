@@ -132,6 +132,7 @@ dayjs.extend(relativeTime);
 dayjs.extend(localizedFormat);
 
 import AppConfig from "../mixins/AppConfig.js";
+import { subscribeEvent } from "../utils/event-stream.js";
 
 // ログ種別の定義
 const LOG_TYPES = {
@@ -211,7 +212,7 @@ export default {
             page: 1,
             log: [],
             loading: true,
-            eventSource: null,
+            unsubscribeEvent: null,
         };
     },
     compatConfig: { MODE: 3 },
@@ -230,8 +231,15 @@ export default {
         },
     },
     created() {
-        this.watchEvent();
+        this.unsubscribeEvent = subscribeEvent(this.AppConfig["apiEndpoint"] + "event", "log", () => {
+            this.updateLog();
+        });
         this.updateLog();
+    },
+    unmounted() {
+        if (this.unsubscribeEvent !== null) {
+            this.unsubscribeEvent();
+        }
     },
     methods: {
         getLogType(entry) {
@@ -301,8 +309,15 @@ export default {
             return labelMap[type] || "情報";
         },
         formatMessage(message) {
+            // NOTE: v-html で描画するため、装飾タグを挿入する前に HTML エスケープする。
+            // ログには認証ヘッダ由来のユーザー名等の外部入力が含まれ得る。
+            const escaped = message
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
             // 絵文字を除去してフォーマット
-            return message
+            return escaped
                 .replace(/[😵📝📅🏃🔔🌅🌇]/gu, "")
                 .trim()
                 .replace(/\^2/g, "<sup>2</sup>")
@@ -330,20 +345,6 @@ export default {
                 .finally(() => {
                     this.loading = false;
                 });
-        },
-        watchEvent: function () {
-            this.eventSource = new EventSource(this.AppConfig["apiEndpoint"] + "event");
-            this.eventSource.addEventListener("message", (e) => {
-                if (e.data == "log") {
-                    this.updateLog();
-                }
-            });
-            this.eventSource.onerror = () => {
-                if (this.eventSource.readyState == 2) {
-                    this.eventSource.close();
-                    setTimeout(this.watchEvent, 10000);
-                }
-            };
         },
         clear: function () {
             axios
