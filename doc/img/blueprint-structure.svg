@@ -63,7 +63,7 @@
   <!-- lines -->
   <line x1="400" y1="96" x2="250" y2="130" stroke="#6e40c9" stroke-width="1.5"/>
   <line x1="560" y1="96" x2="710" y2="130" stroke="#1a7f37" stroke-width="1.5"/>
-  <line x1="620" y1="96" x2="750" y2="370" stroke="#9a6700" stroke-width="1.5" stroke-dasharray="6 3"/>
+  <polyline points="630,90 944,124 944,420 930,420" fill="none" stroke="#9a6700" stroke-width="1.5" stroke-dasharray="6 3"/>
 
   <!-- note -->
   <rect x="30" y="510" width="900" height="80" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>

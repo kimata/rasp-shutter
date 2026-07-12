@@ -53,7 +53,7 @@
     <text x="506" y="342" font-weight="bold">参照:</text>
     <text x="550" y="342">制御間隔チェック（手動 1 分 / スケジュール・自動 12 時間）→</text>
     <text x="550" y="358">「見合わせ」判定。get_shutter_state() の開閉状態推定</text>
-    <text x="550" y="374">（open と close の新しい方が現在状態。両方なければ UNKNOWN）。</text>
+    <text x="550" y="374">（open と close の新しい方が現在状態。なければ UNKNOWN）。</text>
   </g>
 
   <!-- design principle -->

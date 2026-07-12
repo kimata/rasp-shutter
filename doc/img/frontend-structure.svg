@@ -22,13 +22,13 @@
     <rect x="270" y="130" width="200" height="120" rx="8" fill="#eaf2fb" stroke="#0969da" stroke-width="1.5"/>
     <text x="370" y="152" text-anchor="middle" font-weight="bold">ScheduleSetting / ScheduleEntry</text>
     <text x="282" y="174">GET /api/schedule_ctrl</text>
-    <text x="282" y="192">POST /api/schedule_ctrl（cmd=set）</text>
+    <text x="282" y="192" font-size="11">POST /api/schedule_ctrl（cmd=set）</text>
     <text x="282" y="212" fill="#57606a">SSE "schedule" 受信で再取得。</text>
     <text x="282" y="228" fill="#57606a">400 は「指定が不正」トースト</text>
 
     <rect x="500" y="130" width="200" height="120" rx="8" fill="#eaf2fb" stroke="#0969da" stroke-width="1.5"/>
     <text x="600" y="152" text-anchor="middle" font-weight="bold">SensorData</text>
-    <text x="512" y="174">GET /api/sensor（10 秒ポーリング）</text>
+    <text x="512" y="174" font-size="11">GET /api/sensor（10 秒ポーリング）</text>
     <text x="512" y="192" fill="#57606a">値変化は 16ms interval の</text>
     <text x="512" y="208" fill="#57606a">イージングでアニメーション。</text>
     <text x="512" y="224" fill="#57606a">unmounted で全タイマー解放</text>
@@ -37,7 +37,7 @@
     <text x="830" y="152" text-anchor="middle" font-weight="bold">AppLog</text>
     <text x="742" y="174">GET /api/log_view / log_clear</text>
     <text x="742" y="192" fill="#57606a">SSE "log" 受信で再取得。</text>
-    <text x="742" y="208" fill="#57606a">メッセージは HTML エスケープ後に</text>
+    <text x="742" y="208" font-size="11" fill="#57606a">メッセージは HTML エスケープ後に</text>
     <text x="742" y="224" fill="#57606a">装飾タグを挿入（v-html）</text>
   </g>
 

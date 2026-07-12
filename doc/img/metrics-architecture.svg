@@ -7,14 +7,15 @@
   <text x="480" y="28" text-anchor="middle" font-size="17" font-weight="bold" fill="#1f2328">メトリクスモジュール構成（記録 → 集計 → 表示の分離）</text>
 
   <!-- writers -->
-  <rect x="40" y="60" width="250" height="130" rx="10" fill="#eef7f0" stroke="#1a7f37" stroke-width="1.5"/>
+  <rect x="40" y="60" width="250" height="146" rx="10" fill="#eef7f0" stroke="#1a7f37" stroke-width="1.5"/>
   <text x="165" y="84" text-anchor="middle" font-weight="bold" fill="#1a7f37">記録元</text>
   <g font-size="11.5">
     <text x="56" y="108">・control.py set_shutter_state_impl</text>
     <text x="72" y="124" fill="#57606a">操作 / 失敗（シャッター個体別）</text>
     <text x="56" y="144">・scheduler.py</text>
     <text x="72" y="160" fill="#57606a">見合わせ（閾値スナップショット付き）</text>
-    <text x="72" y="176" fill="#57606a">センサーサンプル（60 秒間隔・別スレッド）</text>
+    <text x="72" y="176" fill="#57606a">センサーサンプル</text>
+    <text x="72" y="192" fill="#57606a">（60 秒間隔・別スレッド）</text>
   </g>
 
   <!-- collector -->
@@ -88,7 +89,8 @@
   <line x1="290" y1="440" x2="340" y2="440" stroke="#0969da" stroke-width="1.5" marker-end="url(#ma)"/>
 
   <!-- note -->
-  <rect x="40" y="544" width="890" height="50" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
-  <text x="56" y="566" font-size="11.5">DB 由来の文字列（見合わせ理由など）はサーバー側で HTML に埋め込まず、JSON で渡して JS が textContent で挿入するため、格納データ経由の XSS が構造的に発生しない。</text>
-  <text x="56" y="584" font-size="11.5">スキーマ変更は CREATE TABLE への列追加 + PRAGMA table_info による ALTER TABLE マイグレーション（無停止・過去行は NULL）。</text>
+  <rect x="40" y="544" width="890" height="68" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="56" y="566" font-size="11.5">DB 由来の文字列（見合わせ理由など）はサーバー側で HTML に埋め込まず、JSON で渡して JS が textContent で挿入するため、</text>
+  <text x="56" y="584" font-size="11.5">格納データ経由の XSS が構造的に発生しない。</text>
+  <text x="56" y="602" font-size="11.5">スキーマ変更は CREATE TABLE への列追加 + PRAGMA table_info による ALTER TABLE マイグレーション（無停止・過去行は NULL）。</text>
 </svg>

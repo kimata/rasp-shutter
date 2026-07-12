@@ -31,7 +31,7 @@
     <text x="220" y="102" text-anchor="middle">POST ?cmd=1&amp;index&amp;state（ボタンは disable）</text>
 
     <line x1="325" y1="146" x2="330" y2="146" stroke="none"/>
-    <rect x="245" y="132" width="160" height="30" rx="4" fill="#fff8c5" stroke="#9a6700"/>
+    <rect x="205" y="132" width="240" height="30" rx="4" fill="#fff8c5" stroke="#9a6700"/>
     <text x="325" y="151" text-anchor="middle" font-size="11">検証: POST か / index 範囲 / state Literal</text>
 
     <line x1="325" y1="186" x2="540" y2="186" stroke="#1f2328" stroke-width="1.5" marker-end="url(#sa)"/>
@@ -40,16 +40,16 @@
     <rect x="455" y="200" width="170" height="30" rx="4" fill="#fff8c5" stroke="#9a6700"/>
     <text x="540" y="219" text-anchor="middle" font-size="11">control_lock 取得（直列化）</text>
 
-    <rect x="455" y="242" width="170" height="44" rx="4" fill="#fff8c5" stroke="#9a6700"/>
+    <rect x="430" y="242" width="220" height="44" rx="4" fill="#fff8c5" stroke="#9a6700"/>
     <text x="540" y="259" text-anchor="middle" font-size="11">シャッター毎: exe 履歴と間隔チェック</text>
     <text x="540" y="275" text-anchor="middle" font-size="11">（手動 1 分以内 → POSTPONED）</text>
 
     <line x1="540" y1="310" x2="730" y2="310" stroke="#1f2328" stroke-width="1.5" marker-end="url(#sa)"/>
     <text x="635" y="302" text-anchor="middle">call_shutter_api: GET endpoint（timeout 5 秒）</text>
     <line x1="730" y1="336" x2="540" y2="336" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#sd)"/>
-    <text x="635" y="330" text-anchor="middle" fill="#57606a">200 = 成功 / それ以外・例外 = 失敗</text>
+    <text x="635" y="330" text-anchor="middle" font-size="10.5" fill="#57606a">200 = 成功 / それ以外・例外 = 失敗</text>
 
-    <rect x="455" y="352" width="170" height="46" rx="4" fill="#ddf4e4" stroke="#1a7f37"/>
+    <rect x="430" y="352" width="220" height="46" rx="4" fill="#ddf4e4" stroke="#1a7f37"/>
     <text x="540" y="369" text-anchor="middle" font-size="11" fill="#1a7f37">成功時のみ: exe/{i}_{state} 更新、</text>
     <text x="540" y="385" text-anchor="middle" font-size="11" fill="#1a7f37">逆方向をクリア</text>
 
@@ -57,12 +57,12 @@
     <text x="710" y="416" text-anchor="middle">ログ（my_lib.webapp.log）+ メトリクス（個体別に記録）</text>
     <text x="710" y="440" text-anchor="middle" font-size="11" fill="#57606a">失敗時は log.error → Slack 通知 + record_failure</text>
 
-    <rect x="455" y="456" width="170" height="46" rx="4" fill="#fff8c5" stroke="#9a6700"/>
+    <rect x="430" y="456" width="220" height="46" rx="4" fill="#fff8c5" stroke="#9a6700"/>
     <text x="540" y="473" text-anchor="middle" font-size="11">集約: FAILURE あり → result="error"</text>
     <text x="540" y="489" text-anchor="middle" font-size="11">POSTPONED → postponed[] に名前</text>
 
     <line x1="540" y1="520" x2="325" y2="520" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#sd)"/>
-    <text x="430" y="512" text-anchor="middle" fill="#57606a">ShutterStateResponse（state / result / postponed）</text>
+    <text x="430" y="516" text-anchor="middle" fill="#57606a">ShutterStateResponse（state / result / postponed）</text>
 
     <line x1="325" y1="552" x2="115" y2="552" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#sd)"/>
     <text x="220" y="544" text-anchor="middle" fill="#57606a">200 JSON</text>
