@@ -12,12 +12,10 @@ from playwright.sync_api import Page
 from tests.e2e.conftest import (
     advance_mock_time_and_wait,
     clear_log,
-    click_and_check_log,
     get_current_server_time,
-    get_scheduler_loop_sequence,
+    save_schedule_and_wait,
     set_mock_time,
     wait_for_log,
-    wait_scheduler_loop,
 )
 
 SCHEDULE_AFTER_MIN = 1
@@ -77,18 +75,12 @@ class TestScheduleExecution:
 
         logging.info("Save schedule")
 
-        # スケジュール保存前のループシーケンスを取得
-        initial_sequence = get_scheduler_loop_sequence(host, port)
-        assert initial_sequence is not None, "Failed to get scheduler loop sequence"
-        logging.info("Initial scheduler loop sequence: %d", initial_sequence)
-
-        click_and_check_log(page, host, port, "save", "スケジュールを更新")
-
-        # スケジューラがキューを処理するのを待機（ループシーケンスが進むまで）
-        logging.info("Waiting for scheduler to process queue...")
-        assert wait_scheduler_loop(host, port, initial_sequence, timeout=10.0), (
-            "Scheduler did not process queue"
-        )
+        # NOTE: スケジュール保存（queue.put）とスケジューラスレッドによるジョブ登録は
+        # 非同期。ループシーケンスの進行ではキュー処理を保証できない（put の可視化遅延で
+        # ループが空回りし得る）ため、適用世代番号で「ジョブ登録の完了」を確認する。
+        # 適用前に時刻を進めると、schedule ライブラリが next_run を翌日に計算してしまい、
+        # ジョブが発火しなくなる。
+        save_schedule_and_wait(page, host, port)
 
         # NOTE: スケジュール保存後、モック時間を12:01以降に進めてスケジュールを発火させる
         # advance_mock_time_and_wait を使用して、スケジューラが新しい時刻で run_pending() を

@@ -13,7 +13,13 @@ blueprint = flask.Blueprint("rasp-shutter-test-time", __name__)
 
 
 # テスト用の時刻モック状態を保持
+# NOTE: _traveler は time_machine.travel() のコンテキスト、_traveller は
+# start() が返すオブジェクトで、稼働中の時刻変更（move_to / shift）に使う。
+# traveler を stop() して作り直す方式だと、stop() から start() までの間に
+# スケジューラスレッドが実時刻を観測し、schedule ライブラリのジョブ登録
+# （next_run 計算）が実時刻基準で行われてジョブが発火しなくなるレースがある。
 _traveler = None
+_traveller = None
 
 
 @blueprint.route("/api/test/time/set/<timestamp>", methods=["POST"])
@@ -29,7 +35,7 @@ def set_mock_time(timestamp):
         JSON: 設定された時刻情報
 
     """
-    global _traveler
+    global _traveler, _traveller
 
     try:
         # タイムスタンプの解析
@@ -41,13 +47,13 @@ def set_mock_time(timestamp):
             if mock_datetime.tzinfo is None:
                 mock_datetime = mock_datetime.replace(tzinfo=my_lib.time.get_zoneinfo())
 
-        # 既存のtravelerを停止
-        if _traveler:
-            _traveler.stop()
-
-        # time_machineを使用して時刻を設定
-        _traveler = time_machine.travel(mock_datetime)
-        _traveler.start()
+        if _traveller is not None:
+            # NOTE: 稼働中の traveler は停止せず move_to() で時刻を切り替える。
+            # stop()/start() の再作成では、その間に実時刻が露出するレースがある。
+            _traveller.move_to(mock_datetime)
+        else:
+            _traveler = time_machine.travel(mock_datetime)
+            _traveller = _traveler.start()
 
         logging.info("Mock time set to: %s", mock_datetime)
 
@@ -74,21 +80,13 @@ def advance_mock_time(seconds):
         JSON: 更新された時刻情報
 
     """
-    global _traveler
-
-    if _traveler is None:
+    if _traveller is None:
         return {"error": "Mock time not set. Use /api/test/time/set first"}, 400
 
-    # 現在の時刻を取得して、新しい時刻を計算
-    current_mock_time = my_lib.time.now()
-    new_mock_time = current_mock_time + datetime.timedelta(seconds=seconds)
-
-    # 既存のtravelerを停止
-    _traveler.stop()
-
-    # 新しい時刻でtravelerを再作成
-    _traveler = time_machine.travel(new_mock_time)
-    _traveler.start()
+    # NOTE: shift() で時刻を進める。traveler を stop()/start() で再作成すると、
+    # その間に実時刻が露出し、同時に走っているスケジューラスレッドが
+    # ジョブ登録や next_run 計算を実時刻基準で行ってしまうレースがある。
+    _traveller.shift(datetime.timedelta(seconds=seconds))
 
     # NOTE: スケジュールの強制リロードは行わない。
     # 時刻を進めた後にスケジュールをリロードすると、Python schedule ライブラリが
@@ -116,11 +114,12 @@ def reset_mock_time():
         JSON: リセット結果
 
     """
-    global _traveler
+    global _traveler, _traveller
 
     if _traveler:
         _traveler.stop()
         _traveler = None
+        _traveller = None
 
     logging.info("Mock time reset to real time")
 

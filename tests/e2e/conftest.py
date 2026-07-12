@@ -203,6 +203,72 @@ def wait_scheduler_loop(host: str, port: str, sequence: int, timeout: float = 10
         return False
 
 
+def get_schedule_generation(host: str, port: str) -> int | None:
+    """スケジュール適用世代番号を取得"""
+    api_url = APP_URL_TMPL.format(host=host, port=port) + "api/test/scheduler/schedule_generation"
+    try:
+        response = requests.get(api_url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            return data.get("generation", 0)
+        return None
+    except requests.RequestException:
+        return None
+
+
+def wait_schedule_applied(host: str, port: str, generation: int, timeout: float = 15.0) -> bool:
+    """スケジュール適用世代が指定値より大きくなるまで待機
+
+    スケジュール保存（queue.put）後、スケジューラスレッドがジョブ登録を
+    終えたことを保証する。ループシーケンスの進行はキュー処理を保証しない
+    （queue.put の可視化遅延でループが空回りし得る）ため、時刻を進める前に
+    必ずこの関数で適用完了を確認する。
+
+    Args:
+        host: サーバーホスト名
+        port: サーバーポート番号
+        generation: 保存前に取得した世代番号
+        timeout: タイムアウト秒数
+
+    Returns:
+        True: 適用された, False: タイムアウト
+    """
+    api_url = (
+        APP_URL_TMPL.format(host=host, port=port)
+        + f"api/test/scheduler/wait_schedule_applied?generation={generation}&timeout={timeout}"
+    )
+    try:
+        response = requests.post(api_url, timeout=timeout + 5)
+        if response.status_code == 200:
+            data = response.json()
+            logging.debug(
+                "Schedule applied: generation %d -> %d",
+                generation,
+                data.get("current_generation", 0),
+            )
+            return data.get("success", False)
+        return False
+    except requests.RequestException:
+        return False
+
+
+def save_schedule_and_wait(page: Page, host: str, port: str) -> None:
+    """スケジュールを保存し、スケジューラへの適用完了まで待機する
+
+    保存（queue.put）とスケジューラスレッドによるジョブ登録は非同期のため、
+    適用を確認せずに時刻を進めると、ジョブ登録が予定時刻を過ぎてから行われて
+    ジョブが発火しなくなる。
+    """
+    generation = get_schedule_generation(host, port)
+    assert generation is not None, "Failed to get schedule generation"  # noqa: S101
+
+    click_and_check_log(page, host, port, "save", "スケジュールを更新")
+
+    assert wait_schedule_applied(host, port, generation), (  # noqa: S101
+        "Schedule was not applied to scheduler"
+    )
+
+
 def advance_mock_time_and_wait(host: str, port: str, seconds: int, wait_loops: int = 2) -> bool:
     """モック時刻を進めてスケジューラループの完了を待機
 

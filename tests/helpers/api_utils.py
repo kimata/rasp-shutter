@@ -9,6 +9,7 @@ import json
 from typing import TYPE_CHECKING, Any
 
 import rasp_shutter.config
+import rasp_shutter.control.scheduler
 
 if TYPE_CHECKING:
     from flask.testing import FlaskClient
@@ -118,7 +119,12 @@ class ScheduleAPI:
         return _get_json(response)
 
     def update(self, schedule_data: dict, expect_success: bool = True) -> dict[str, Any]:
-        """スケジュールを更新
+        """スケジュールを更新し、スケジューラへの適用完了まで待機する
+
+        保存（queue.put）とスケジューラスレッドによるジョブ登録は非同期。
+        適用を確認せずに時刻を進めると、ジョブ登録が予定時刻を過ぎてから
+        行われて next_run が翌日に計算され、ジョブが発火しなくなるため、
+        適用世代番号の進行を待ってから返る。
 
         Args:
             schedule_data: スケジュールデータ
@@ -127,6 +133,8 @@ class ScheduleAPI:
         Returns:
             APIレスポンスのJSON
         """
+        generation = rasp_shutter.control.scheduler.get_schedule_applied_generation()
+
         # NOTE: 状態変更 API は POST 限定
         response = self.client.post(
             f"{self.url_prefix}/api/schedule_ctrl",
@@ -135,6 +143,10 @@ class ScheduleAPI:
         result = _get_json(response)
         if expect_success:
             assert response.status_code == 200
+            # NOTE: タイムアウトは高並列実行時の SQLite ロック競合等を考慮して長めにとる
+            assert rasp_shutter.control.scheduler.wait_for_schedule_applied_after(generation, timeout=60.0), (
+                "Schedule was not applied to scheduler"
+            )
         else:
             # NOTE: バリデーション失敗時は 400 と {"result": "error"} が返る
             assert response.status_code == 400

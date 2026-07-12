@@ -53,6 +53,16 @@ _loop_sequence: dict[str, int] = {}
 _loop_condition: dict[str, threading.Condition] = {}
 _loop_condition_lock = threading.Lock()
 
+# ワーカー固有のスケジュール適用世代番号（テスト同期用）
+# キュー経由で受け取ったスケジュールを set_schedule() でジョブ登録し終えるたびに進む。
+# NOTE: ループシーケンスは「ループが回った」ことしか保証しない。スケジュール保存
+# （queue.put）の可視化が遅れると、ループが 2 周してもキューが未処理のことがあり、
+# その後にテストが時刻を進めると、ジョブ登録が予定時刻を過ぎた時点で行われて
+# next_run が翌日に計算され、ジョブが発火しなくなる（flaky の原因）。
+# テストはこの世代番号で「保存したスケジュールが適用された」ことを確認してから
+# 時刻を進める必要がある。
+_schedule_applied_generation: dict[str, int] = {}
+
 # センサーサンプリング間隔（秒）と前回サンプル時刻（ワーカー別）
 SENSOR_SAMPLE_INTERVAL_SEC = 60.0
 _last_sensor_sample_time: dict[str, datetime.datetime] = {}
@@ -195,6 +205,48 @@ def wait_for_loop_after(sequence: int, timeout: float = 10.0) -> bool:
             condition.wait(timeout=poll_interval)
 
     return get_loop_sequence() > sequence
+
+
+def get_schedule_applied_generation() -> int:
+    """現在のスケジュール適用世代番号を取得"""
+    worker_id = my_lib.pytest_util.get_worker_id()
+    return _schedule_applied_generation.get(worker_id, 0)
+
+
+def _increment_schedule_applied_generation() -> None:
+    """スケジュール適用世代番号をインクリメントして通知"""
+    worker_id = my_lib.pytest_util.get_worker_id()
+    condition = _get_loop_condition()
+    with condition:
+        _schedule_applied_generation[worker_id] = _schedule_applied_generation.get(worker_id, 0) + 1
+        condition.notify_all()
+
+
+def wait_for_schedule_applied_after(generation: int, timeout: float = 10.0) -> bool:
+    """スケジュール適用世代が指定値より大きくなるまで待機
+
+    スケジュール保存（queue.put）後にこの関数で適用完了を確認してから
+    時刻操作を行うことで、ジョブ登録が予定時刻を過ぎてから実行される
+    レースを防ぐ。
+
+    Args:
+        generation: 保存前に取得した世代番号
+        timeout: タイムアウト秒数
+
+    Returns:
+        成功したら True、タイムアウトしたら False
+    """
+    condition = _get_loop_condition()
+    start = time.perf_counter()  # time_machineの影響を受けない
+    poll_interval = 0.1
+
+    with condition:
+        while time.perf_counter() - start < timeout:
+            if get_schedule_applied_generation() > generation:
+                return True
+            condition.wait(timeout=poll_interval)
+
+    return get_schedule_applied_generation() > generation
 
 
 def get_schedule_data() -> rasp_shutter.type_defs.ScheduleData | None:
@@ -900,6 +952,7 @@ def schedule_worker(config: rasp_shutter.config.AppConfig, queue) -> None:
                 set_schedule_data(schedule_data)
                 set_schedule(config, schedule_data)
                 schedule_store(schedule_data)
+                _increment_schedule_applied_generation()
 
             idle_sec = scheduler.idle_seconds  # noqa: F841
 

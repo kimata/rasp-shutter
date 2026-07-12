@@ -281,6 +281,63 @@ def wait_loop():
         }, 408
 
 
+@blueprint.route("/api/test/scheduler/schedule_generation", methods=["GET"])
+@rasp_shutter.util.require_dummy_mode
+def get_schedule_generation():
+    """
+    現在のスケジュール適用世代番号を取得
+
+    Returns:
+        JSON: 世代番号
+    """
+    generation = rasp_shutter.control.scheduler.get_schedule_applied_generation()
+
+    return {
+        "success": True,
+        "generation": generation,
+        "current_time": my_lib.time.now().isoformat(),
+    }
+
+
+@blueprint.route("/api/test/scheduler/wait_schedule_applied", methods=["POST"])
+@rasp_shutter.util.require_dummy_mode
+def wait_schedule_applied():
+    """
+    スケジュール適用世代が指定値より大きくなるまで待機
+
+    スケジュール保存後、スケジューラスレッドがキューからスケジュールを取り込み
+    ジョブ登録を終えたことを保証する。この確認をせずに時刻を進めると、
+    ジョブ登録が予定時刻を過ぎてから行われ、ジョブが発火しなくなる。
+
+    Query Params:
+        generation: 保存前に取得した世代番号
+        timeout: タイムアウト秒数（デフォルト: 10）
+
+    Returns:
+        JSON: 待機結果
+    """
+    generation = flask.request.args.get("generation", 0, type=int)
+    timeout = flask.request.args.get("timeout", 10.0, type=float)
+
+    success = rasp_shutter.control.scheduler.wait_for_schedule_applied_after(generation, timeout)
+    current_generation = rasp_shutter.control.scheduler.get_schedule_applied_generation()
+
+    if success:
+        return {
+            "success": True,
+            "start_generation": generation,
+            "current_generation": current_generation,
+            "current_time": my_lib.time.now().isoformat(),
+        }
+    else:
+        return {
+            "success": False,
+            "start_generation": generation,
+            "current_generation": current_generation,
+            "error": "Timeout waiting for schedule applied",
+        }, 408
+
+
 @blueprint.route("/api/test/state/shutter", methods=["GET"])
 @rasp_shutter.util.require_dummy_mode
 def get_shutter_state():

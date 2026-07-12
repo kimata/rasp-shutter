@@ -6,7 +6,7 @@ from tests.fixtures.schedule_factory import ScheduleFactory, time_evening, time_
 from tests.fixtures.sensor_factory import SensorDataFactory
 from tests.helpers.api_utils import ScheduleAPI, ShutterAPI
 from tests.helpers.assertions import CtrlLogChecker, LogChecker, SlackChecker
-from tests.helpers.time_utils import move_time_and_wait, setup_midnight_time, wait_for_schedule_update_seq
+from tests.helpers.time_utils import move_time_and_wait, setup_midnight_time
 
 
 class TestAutoClose:
@@ -36,7 +36,6 @@ class TestAutoClose:
             open_active=False,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         move_time_and_wait(time_machine, client, time_evening(1))
         move_time_and_wait(time_machine, client, time_evening(2))
@@ -121,7 +120,6 @@ class TestAutoReopen:
             close_time=time_str(time_evening(1)),
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         ctrl_checker.wait_and_check(
             [
@@ -236,7 +234,6 @@ class TestPendingOpen:
             close_active=False,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         ctrl_checker.wait_and_check(
             [
@@ -301,7 +298,6 @@ class TestPendingOpen:
             close_active=False,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         ctrl_checker.wait_and_check(
             [
@@ -325,7 +321,6 @@ class TestPendingOpen:
         # pending open後にスケジュールを無効にする
         schedule_data = ScheduleFactory.inactive()
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         sensor_data_mock.return_value = SensorDataFactory.bright()
 
@@ -387,7 +382,6 @@ class TestAutoControlFailure:
             close_active=False,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         move_time_and_wait(time_machine, client, time_morning(1))
         move_time_and_wait(time_machine, client, time_morning(2))
@@ -491,7 +485,6 @@ class TestAutoControlFailure:
             open_active=False,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         # 「開けてから時間が経っていない」ガードを越える
         move_time_and_wait(time_machine, client, time_evening(3))
@@ -569,10 +562,6 @@ class TestSensorError:
         )
         schedule_api.update(schedule_data)
 
-        # スケジューラーがスケジュールを処理するまで待機
-        # （現在時刻07:00でスケジュールを設定し、07:01の予定を作成）
-        wait_for_schedule_update_seq(client)
-
         move_time_and_wait(time_machine, client, time_morning(1))
         move_time_and_wait(time_machine, client, time_morning(2))
 
@@ -616,9 +605,6 @@ class TestSensorError:
             close_active=False,
         )
         schedule_api.update(schedule_data)
-
-        # スケジューラーがスケジュールを処理するまで待機
-        wait_for_schedule_update_seq(client)
 
         move_time_and_wait(time_machine, client, time_morning(1))
         move_time_and_wait(time_machine, client, time_morning(2))
@@ -672,7 +658,6 @@ class TestSensorErrorClose:
             open_active=False,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         ctrl_checker.wait_and_check(
             [

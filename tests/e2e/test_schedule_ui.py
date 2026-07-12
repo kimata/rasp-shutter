@@ -14,6 +14,7 @@ from tests.e2e.conftest import (
     clear_log,
     click_and_check_log,
     number_random,
+    save_schedule_and_wait,
     set_mock_time,
     time_str_after,
     time_str_random,
@@ -95,7 +96,8 @@ class TestScheduleUI:
             # NOTE: スケジュールを無効に設定
             enable_checkbox.evaluate("node => node.click()")
 
-        click_and_check_log(page, host, port, "save", "スケジュールを更新")
+        # NOTE: 時刻を進める前に、スケジュールがスケジューラへ適用されたことを保証する
+        save_schedule_and_wait(page, host, port)
 
         # NOTE: 何も実行されていないことを確認
         advance_mock_time(host, port, 60)

@@ -9,7 +9,6 @@ from tests.helpers.assertions import CtrlLogChecker, LogChecker, SlackChecker
 from tests.helpers.time_utils import (
     move_time_and_wait,
     setup_midnight_time,
-    wait_for_schedule_update_seq,
 )
 
 
@@ -34,7 +33,6 @@ class TestScheduleInactive:
         schedule_data["open"]["time"] = time_str(time_morning(1))
         schedule_data["close"]["time"] = time_str(time_evening(1))
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         # 朝の時刻に移動
         move_time_and_wait(time_machine, client, time_morning(1))
@@ -69,7 +67,6 @@ class TestScheduleInactive:
             wday=[False] * 7,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         # 朝の時刻に移動
         move_time_and_wait(time_machine, client, time_morning(1))
@@ -113,7 +110,6 @@ class TestScheduleExecution:
             open_active=False,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         # スケジュール時刻に移動
         move_time_and_wait(time_machine, client, time_evening(1))
@@ -171,7 +167,6 @@ class TestPendingCloseRetry:
             open_active=False,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         # スケジュール閉め制御が失敗する
         mocker.patch("rasp_shutter.control.scheduler.exec_shutter_control_impl", return_value=False)
@@ -237,7 +232,6 @@ class TestPendingCloseRetry:
             open_active=False,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         mocker.patch("rasp_shutter.control.scheduler.exec_shutter_control_impl", return_value=False)
 
@@ -285,7 +279,6 @@ class TestScheduleControlFail:
             open_active=False,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         move_time_and_wait(time_machine, client, time_evening(1))
         move_time_and_wait(time_machine, client, time_evening(2))
@@ -330,7 +323,6 @@ class TestScheduleControlFail:
             close_time=time_str(time_morning(5)),
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         move_time_and_wait(time_machine, client, time_morning(1))
         move_time_and_wait(time_machine, client, time_morning(2))
@@ -373,7 +365,6 @@ class TestScheduleControlFail:
             close_active=False,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         # 明るいのでスケジュールに従って開けようとするが、制御は失敗する
         mocker.patch("rasp_shutter.control.scheduler.exec_shutter_control_impl", return_value=False)
@@ -440,7 +431,6 @@ class TestScheduleControlFail:
             open_active=False,
         )
         schedule_api.update(schedule_data)
-        wait_for_schedule_update_seq(client)
 
         move_time_and_wait(time_machine, client, time_evening(1))
         move_time_and_wait(time_machine, client, time_evening(2))
