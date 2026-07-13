@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.11"
 
 [options]
-exclude-newer = "2026-04-20T12:32:09.375792979Z"
+exclude-newer = "2026-07-06T17:35:02.245967107Z"
 exclude-newer-span = "P1W"
 
 [[package]]
@@ -1243,7 +1243,7 @@ wheels = [
 [[package]]
 name = "my-lib"
 version = "0.2.0"
-source = { git = "https://github.com/kimata/my-py-lib?rev=a1d009ea9c00d979e042efcbaf70002d3ebbb1d0#a1d009ea9c00d979e042efcbaf70002d3ebbb1d0" }
+source = { git = "https://github.com/kimata/my-py-lib?rev=738656ce5aae03d551e81dc2fad89b2466fb9626#738656ce5aae03d551e81dc2fad89b2466fb9626" }
 dependencies = [
     { name = "coloredlogs" },
     { name = "dacite" },
@@ -2050,7 +2050,7 @@ requires-dist = [
     { name = "flask-pydantic", specifier = ">=0.12" },
     { name = "fluent-logger", specifier = ">=0.11.1" },
     { name = "influxdb-client", extras = ["ciso"], specifier = ">=1.49.0" },
-    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=a1d009ea9c00d979e042efcbaf70002d3ebbb1d0" },
+    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=738656ce5aae03d551e81dc2fad89b2466fb9626" },
     { name = "pillow", specifier = ">=12.1.0" },
     { name = "pysolar", specifier = ">=0.13" },
     { name = "schedule", specifier = ">=1.2.2" },
