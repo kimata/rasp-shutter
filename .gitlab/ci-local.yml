@@ -1,0 +1,244 @@
+# rasp-shutter 固有の CI ジョブ（py-project のテンプレート管理外）
+#
+# 共通骨格（generate-tag / build-react / build-image / test-typecheck /
+# test-pytest / tag-latest / deploy / renovate）は py-project の
+# gitlab-ci-gen (docker 系統テンプレート) が .gitlab-ci.yml に生成する。
+
+test-playwright:
+    stage: test
+
+    needs:
+        - build-react
+
+    before_script:
+        - uv sync --locked --no-editable
+
+    script:
+        - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.green-rabbit.net/kimata/hems-config.git
+        - mv hems-config/rasp-shutter.yaml config.yaml
+
+        - uv run playwright install --with-deps chromium
+        - env TEST=true uv run python ./src/app.py -d 2>&1 > flask_log.txt &
+        - >
+            uv run pytest tests/e2e/ --no-cov -n 0
+            --junit-xml=reports/playwright-junit.xml
+
+    cache:
+        - key:
+              files:
+                  - uv.lock
+          fallback_keys:
+              - uv-cache-${CI_PROJECT_ID}
+          paths:
+              - ${UV_CACHE_DIR}
+        - key: playwright-${CI_PROJECT_ID}
+          paths:
+              - .cache/ms-playwright/
+
+    artifacts:
+        when: always
+        paths:
+            - flask_log.txt
+        reports:
+            junit: reports/playwright-junit.xml
+
+.test-playwright-docker-base:
+    stage: test
+
+    # 同一ジョブの並行実行を防止してリソース競合を回避
+    resource_group: ${CI_JOB_NAME}
+
+    needs:
+        - generate-tag
+        - build-image
+
+    variables:
+        CONFIG_ARGS: "-d"
+
+    before_script:
+        - uv sync --locked --no-editable
+
+    script:
+        # クリーンアップ: 古いコンテナを停止
+        - |
+            for id in $(docker ps --filter "label=job=${CI_PROJECT_NAME}-${CI_JOB_NAME}" --format "{{.ID}}"); do
+                started_at=$(docker inspect --format '{{.State.StartedAt}}' "$id")
+                started_epoch=$(date --date="$started_at" +%s)
+                now_epoch=$(date +%s)
+                diff=$(( now_epoch - started_epoch ))
+
+                if [ "$diff" -ge 600 ]; then
+                    echo "Stopping container $id (running for $diff seconds)"
+                    docker stop -t 10 "$id" || true
+                fi
+            done
+
+        - DOCKER_NETWORK=${CI_PROJECT_NAME}-${CI_JOB_NAME}-${CI_JOB_ID}-network
+
+        # 専用ネットワーク作成（プロジェクト固有）
+        - docker network create ${DOCKER_NETWORK}
+
+        # テスト用に一時的なポート公開でコンテナ起動
+        - >
+            docker run --rm --detach=true
+            --name ${CI_JOB_NAME}-${CI_JOB_ID} --label job=${CI_PROJECT_NAME}-${CI_JOB_NAME}
+            --network ${DOCKER_NETWORK} --publish :5000 --env TEST=true
+            ${CI_REGISTRY_IMAGE}:${TAG}
+            ./src/app.py ${CONFIG_ARGS}
+
+        - echo "Container started, checking status..."
+        - docker ps -a --filter name=${CI_JOB_NAME}-${CI_JOB_ID}
+
+        - uv run playwright install --with-deps chromium
+
+        # アプリケーションの起動を待つ（公開ポート経由）
+        - >
+            APP_HOST=$(docker network inspect bridge --format="{{range .IPAM.Config}}{{.Gateway}}{{end}}")
+        - >
+            APP_PORT=$(docker port ${CI_JOB_NAME}-${CI_JOB_ID} 5000 | cut -d: -f2)
+        - >
+            echo "Testing at http://${APP_HOST}:${APP_PORT}/rasp-shutter/"
+        - >
+            timeout 90 bash -c "until curl -f --connect-timeout 5 --max-time 10
+            http://${APP_HOST}:${APP_PORT}/rasp-shutter/ > /dev/null 2>&1;
+            do echo 'Waiting for app to start...'; sleep 3; done" || ACCESS_FAILED=1
+
+        - |
+            if [ "$ACCESS_FAILED" = "1" ]; then
+                echo "Failed to access App"
+                docker logs ${CI_JOB_NAME}-${CI_JOB_ID} > flask_log.txt
+                docker stop ${CI_JOB_NAME}-${CI_JOB_ID} || true
+                docker network rm ${DOCKER_NETWORK} || true
+                exit 1
+            fi
+
+        - >
+            uv run pytest tests/e2e/ --no-cov -n 0
+            --junit-xml=reports/playwright-docker-junit.xml
+            --host ${APP_HOST} --port ${APP_PORT}
+
+        # ログ取得とクリーンアップ
+        - docker logs ${CI_JOB_NAME}-${CI_JOB_ID} > flask_log.txt
+        - docker stop ${CI_JOB_NAME}-${CI_JOB_ID} || true
+        - docker network rm ${DOCKER_NETWORK} || true
+
+    cache:
+        - key:
+              files:
+                  - uv.lock
+          fallback_keys:
+              - uv-cache-${CI_PROJECT_ID}
+          paths:
+              - ${UV_CACHE_DIR}
+        - key: playwright-${CI_PROJECT_ID}
+          paths:
+              - .cache/ms-playwright/
+
+    artifacts:
+        when: always
+        paths:
+            - flask_log.txt
+        reports:
+            junit: reports/playwright-docker-junit.xml
+
+test-playwright-docker:
+    extends: .test-playwright-docker-base
+    variables:
+        JOB_TYPE: docker
+        CONFIG_ARGS: "-d"
+
+test-playwright-docker-demo:
+    extends: .test-playwright-docker-base
+    variables:
+        JOB_TYPE: docker-demo
+        CONFIG_ARGS: "-d -c config.example.yaml"
+
+test-healthz-docker:
+    stage: test
+
+    # 同一ジョブの並行実行を防止してリソース競合を回避
+    resource_group: ${CI_JOB_NAME}
+
+    needs:
+        - generate-tag
+        - build-image
+
+    script:
+        # クリーンアップ: 古いコンテナを停止
+        - |
+            for id in $(docker ps --filter "label=job=${CI_PROJECT_NAME}-${CI_JOB_NAME}" --format "{{.ID}}"); do
+                started_at=$(docker inspect --format '{{.State.StartedAt}}' "$id")
+                started_epoch=$(date --date="$started_at" +%s)
+                now_epoch=$(date +%s)
+                diff=$(( now_epoch - started_epoch ))
+
+                if [ "$diff" -ge 600 ]; then
+                    echo "Stopping container $id (running for $diff seconds)"
+                    docker stop -t 10 "$id" || true
+                fi
+            done
+
+        - DOCKER_NETWORK=${CI_PROJECT_NAME}-${CI_JOB_NAME}-${CI_JOB_ID}-network
+
+        # 専用ネットワーク作成（プロジェクト固有）
+        - docker network create ${DOCKER_NETWORK}
+
+        # ポート公開でコンテナ起動
+        - >
+            docker run --rm --detach=true
+            --name ${CI_JOB_NAME}-${CI_JOB_ID} --label job=${CI_PROJECT_NAME}-${CI_JOB_NAME}
+            --network ${DOCKER_NETWORK} --publish :5000
+            ${CI_REGISTRY_IMAGE}:${TAG} ./src/app.py -d
+
+        - echo "Container started, checking status..."
+        - docker ps -a --filter name=${CI_JOB_NAME}-${CI_JOB_ID}
+
+        # アプリケーションの起動を待つ（公開ポート経由）
+        - >
+            APP_HOST=$(docker network inspect bridge --format="{{range .IPAM.Config}}{{.Gateway}}{{end}}")
+        - >
+            APP_PORT=$(docker port ${CI_JOB_NAME}-${CI_JOB_ID} 5000 | cut -d: -f2)
+        - >
+            echo "Testing at http://${APP_HOST}:${APP_PORT}/rasp-shutter/"
+        - >
+            timeout 90 bash -c "until curl -f --connect-timeout 5 --max-time 10
+            http://${APP_HOST}:${APP_PORT}/rasp-shutter/ > /dev/null 2>&1;
+            do echo 'Waiting for app to start...'; sleep 3; done" || ACCESS_FAILED=1
+
+        - |
+            if [ "$ACCESS_FAILED" = "1" ]; then
+                echo "Failed to access App"
+                docker logs ${CI_JOB_NAME}-${CI_JOB_ID} > flask_log.txt
+                docker stop ${CI_JOB_NAME}-${CI_JOB_ID} || true
+                docker network rm ${DOCKER_NETWORK} || true
+                exit 1
+            fi
+
+        # ヘルスチェック実行
+        - echo "App is ready, running health check..."
+        - docker logs ${CI_JOB_NAME}-${CI_JOB_ID} > flask_log.txt
+        - docker exec ${CI_JOB_NAME}-${CI_JOB_ID} ./src/healthz.py
+
+        # クリーンアップ
+        - docker stop ${CI_JOB_NAME}-${CI_JOB_ID} || true
+        - docker network rm ${DOCKER_NETWORK} || true
+    artifacts:
+        when: always
+        paths:
+            - flask_log.txt
+
+pages:
+    stage: test
+    needs:
+        - test-pytest
+
+    script:
+        - mkdir -p public/
+        - cp -r reports/* public/
+
+    artifacts:
+        paths:
+            - public
+
+    only:
+        - master
