@@ -13,18 +13,16 @@ Options:
 """
 
 import atexit
-import contextlib
 import logging
 import os
-import signal
-import sys
+import pathlib
 
 import flask
-import my_lib.proc_util
 import my_lib.webapp.base
 import my_lib.webapp.config
 import my_lib.webapp.event
 import my_lib.webapp.log
+import my_lib.webapp.runner
 import my_lib.webapp.util
 
 import rasp_shutter.config
@@ -32,7 +30,8 @@ import rasp_shutter.config
 SCHEMA_CONFIG = "config.schema"
 
 
-def term() -> None:
+def _shutdown() -> None:
+    """スケジューラ等を停止する (my_lib.webapp.runner の term フック)"""
     import rasp_shutter.control.scheduler
     import rasp_shutter.control.webapi.schedule
 
@@ -50,32 +49,6 @@ def term() -> None:
         logging.exception("Error waiting for schedule worker")
 
     my_lib.webapp.log.term()
-
-    # 子プロセスを終了
-    my_lib.proc_util.kill_child()
-
-    # プロセス終了
-    logging.info("Graceful shutdown completed")
-    sys.exit(0)
-
-
-def sig_handler(num: int, frame: object) -> None:
-    logging.warning("receive signal %d", num)
-
-    if num in (signal.SIGTERM, signal.SIGINT):
-        # Flask reloader の子プロセスも含めて終了する
-        try:
-            # 現在のプロセスがプロセスグループリーダーの場合、全体を終了
-            current_pid = os.getpid()
-            pgid = os.getpgid(current_pid)
-            if current_pid == pgid:
-                logging.info("Terminating process group %d", pgid)
-                os.killpg(pgid, signal.SIGTERM)
-        except (ProcessLookupError, PermissionError):
-            # プロセスグループ操作に失敗した場合は通常の終了処理
-            pass
-
-        term()
 
 
 def create_app(config: rasp_shutter.config.AppConfig, dummy_mode: bool = False) -> flask.Flask:
@@ -154,52 +127,15 @@ def create_app(config: rasp_shutter.config.AppConfig, dummy_mode: bool = False) 
     return app
 
 
+SPEC = my_lib.webapp.runner.WebAppSpec(
+    logger_name="hems.rasp-shutter",
+    config_loader=lambda config_file, args: rasp_shutter.config.load(
+        config_file, pathlib.Path(SCHEMA_CONFIG)
+    ),
+    app_factory=lambda config, ctx: create_app(config, ctx.dummy_mode),
+    term_hooks=(_shutdown,),
+)
+
 if __name__ == "__main__":
-    import pathlib
-
-    import docopt
-    import my_lib.logger
-
-    # docstringを使用（__doc__がNoneでないことを確認）
     assert __doc__ is not None, "Module docstring is required"  # noqa: S101
-    args = docopt.docopt(__doc__)
-
-    config_file = args["-c"]
-    port = args["-p"]
-    dummy_mode = args["-d"]
-    debug_mode = args["-D"]
-
-    my_lib.logger.init("hems.rasp-shutter", level=logging.DEBUG if debug_mode else logging.INFO)
-
-    config = rasp_shutter.config.load(config_file, pathlib.Path(SCHEMA_CONFIG))
-
-    app = create_app(config, dummy_mode)
-
-    # プロセスグループリーダーとして実行（リローダープロセスの適切な管理のため）
-    with contextlib.suppress(PermissionError):
-        os.setpgrp()
-
-    # シグナルハンドラを登録（Kubernetes rollout時のSIGTERMに対応）
-    signal.signal(signal.SIGTERM, sig_handler)
-    signal.signal(signal.SIGINT, sig_handler)
-
-    # 異常終了時のクリーンアップ処理を登録
-    def cleanup_on_exit() -> None:
-        try:
-            current_pid = os.getpid()
-            pgid = os.getpgid(current_pid)
-            if current_pid == pgid:
-                # プロセスグループ内の他のプロセスを終了
-                os.killpg(pgid, signal.SIGTERM)
-        except (ProcessLookupError, PermissionError):
-            pass
-
-    atexit.register(cleanup_on_exit)
-
-    # Flaskアプリケーションを実行
-    try:
-        # NOTE: スクリプトの自動リロード停止したい場合は use_reloader=False にする
-        app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=True)  # noqa: S104
-    except KeyboardInterrupt:
-        logging.info("Received KeyboardInterrupt, shutting down...")
-        sig_handler(signal.SIGINT, None)
+    my_lib.webapp.runner.run(SPEC, __doc__)
