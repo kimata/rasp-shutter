@@ -157,6 +157,12 @@ Flaskアプリはモジュラーブループリントアーキテクチャを使
 - カスタムリトライロジックと明度状態管理を伴うPython `schedule`ライブラリを使用
 - 信頼性の高いテスト用のテストAPIを通じた時間モックをサポート
 
+### センサー異常監視
+
+- `rasp_shutter.control.sensor_watch` - センサー値の張り付き監視。太陽高度が `SENSOR_STUCK_ALTITUDE_MIN_DEG` 以上なのに照度・日射の値が `SENSOR_STUCK_DURATION_SEC` 以上 0 のままの場合、`my_lib.webapp.log.error()` で警告する（異常が続く間は 1 日 1 回再通知）
+- スケジューラの 1 分間隔のセンサーサンプリング（`maybe_record_sensor_sample()`）に相乗りしているため、DUMMY_MODE では動作しない。ロジックのテストは `SensorStuckWatcher` を直接対象にする（`tests/unit/test_sensor_watch.py`）
+- 「有効な 0」のまま張り付くと、開ける条件が成立せずエラーにもならないままシャッターが開かなくなる（過去に照度センサー故障で発生）
+
 ### DUMMY_MODEテスト
 
 - 環境変数`DUMMY_MODE=true`でハードウェアなしでのテストを有効化

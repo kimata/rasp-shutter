@@ -17,6 +17,7 @@ import schedule
 
 import rasp_shutter.config
 import rasp_shutter.control.config
+import rasp_shutter.control.sensor_watch
 import rasp_shutter.control.webapi.control
 import rasp_shutter.control.webapi.sensor
 import rasp_shutter.metrics.collector
@@ -66,6 +67,9 @@ _schedule_applied_generation: dict[str, int] = {}
 # センサーサンプリング間隔（秒）と前回サンプル時刻（ワーカー別）
 SENSOR_SAMPLE_INTERVAL_SEC = 60.0
 _last_sensor_sample_time: dict[str, datetime.datetime] = {}
+
+# センサー値の張り付き監視（センサーサンプリングに相乗りして確認する）
+_sensor_stuck_watcher = rasp_shutter.control.sensor_watch.SensorStuckWatcher()
 
 # 自動制御が失敗した時刻（ワーカー・アクション別）
 # 失敗直後に毎ループ再試行してログ・通信がスパムになるのを防ぐ
@@ -626,6 +630,8 @@ def _sample_context_for_hour(hour: int) -> str:
 def maybe_record_sensor_sample(config: rasp_shutter.config.AppConfig) -> None:
     """SENSOR_SAMPLE_INTERVAL_SEC 経過していればセンサーサンプルを別スレッドで記録する
 
+    取得したセンサー値は、張り付き（太陽が出ているのに 0 のまま）の監視にも使う。
+
     InfluxDB I/O でブロックしてスケジューラループを止めないよう、fire-and-forget で実行する。
     DUMMY_MODE では InfluxDB が到達不能なケースが多く、無駄なタイムアウトと
     collector lock 競合でテストが不安定になるため、サンプリング自体を無効化する。
@@ -644,6 +650,7 @@ def maybe_record_sensor_sample(config: rasp_shutter.config.AppConfig) -> None:
     def _do_sample() -> None:
         try:
             sense_data = rasp_shutter.control.webapi.sensor.get_sensor_data(config)
+            _sensor_stuck_watcher.check(sense_data, now)
             rasp_shutter.metrics.collector.record_sensor_sample(
                 config.metrics.data,
                 sense_data,
